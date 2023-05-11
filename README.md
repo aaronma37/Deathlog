@@ -2,6 +2,10 @@
 
 A WoW Era Hardcore addon which provides a ui for exploring the deathlog and death statistics.
 
+## Work-in-Progress
+* Widgets haven't been created yet.
+* Not yet hooked up to deathlog chat channel.  Until then, this imports the Hardcore addon deathlog data.
+
 ## Compatibility
 
 This addon is completely safe to run alongside the `Hardcore` addon.  Alternatively, this addon can be run without the Hardcore addon running, however, it does not provide verification for the solo self-found challenge.
@@ -16,7 +20,13 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 ### Browse the Deathlog
 * Search by name, level, class, race, etc..
 
+![Deathlog](deathlog_deathlog.png)
+
 ### Deathlog Statistics per Zone
+
+* Fully functional map with heatmap overlay and death location overlays
+* List of deadliest creatures for each Zone
+* Death statistics by class list and probability density function graph
 
 ![Westfall death statistics](statistics_westfall.png)
 
