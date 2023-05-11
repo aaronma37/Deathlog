@@ -1,0 +1,22 @@
+## Interface: 11403
+## Title: Deathlog
+## Notes: Only for Hardcore on classic era servers.
+## Author: Yazpad
+## X-License: All Rights Reserved
+## X-Category: Leveling,Guild
+## Version: 0.0.1
+
+
+## DefaultState: enabled
+## SavedVariables: deathlog_settings, deathlog_data
+## SavedVariablesPerCharacter: 
+
+embeds.xml
+
+
+utils.lua
+id_to_npc_classic.lua
+npc_to_id_classic.lua
+
+menu.lua
+deathlog.lua
