@@ -2,7 +2,7 @@
 ## Title: Deathlog
 ## Notes: Only for Hardcore on classic era servers.
 ## Author: Yazpad
-## X-License: All Rights Reserved
+## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
 ## Version: 0.0.1
 
@@ -19,4 +19,5 @@ id_to_npc_classic.lua
 npc_to_id_classic.lua
 
 menu.lua
+deathlog_api.lua
 deathlog.lua
