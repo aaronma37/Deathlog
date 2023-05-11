@@ -35,8 +35,16 @@ Under construction
 
 #### Deathlog widget
 
+* Similar functionality to the Hardcore deathlog widget with some modified UI
+
 #### Death Alerts
+
+* Similar functionality to the Hardcore death alerts widget with some modified UI
 
 #### Danger notifications
 
+* Visual indicators for when your character is nearby dangerous coordinates
+
 #### Tooltip information
+
+* Indicate number of hardcore kills that the target/hover over unit has
