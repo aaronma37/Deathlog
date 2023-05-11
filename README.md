@@ -18,6 +18,8 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 
 ### Deathlog Statistics per Zone
 
+![Westfall death statistics](statistics_westfall.png)
+
 ### Widgets
 Under construction
 
