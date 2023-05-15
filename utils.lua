@@ -70,7 +70,7 @@ deathlog_zone_tbl = {
 	["Winterspring"] = 1452,
 }
 
-local deathlog_class_tbl = {
+deathlog_class_tbl = {
 	["Warrior"] = 1,
 	["Paladin"] = 2,
 	["Hunter"] = 3,
@@ -80,6 +80,17 @@ local deathlog_class_tbl = {
 	["Mage"] = 8,
 	["Warlock"] = 9,
 	["Druid"] = 11,
+}
+
+deathlog_race_tbl = {
+	["Human"] = 1,
+	["Orc"] = 2,
+	["Dwarf"] = 3,
+	["Night Elf"] = 4,
+	["Undead"] = 5,
+	["Tauren"] = 6,
+	["Gnome"] = 7,
+	["Troll"] = 8,
 }
 -- sort function from stack overflow
 local function spairs(t, order)

@@ -20,79 +20,15 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 local _menu_width = 1100
 local _inner_menu_width = 800
 local _menu_height = 600
-local use_precomputed_stats = true
+local current_map_id = nil
 
 local world_map_overlay = {}
 
 local deathlog_tabcontainer = nil
 
-local class_tbl = {
-	["Warrior"] = 1,
-	["Paladin"] = 2,
-	["Hunter"] = 3,
-	["Rogue"] = 4,
-	["Priest"] = 5,
-	["Shaman"] = 7,
-	["Mage"] = 8,
-	["Warlock"] = 9,
-	["Druid"] = 11,
-}
-
-local race_tbl = {
-	["Human"] = 1,
-	["Orc"] = 2,
-	["Dwarf"] = 3,
-	["Night Elf"] = 4,
-	["Undead"] = 5,
-	["Tauren"] = 6,
-	["Gnome"] = 7,
-	["Troll"] = 8,
-}
-
-local zone_tbl = {
-	["Durotar"] = 1411,
-	["Mulgore"] = 1412,
-	["The Barrens"] = 1413,
-	["Kalimdor"] = 1414,
-	["Eastern Kingdoms"] = 1415,
-	["Alterac Mountains"] = 1416,
-	["Arathi Highlands"] = 1417,
-	["Badlands"] = 1418,
-	["Blasted Lands"] = 1419,
-	["Tirisfal Glades"] = 1420,
-	["Silverpine Forest"] = 1421,
-	["Western Plaguelands"] = 1422,
-	["Eastern Plaguelands"] = 1423,
-	["Hillsbrad Foothills"] = 1424,
-	["The Hinterlands"] = 1425,
-	["Dun Morogh"] = 1426,
-	["Searing Gorge"] = 1427,
-	["Burning Steppes"] = 1428,
-	["Elwynn Forest"] = 1429,
-	["Deadwind Pass"] = 1430,
-	["Duskwood"] = 1431,
-	["Loch Modan"] = 1432,
-	["Redridge Mountains"] = 1433,
-	["Stranglethorn Vale"] = 1434,
-	["Swamp of Sorrows"] = 1435,
-	["Westfall"] = 1436,
-	["Wetlands"] = 1437,
-	["Teldrassil"] = 1438,
-	["Darkshore"] = 1439,
-	["Ashenvale"] = 1440,
-	["Thousand Needles"] = 1441,
-	["Stonetalon Mountains"] = 1442,
-	["Desolace"] = 1443,
-	["Feralas"] = 1444,
-	["Dustwallow Marsh"] = 1445,
-	["Tanaris"] = 1446,
-	["Azshara"] = 1447,
-	["Felwood"] = 1448,
-	["Un'Goro Crater"] = 1449,
-	["Moonglade"] = 1450,
-	["Silithus"] = 1451,
-	["Winterspring"] = 1452,
-}
+local class_tbl = deathlog_class_tbl
+local race_tbl = deathlog_race_tbl
+local zone_tbl = deathlog_zone_tbl 
 local overlay_info = {
 	--[[1411: Durotar]]
 	[1411] = {
@@ -949,7 +885,6 @@ local map_container = CreateFrame("Frame")
 map_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 map_container:SetSize(100, 100)
 map_container:Show()
-map_container.current_map_id = nil
 local map_textures = {}
 for i = 1, 12 do
 	map_textures[i] = map_container:CreateTexture(nil, "OVERLAY")
@@ -1738,7 +1673,7 @@ local function drawStatisticsTab(container)
 
 	local function updateClassAverages()
 		local entry_data = {}
-		local map_id = map_container.current_map_id
+		local map_id = current_map_id
 		if map_id == 1414 or map_id == 1415 then
 			return
 		end
@@ -1815,7 +1750,7 @@ local function drawStatisticsTab(container)
 		for i = 1, 10 do
 			deadliest_creatures_textures[i]:Hide()
 		end
-		local map_id = map_container.current_map_id
+		local map_id = current_map_id
 		if map_id == 1414 or map_id == 1415 then
 			return
 		end
@@ -2018,8 +1953,8 @@ local function drawStatisticsTab(container)
 		end
 		for k, v in pairs(class_tbl) do
 			for i = 1, 60 do
-				y_values[v][i] = logNormal(i, _log_normal_params[map_container.current_map_id]['ln_mean'][v], sqrt(_log_normal_params[map_container.current_map_id]['ln_std_dev'][v]))
-				if y_values[v][i] > max_y and _log_normal_params[map_container.current_map_id]['total'][v] > 2 then
+				y_values[v][i] = logNormal(i, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
+				if y_values[v][i] > max_y and _log_normal_params[current_map_id]['total'][v] > 2 then
 					max_y = y_values[v][i]
 				end
 			end
@@ -2050,8 +1985,8 @@ local function drawStatisticsTab(container)
 			for k, v in pairs(class_tbl) do
 				-- level_num[v][i] = level_num[v][i] / total[v]
 				-- createLine(k..i, {25+(i-2)/60*375,level_num[v][i-1]*100*8}, {25+(i-1)/60*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
-				local y1 = logNormal(i - 1, _log_normal_params[map_container.current_map_id]['ln_mean'][v], sqrt(_log_normal_params[map_container.current_map_id]['ln_std_dev'][v]))
-				local y2 = logNormal(i, _log_normal_params[map_container.current_map_id]['ln_mean'][v], sqrt(_log_normal_params[map_container.current_map_id]['ln_std_dev'][v]))
+				local y1 = logNormal(i - 1, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
+				local y2 = logNormal(i, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
 				createLine(
 					k .. i,
 					{ LineFrame.offsetx + (i - 2) / 60 * LineFrame.width, y1 * LineFrame.height * LineFrame.zoomy },
@@ -2059,7 +1994,7 @@ local function drawStatisticsTab(container)
 					RAID_CLASS_COLORS[string.upper(k)]
 				)
 
-				if _log_normal_params[map_container.current_map_id]['total'][v] < 3 and graph_lines[k .. i] then
+				if _log_normal_params[current_map_id]['total'][v] < 3 and graph_lines[k .. i] then
 					graph_lines[k .. i]:Hide()
 				end
 			end
@@ -2071,7 +2006,7 @@ local function drawStatisticsTab(container)
 	update_functions[#update_functions + 1] = updateGraph
 
 	local function setMapRegion(map_id)
-		map_container.current_map_id = map_id
+		current_map_id = map_id
 		map_container:SetParent(scroll_frame.frame)
 		map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -55)
 		map_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
@@ -2099,7 +2034,7 @@ local function drawStatisticsTab(container)
 
 			if map_container.skulls_checkbox then
 				map_container.skulls_checkbox:SetScript("OnClick", function(self)
-					setMapRegion(map_container.current_map_id)
+					setMapRegion(current_map_id)
 				end)
 			end
 		end
@@ -2135,7 +2070,7 @@ local function drawStatisticsTab(container)
 
 			if map_container.heatmap_checkbox then
 				map_container.heatmap_checkbox:SetScript("OnClick", function(self)
-					setMapRegion(map_container.current_map_id)
+					setMapRegion(current_map_id)
 				end)
 			end
 		end
@@ -2162,12 +2097,12 @@ local function drawStatisticsTab(container)
 
 			if map_container.darken_checkbox then
 				map_container.darken_checkbox:SetScript("OnClick", function(self)
-					setMapRegion(map_container.current_map_id)
+					setMapRegion(current_map_id)
 				end)
 			end
 		end
 
-		local layers = C_Map.GetMapArtLayerTextures(map_container.current_map_id, 1)
+		local layers = C_Map.GetMapArtLayerTextures(current_map_id, 1)
 		if layers == nil then
 			return
 		end
@@ -2206,7 +2141,7 @@ local function drawStatisticsTab(container)
 			return textures
 		end
 
-		local textures = getOverlayTextures(map_container.current_map_id)
+		local textures = getOverlayTextures(current_map_id)
 		if textures ~= nil then
 			local textureCount = 0
 			for k, v in ipairs(textures) do
@@ -2280,7 +2215,7 @@ local function drawStatisticsTab(container)
 		end
 
 		local function filter_by_map_function(servername, entry)
-			if entry["map_id"] == map_container.current_map_id then
+			if entry["map_id"] == current_map_id then
 				return true
 			end
 			return false
@@ -2294,8 +2229,8 @@ local function drawStatisticsTab(container)
 		if map_container.tomb_tex == nil then
 			map_container.tomb_tex = {}
 		end
-		if skull_locs[map_container.current_map_id] then
-			for idx, v in ipairs(skull_locs[map_container.current_map_id]) do
+		if skull_locs[current_map_id] then
+			for idx, v in ipairs(skull_locs[current_map_id]) do
 					if map_container.tomb_tex[idx] == nil then
 						map_container.tomb_tex[idx] = map_container:CreateTexture(nil, "OVERLAY")
 						map_container.tomb_tex[idx]:SetTexture(
@@ -2307,7 +2242,7 @@ local function drawStatisticsTab(container)
 						map_container.tomb_tex[idx]:Hide()
 					end
 
-					map_container.tomb_tex[idx].map_id = map_container.current_map_id
+					map_container.tomb_tex[idx].map_id = current_map_id
 					map_container.tomb_tex[idx].coordinates = {v[1]/1000.0, v[2]/1000.0}
 					map_container.tomb_tex[idx].source_id = v[3]
 			end
@@ -2377,8 +2312,8 @@ local function drawStatisticsTab(container)
 			},
 		}
 		local max_intensity = 0
-		if skull_locs[map_container.current_map_id] then
-			for idx, v in ipairs(skull_locs[map_container.current_map_id]) do
+		if skull_locs[current_map_id] then
+			for idx, v in ipairs(skull_locs[current_map_id]) do
 				local x = ceil(v[1] / 10)
 				local y = ceil(v[2] / 10)
 				for xi = 1, 3 do
@@ -2439,7 +2374,7 @@ local function drawStatisticsTab(container)
 			end
 		end
 		if button == "RightButton" then
-			info = C_Map.GetMapInfo(map_container.current_map_id)
+			info = C_Map.GetMapInfo(current_map_id)
 			if info and info.parentMapID then
 				parent_info = C_Map.GetMapInfo(info.parentMapID)
 				if parent_info then
@@ -2468,7 +2403,7 @@ local function drawStatisticsTab(container)
 			local l_x = (x - map_container:GetLeft()) / modified_width
 			local l_y = -(y - map_container:GetTop()) / modified_height
 
-			info = C_Map.GetMapInfoAtPosition(map_container.current_map_id, l_x, l_y)
+			info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 			if info then
 				overlay_highlight:Hide()
 				setMapRegion(info.mapID)
@@ -2496,11 +2431,11 @@ local function drawStatisticsTab(container)
 		local l_x = (x - map_container:GetLeft()) / modified_width
 		local l_y = -(y - map_container:GetTop()) / modified_height
 
-		info = C_Map.GetMapInfoAtPosition(map_container.current_map_id, l_x, l_y)
+		info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 
 		if info ~= nil then
 			local fileDataID, atlasID, texturePercentageX, texturePercentageY, textureX, textureY, scrollChildX, scrollChildY =
-				C_Map.GetMapHighlightInfoAtPosition(map_container.current_map_id, l_x, l_y)
+				C_Map.GetMapHighlightInfoAtPosition(current_map_id, l_x, l_y)
 			if fileDataID and textureX > 0 and textureY > 0 then
 				overlay_highlight:SetTexture(fileDataID)
 				overlay_highlight:SetPoint(
