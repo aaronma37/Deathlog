@@ -8,7 +8,7 @@
 
 
 ## DefaultState: enabled
-## SavedVariables: deathlog_settings, deathlog_data, temp_general_stats, temp_log_normal_params, temp_skull_locs
+## SavedVariables: deathlog_settings, deathlog_data, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs
 ## SavedVariablesPerCharacter: 
 
 embeds.xml
@@ -20,4 +20,5 @@ npc_to_id_classic.lua
 
 menu.lua
 deathlog_api.lua
+precomputed_stats.lua
 deathlog.lua

@@ -82,6 +82,12 @@ deathlog_class_tbl = {
 	["Druid"] = 11,
 }
 
+deathlog_class_colors = {}
+for k,_ in pairs(deathlog_class_tbl) do
+  deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)] 
+end
+deathlog_class_colors["Shaman"]:SetRGBA(36/255,89/255,255/255,1)
+
 deathlog_race_tbl = {
 	["Human"] = 1,
 	["Orc"] = 2,
@@ -399,8 +405,8 @@ function deathlog_serializeTable(val, name, skipnewlines, depth)
     return tmp
 end
 
-function deathlog_savePrecomputed(data, compressed_saved_var)
-  compressed_saved_var = LibDeflate:CompressDeflate(deathlog_serializeTable(data))
+function deathlog_compressPrecomputed(data)
+  return LibDeflate:CompressZlib(deathlog_serializeTable(data))
 end
 
 local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
@@ -458,12 +464,12 @@ end
 
 function deathlog_calculateSkullLocs(_deathlog_data)
   local skull_locs = {}
-  for servername, entry_tbl in pairs(filtered_by_map) do
+  for servername, entry_tbl in pairs(_deathlog_data) do
 	  for _, v in pairs(entry_tbl) do
 	    if v['map_id'] then
 	      if skull_locs[v['map_id']] == nil then skull_locs[v['map_id']] = {} end
 		    local x, y = strsplit(",", v["map_pos"], 2)
-		    skull_locs[#skull_locs+1] = {x*1000,y*1000,v['source_id']}
+		    skull_locs[v['map_id']][#skull_locs[v['map_id']]+1] = {x*1000,y*1000,v['source_id']}
 	    end
 	  end
   end

@@ -1952,11 +1952,13 @@ local function drawStatisticsTab(container)
 			)
 		end
 		for k, v in pairs(class_tbl) do
-			for i = 1, 60 do
-				y_values[v][i] = logNormal(i, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
-				if y_values[v][i] > max_y and _log_normal_params[current_map_id]['total'][v] > 2 then
-					max_y = y_values[v][i]
-				end
+			if _log_normal_params[current_map_id] and _log_normal_params[current_map_id]['ln_mean'][v] then
+			  for i = 1, 60 do
+				  y_values[v][i] = logNormal(i, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
+				  if y_values[v][i] > max_y and _log_normal_params[current_map_id]['total'][v] > 2 then
+					  max_y = y_values[v][i]
+				  end
+			  end
 			end
 		end
 		LineFrame.zoomy = 1 / max_y
@@ -1981,23 +1983,30 @@ local function drawStatisticsTab(container)
 			)
 		end
 
+		local class_colors = deathlog_class_colors
 		for i = 2, 60 do
-			for k, v in pairs(class_tbl) do
-				-- level_num[v][i] = level_num[v][i] / total[v]
-				-- createLine(k..i, {25+(i-2)/60*375,level_num[v][i-1]*100*8}, {25+(i-1)/60*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
-				local y1 = logNormal(i - 1, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
-				local y2 = logNormal(i, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
-				createLine(
-					k .. i,
-					{ LineFrame.offsetx + (i - 2) / 60 * LineFrame.width, y1 * LineFrame.height * LineFrame.zoomy },
-					{ LineFrame.offsetx + (i - 1) / 60 * LineFrame.width, y2 * LineFrame.height * LineFrame.zoomy },
-					RAID_CLASS_COLORS[string.upper(k)]
-				)
+			  for k, v in pairs(class_tbl) do
+			    if _log_normal_params[current_map_id]['ln_mean'][v] then
+				  -- level_num[v][i] = level_num[v][i] / total[v]
+				  -- createLine(k..i, {25+(i-2)/60*375,level_num[v][i-1]*100*8}, {25+(i-1)/60*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
+				  local y1 = logNormal(i - 1, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
+				  local y2 = logNormal(i, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
+				  createLine(
+					  k .. i,
+					  { LineFrame.offsetx + (i - 2) / 60 * LineFrame.width, y1 * LineFrame.height * LineFrame.zoomy },
+					  { LineFrame.offsetx + (i - 1) / 60 * LineFrame.width, y2 * LineFrame.height * LineFrame.zoomy },
+					  class_colors[k]
+				  )
 
-				if _log_normal_params[current_map_id]['total'][v] < 3 and graph_lines[k .. i] then
-					graph_lines[k .. i]:Hide()
+				  if _log_normal_params[current_map_id]['total'][v] < 3 and graph_lines[k .. i] then
+					  graph_lines[k .. i]:Hide()
+				  end
+			    else
+				if graph_lines[k .. i] then
+				  graph_lines[k .. i]:Hide()
 				end
-			end
+			    end
+			  end
 		end
 	end
 
@@ -2229,8 +2238,8 @@ local function drawStatisticsTab(container)
 		if map_container.tomb_tex == nil then
 			map_container.tomb_tex = {}
 		end
-		if skull_locs[current_map_id] then
-			for idx, v in ipairs(skull_locs[current_map_id]) do
+		if _skull_locs[current_map_id] then
+			for idx, v in ipairs(_skull_locs[current_map_id]) do
 					if map_container.tomb_tex[idx] == nil then
 						map_container.tomb_tex[idx] = map_container:CreateTexture(nil, "OVERLAY")
 						map_container.tomb_tex[idx]:SetTexture(
@@ -2312,8 +2321,8 @@ local function drawStatisticsTab(container)
 			},
 		}
 		local max_intensity = 0
-		if skull_locs[current_map_id] then
-			for idx, v in ipairs(skull_locs[current_map_id]) do
+		if _skull_locs[current_map_id] then
+			for idx, v in ipairs(_skull_locs[current_map_id]) do
 				local x = ceil(v[1] / 10)
 				local y = ceil(v[2] / 10)
 				for xi = 1, 3 do
@@ -2589,7 +2598,7 @@ function deathlogShowMenu(deathlog_data, stats, log_normal_params, skull_locs)
 	deathlog_menu:Show()
 	deathlog_tabcontainer:SelectTab("LogTab")
 	_deathlog_data = deathlog_data
-	_stats = _precomputed_stats
+	_stats = stats
 	_log_normal_params = log_normal_params
 	_skull_locs = skull_locs
 	setDeathlogMenuLogData(_deathlog_data)
