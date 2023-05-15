@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Sean Kennedy
+Copyright 2023 Yazpad
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -171,14 +171,7 @@ local death_alert_out_queue = {}
 local last_words_queue = {}
 
 local function fletcher16(_player_data)
-	local data = _player_data["name"] .. _player_data["guild"] .. _player_data["level"]
-	local sum1 = 0
-	local sum2 = 0
-	for index = 1, #data do
-		sum1 = (sum1 + string.byte(string.sub(data, index, index))) % 255
-		sum2 = (sum2 + sum1) % 255
-	end
-	return _player_data["name"] .. "-" .. bit.bor(bit.lshift(sum2, 8), sum1)
+    return deathlog_fletcher16(_player_data["name"], _player_data["guild"], _player_data["level"], _player_data["source_id"])
 end
 
 local death_log_cache = {}

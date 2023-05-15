@@ -8,4 +8,5 @@
   <Include file="Libs\AceConfig-3.0\AceConfig-3.0.xml"/>
   <Include file="Libs\LibDBIcon-1.0\LibDBIcon-1.0\lib.xml"/>
   <Include file="Libs\ChatThrottleLib.lua"/>
+  <Include file="Libs\LibDeflate\lib.xml"/>
 </Ui>

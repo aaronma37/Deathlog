@@ -1,3 +1,103 @@
+--
+--[[
+Copyright 2023 Yazpad
+The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
+This file is part of Hardcore.
+
+The Deathlog AddOn is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+The Deathlog AddOn is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
+--]]
+--
+--
+local LibDeflate
+if LibStub then -- You are using LibDeflate as WoW addon
+	LibDeflate = LibStub:GetLibrary("LibDeflate")
+end
+
+deathlog_zone_tbl = {
+	["Azeroth"] = 947,
+	["Durotar"] = 1411,
+	["Mulgore"] = 1412,
+	["The Barrens"] = 1413,
+	["Kalimdor"] = 1414,
+	["Eastern Kingdoms"] = 1415,
+	["Alterac Mountains"] = 1416,
+	["Arathi Highlands"] = 1417,
+	["Badlands"] = 1418,
+	["Blasted Lands"] = 1419,
+	["Tirisfal Glades"] = 1420,
+	["Silverpine Forest"] = 1421,
+	["Western Plaguelands"] = 1422,
+	["Eastern Plaguelands"] = 1423,
+	["Hillsbrad Foothills"] = 1424,
+	["The Hinterlands"] = 1425,
+	["Dun Morogh"] = 1426,
+	["Searing Gorge"] = 1427,
+	["Burning Steppes"] = 1428,
+	["Elwynn Forest"] = 1429,
+	["Deadwind Pass"] = 1430,
+	["Duskwood"] = 1431,
+	["Loch Modan"] = 1432,
+	["Redridge Mountains"] = 1433,
+	["Stranglethorn Vale"] = 1434,
+	["Swamp of Sorrows"] = 1435,
+	["Westfall"] = 1436,
+	["Wetlands"] = 1437,
+	["Teldrassil"] = 1438,
+	["Darkshore"] = 1439,
+	["Ashenvale"] = 1440,
+	["Thousand Needles"] = 1441,
+	["Stonetalon Mountains"] = 1442,
+	["Desolace"] = 1443,
+	["Feralas"] = 1444,
+	["Dustwallow Marsh"] = 1445,
+	["Tanaris"] = 1446,
+	["Azshara"] = 1447,
+	["Felwood"] = 1448,
+	["Un'Goro Crater"] = 1449,
+	["Moonglade"] = 1450,
+	["Silithus"] = 1451,
+	["Winterspring"] = 1452,
+}
+
+deathlog_class_tbl = {
+	["Warrior"] = 1,
+	["Paladin"] = 2,
+	["Hunter"] = 3,
+	["Rogue"] = 4,
+	["Priest"] = 5,
+	["Shaman"] = 7,
+	["Mage"] = 8,
+	["Warlock"] = 9,
+	["Druid"] = 11,
+}
+
+deathlog_class_colors = {}
+for k,_ in pairs(deathlog_class_tbl) do
+  deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)] 
+end
+deathlog_class_colors["Shaman"]:SetRGBA(36/255,89/255,255/255,1)
+
+deathlog_race_tbl = {
+	["Human"] = 1,
+	["Orc"] = 2,
+	["Dwarf"] = 3,
+	["Night Elf"] = 4,
+	["Undead"] = 5,
+	["Tauren"] = 6,
+	["Gnome"] = 7,
+	["Troll"] = 8,
+}
 -- sort function from stack overflow
 local function spairs(t, order)
 	local keys = {}
@@ -268,4 +368,110 @@ function deathlog_calculate_statistics(_deathlog_data)
 	-- end
 
 	return stats
+end
+
+function deathlog_serializeTable(val, name, skipnewlines, depth)
+    skipnewlines = skipnewlines or false
+    depth = depth or 0
+
+    local tmp = string.rep(" ", depth)
+
+    if name then
+      if type(name) == "string" then
+	tmp = tmp .. "['" .. name .. "']" .. " = " 
+      else
+	tmp = tmp .. "[" .. name .. "]" .. " = " 
+      end
+    end
+
+    if type(val) == "table" then
+        tmp = tmp .. "{" .. (not skipnewlines and "" or "")
+
+        for k, v in pairs(val) do
+            tmp =  tmp .. deathlog_serializeTable(v, k, skipnewlines, depth + 1) .. "," .. (not skipnewlines and "" or "")
+        end
+
+        tmp = tmp .. string.rep(" ", depth) .. "}"
+    elseif type(val) == "number" then
+        tmp = tmp .. tostring(val)
+    elseif type(val) == "string" then
+        tmp = tmp .. string.format("%q", val)
+    elseif type(val) == "boolean" then
+        tmp = tmp .. (val and "true" or "false")
+    else
+        tmp = tmp .. "\"[inserializeable datatype:" .. type(val) .. "]\""
+    end
+
+    return tmp
+end
+
+function deathlog_compressPrecomputed(data)
+  return LibDeflate:CompressZlib(deathlog_serializeTable(data))
+end
+
+local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
+		local function filter_by_map_function(servername, entry)
+			if map_id == 947 then
+				return true
+			end
+			if entry["map_id"] == map_id then
+				return true
+			end
+			return false
+		end
+		local filtered_by_map = deathlogFilter(_deathlog_data, filter_by_map_function)
+		local log_normal_params_for_map_id = {}
+		log_normal_params_for_map_id["ln_mean"] = {}
+		log_normal_params_for_map_id["ln_std_dev"] = {}
+		log_normal_params_for_map_id['total'] = {}
+		for k, v in pairs(deathlog_class_tbl) do
+			log_normal_params_for_map_id['total'][v] = 0
+			log_normal_params_for_map_id["ln_mean"][v] = 0
+			log_normal_params_for_map_id["ln_std_dev"][v] = 0
+		end
+
+		for servername, entry_tbl in pairs(filtered_by_map) do
+			for _, v in pairs(entry_tbl) do
+				log_normal_params_for_map_id['total'][v["class_id"]] = log_normal_params_for_map_id['total'][v["class_id"]] + 1
+				log_normal_params_for_map_id["ln_mean"][v["class_id"]] = log_normal_params_for_map_id["ln_mean"][v["class_id"]] + log(v["level"])
+			end
+		end
+
+		for k, v in pairs(deathlog_class_tbl) do
+			log_normal_params_for_map_id["ln_mean"][v] = log_normal_params_for_map_id["ln_mean"][v] / log_normal_params_for_map_id['total'][v]
+		end
+
+		for servername, entry_tbl in pairs(filtered_by_map) do
+			for _, v in pairs(entry_tbl) do
+				log_normal_params_for_map_id["ln_std_dev"][v["class_id"]] = log_normal_params_for_map_id["ln_std_dev"][v["class_id"]]
+					+ (log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]]) * (log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]])
+			end
+		end
+
+		for k, v in pairs(deathlog_class_tbl) do
+			log_normal_params_for_map_id['ln_std_dev'][v] = log_normal_params_for_map_id['ln_std_dev'][v] / log_normal_params_for_map_id['total'][v]
+		end
+		return log_normal_params_for_map_id
+end
+
+function deathlog_calculateLogNormalParameters(_deathlog_data)
+  local log_normal_params = {}
+  for _,v in pairs(deathlog_zone_tbl) do
+    log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
+  end
+  return log_normal_params
+end
+
+function deathlog_calculateSkullLocs(_deathlog_data)
+  local skull_locs = {}
+  for servername, entry_tbl in pairs(_deathlog_data) do
+	  for _, v in pairs(entry_tbl) do
+	    if v['map_id'] then
+	      if skull_locs[v['map_id']] == nil then skull_locs[v['map_id']] = {} end
+		    local x, y = strsplit(",", v["map_pos"], 2)
+		    skull_locs[v['map_id']][#skull_locs[v['map_id']]+1] = {x*1000,y*1000,v['source_id']}
+	    end
+	  end
+  end
+  return skull_locs
 end

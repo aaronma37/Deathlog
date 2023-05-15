@@ -1,78 +1,34 @@
+--[[
+Copyright 2023 Yazpad
+The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
+This file is part of Hardcore.
+
+The Deathlog AddOn is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+The Deathlog AddOn is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
+--]]
+--
 local _menu_width = 1100
 local _inner_menu_width = 800
 local _menu_height = 600
+local current_map_id = nil
 
 local world_map_overlay = {}
 
 local deathlog_tabcontainer = nil
 
-local class_tbl = {
-	["Warrior"] = 1,
-	["Paladin"] = 2,
-	["Hunter"] = 3,
-	["Rogue"] = 4,
-	["Priest"] = 5,
-	["Shaman"] = 7,
-	["Mage"] = 8,
-	["Warlock"] = 9,
-	["Druid"] = 11,
-}
-
-local race_tbl = {
-	["Human"] = 1,
-	["Orc"] = 2,
-	["Dwarf"] = 3,
-	["Night Elf"] = 4,
-	["Undead"] = 5,
-	["Tauren"] = 6,
-	["Gnome"] = 7,
-	["Troll"] = 8,
-}
-
-local zone_tbl = {
-	["Durotar"] = 1411,
-	["Mulgore"] = 1412,
-	["The Barrens"] = 1413,
-	["Kalimdor"] = 1414,
-	["Eastern Kingdoms"] = 1415,
-	["Alterac Mountains"] = 1416,
-	["Arathi Highlands"] = 1417,
-	["Badlands"] = 1418,
-	["Blasted Lands"] = 1419,
-	["Tirisfal Glades"] = 1420,
-	["Silverpine Forest"] = 1421,
-	["Western Plaguelands"] = 1422,
-	["Eastern Plaguelands"] = 1423,
-	["Hillsbrad Foothills"] = 1424,
-	["The Hinterlands"] = 1425,
-	["Dun Morogh"] = 1426,
-	["Searing Gorge"] = 1427,
-	["Burning Steppes"] = 1428,
-	["Elwynn Forest"] = 1429,
-	["Deadwind Pass"] = 1430,
-	["Duskwood"] = 1431,
-	["Loch Modan"] = 1432,
-	["Redridge Mountains"] = 1433,
-	["Stranglethorn Vale"] = 1434,
-	["Swamp of Sorrows"] = 1435,
-	["Westfall"] = 1436,
-	["Wetlands"] = 1437,
-	["Teldrassil"] = 1438,
-	["Darkshore"] = 1439,
-	["Ashenvale"] = 1440,
-	["Thousand Needles"] = 1441,
-	["Stonetalon Mountains"] = 1442,
-	["Desolace"] = 1443,
-	["Feralas"] = 1444,
-	["Dustwallow Marsh"] = 1445,
-	["Tanaris"] = 1446,
-	["Azshara"] = 1447,
-	["Felwood"] = 1448,
-	["Un'Goro Crater"] = 1449,
-	["Moonglade"] = 1450,
-	["Silithus"] = 1451,
-	["Winterspring"] = 1452,
-}
+local class_tbl = deathlog_class_tbl
+local race_tbl = deathlog_race_tbl
+local zone_tbl = deathlog_zone_tbl 
 local overlay_info = {
 	--[[1411: Durotar]]
 	[1411] = {
@@ -929,7 +885,6 @@ local map_container = CreateFrame("Frame")
 map_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 map_container:SetSize(100, 100)
 map_container:Show()
-map_container.current_map_id = nil
 local map_textures = {}
 for i = 1, 12 do
 	map_textures[i] = map_container:CreateTexture(nil, "OVERLAY")
@@ -1170,7 +1125,9 @@ local function setDeathlogMenuLogData(data)
 end
 
 local _deathlog_data = {}
-local _general_stats = {}
+local _stats = {}
+local _log_normal_params = {}
+local _skull_locs = {}
 local initialized = false
 
 local function drawLogTab(container)
@@ -1716,19 +1673,19 @@ local function drawStatisticsTab(container)
 
 	local function updateClassAverages()
 		local entry_data = {}
-		local map_id = map_container.current_map_id
+		local map_id = current_map_id
 		if map_id == 1414 or map_id == 1415 then
 			return
 		end
 		if map_id == 947 then
 			map_id = "all"
 		end
-		if _general_stats["all"][map_id] == nil then
+		if _stats["all"][map_id] == nil then
 			return
 		end
 
 		for k, class_id in pairs(class_tbl) do
-			local v = _general_stats["all"][map_id][class_id]
+			local v = _stats["all"][map_id][class_id]
 			if v == nil then
 				entry_data[class_id] = {}
 				entry_data[class_id]["Class"] = k
@@ -1747,7 +1704,7 @@ local function drawStatisticsTab(container)
 				entry_data[class_id]["#"] = v["all"]["num_entries"]
 				entry_data[class_id]["%"] = string.format(
 					"%.1f",
-					v["all"]["num_entries"] / _general_stats["all"][map_id]["all"]["all"]["num_entries"] * 100.0
+					v["all"]["num_entries"] / _stats["all"][map_id]["all"]["all"]["num_entries"] * 100.0
 				) .. "%"
 				entry_data[class_id]["Avg."] = string.format("%.1f", v["all"]["avg_lvl"])
 			end
@@ -1793,14 +1750,14 @@ local function drawStatisticsTab(container)
 		for i = 1, 10 do
 			deadliest_creatures_textures[i]:Hide()
 		end
-		local map_id = map_container.current_map_id
+		local map_id = current_map_id
 		if map_id == 1414 or map_id == 1415 then
 			return
 		end
 		if map_id == 947 then
 			map_id = "all"
 		end
-		local most_deadly_units = deathlogGetOrdered(_general_stats, { "all", map_id, "all", nil })
+		local most_deadly_units = deathlogGetOrdered(_stats, { "all", map_id, "all", nil })
 		if most_deadly_units and #most_deadly_units > 0 then
 			local max_kills = most_deadly_units[1][2]
 			for _, v in ipairs(most_deadly_units) do
@@ -1939,54 +1896,54 @@ local function drawStatisticsTab(container)
 			{ LineFrame.offsetx + LineFrame.width, LineFrame.offsety }
 		)
 
-		local function filter_by_map_function(servername, entry)
-			if map_container.current_map_id == 947 then
-				return true
-			end
-			if entry["map_id"] == map_container.current_map_id then
-				return true
-			end
-			return false
-		end
+		-- local function filter_by_map_function(servername, entry)
+		-- 	if map_container.current_map_id == 947 then
+		-- 		return true
+		-- 	end
+		-- 	if entry["map_id"] == map_container.current_map_id then
+		-- 		return true
+		-- 	end
+		-- 	return false
+		-- end
 
-		local filtered_by_map = deathlogFilter(_deathlog_data, filter_by_map_function)
-		local level_num = {}
-		local ln_mean = {}
-		local ln_std_dev = {}
-		local total = {}
+		-- local filtered_by_map = deathlogFilter(_deathlog_data, filter_by_map_function)
+		-- local level_num = {}
+		-- local ln_mean = {}
+		-- local ln_std_dev = {}
+		-- local total = {}
 		local y_values = {}
 		for k, v in pairs(class_tbl) do
-			level_num[v] = {}
-			total[v] = 0
-			ln_mean[v] = 0
-			ln_std_dev[v] = 0
+			-- level_num[v] = {}
+			-- total[v] = 0
+			-- ln_mean[v] = 0
+			-- ln_std_dev[v] = 0
 			y_values[v] = {}
 		end
-		for i = 1, 60 do
-			for k, v in pairs(class_tbl) do
-				level_num[v][i] = 0
-			end
-		end
+		-- for i = 1, 60 do
+		-- 	for k, v in pairs(class_tbl) do
+		-- 		level_num[v][i] = 0
+		-- 	end
+		-- end
 
-		for servername, entry_tbl in pairs(filtered_by_map) do
-			for _, v in pairs(entry_tbl) do
-				total[v["class_id"]] = total[v["class_id"]] + 1
-				ln_mean[v["class_id"]] = ln_mean[v["class_id"]] + log(v["level"])
-				level_num[v["class_id"]][tonumber(v["level"])] = level_num[v["class_id"]][tonumber(v["level"])] + 1
-			end
-		end
+		-- for servername, entry_tbl in pairs(filtered_by_map) do
+		-- 	for _, v in pairs(entry_tbl) do
+		-- 		total[v["class_id"]] = total[v["class_id"]] + 1
+		-- 		ln_mean[v["class_id"]] = ln_mean[v["class_id"]] + log(v["level"])
+		-- 		level_num[v["class_id"]][tonumber(v["level"])] = level_num[v["class_id"]][tonumber(v["level"])] + 1
+		-- 	end
+		-- end
 
-		for k, v in pairs(class_tbl) do
-			level_num[v][1] = level_num[v][1] / total[v]
-			ln_mean[v] = ln_mean[v] / total[v]
-		end
+		-- for k, v in pairs(class_tbl) do
+		-- 	level_num[v][1] = level_num[v][1] / total[v]
+		-- 	ln_mean[v] = ln_mean[v] / total[v]
+		-- end
 
-		for servername, entry_tbl in pairs(filtered_by_map) do
-			for _, v in pairs(entry_tbl) do
-				ln_std_dev[v["class_id"]] = ln_std_dev[v["class_id"]]
-					+ (log(v["level"]) - ln_mean[v["class_id"]]) * (log(v["level"]) - ln_mean[v["class_id"]])
-			end
-		end
+		-- for servername, entry_tbl in pairs(filtered_by_map) do
+		-- 	for _, v in pairs(entry_tbl) do
+		-- 		ln_std_dev[v["class_id"]] = ln_std_dev[v["class_id"]]
+		-- 			+ (log(v["level"]) - ln_mean[v["class_id"]]) * (log(v["level"]) - ln_mean[v["class_id"]])
+		-- 	end
+		-- end
 
 		local max_y = 0
 		local function logNormal(x, mean, sigma)
@@ -1995,13 +1952,13 @@ local function drawStatisticsTab(container)
 			)
 		end
 		for k, v in pairs(class_tbl) do
-			ln_std_dev[v] = ln_std_dev[v] / total[v]
-
-			for i = 1, 60 do
-				y_values[v][i] = logNormal(i, ln_mean[v], sqrt(ln_std_dev[v]))
-				if y_values[v][i] > max_y and total[v] > 2 then
-					max_y = y_values[v][i]
-				end
+			if _log_normal_params[current_map_id] and _log_normal_params[current_map_id]['ln_mean'][v] then
+			  for i = 1, 60 do
+				  y_values[v][i] = logNormal(i, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
+				  if y_values[v][i] > max_y and _log_normal_params[current_map_id]['total'][v] > 2 then
+					  max_y = y_values[v][i]
+				  end
+			  end
 			end
 		end
 		LineFrame.zoomy = 1 / max_y
@@ -2026,23 +1983,30 @@ local function drawStatisticsTab(container)
 			)
 		end
 
+		local class_colors = deathlog_class_colors
 		for i = 2, 60 do
-			for k, v in pairs(class_tbl) do
-				level_num[v][i] = level_num[v][i] / total[v]
-				-- createLine(k..i, {25+(i-2)/60*375,level_num[v][i-1]*100*8}, {25+(i-1)/60*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
-				local y1 = logNormal(i - 1, ln_mean[v], sqrt(ln_std_dev[v]))
-				local y2 = logNormal(i, ln_mean[v], sqrt(ln_std_dev[v]))
-				createLine(
-					k .. i,
-					{ LineFrame.offsetx + (i - 2) / 60 * LineFrame.width, y1 * LineFrame.height * LineFrame.zoomy },
-					{ LineFrame.offsetx + (i - 1) / 60 * LineFrame.width, y2 * LineFrame.height * LineFrame.zoomy },
-					RAID_CLASS_COLORS[string.upper(k)]
-				)
+			  for k, v in pairs(class_tbl) do
+			    if _log_normal_params[current_map_id]['ln_mean'][v] then
+				  -- level_num[v][i] = level_num[v][i] / total[v]
+				  -- createLine(k..i, {25+(i-2)/60*375,level_num[v][i-1]*100*8}, {25+(i-1)/60*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
+				  local y1 = logNormal(i - 1, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
+				  local y2 = logNormal(i, _log_normal_params[current_map_id]['ln_mean'][v], sqrt(_log_normal_params[current_map_id]['ln_std_dev'][v]))
+				  createLine(
+					  k .. i,
+					  { LineFrame.offsetx + (i - 2) / 60 * LineFrame.width, y1 * LineFrame.height * LineFrame.zoomy },
+					  { LineFrame.offsetx + (i - 1) / 60 * LineFrame.width, y2 * LineFrame.height * LineFrame.zoomy },
+					  class_colors[k]
+				  )
 
-				if total[v] < 3 and graph_lines[k .. i] then
-					graph_lines[k .. i]:Hide()
+				  if _log_normal_params[current_map_id]['total'][v] < 3 and graph_lines[k .. i] then
+					  graph_lines[k .. i]:Hide()
+				  end
+			    else
+				if graph_lines[k .. i] then
+				  graph_lines[k .. i]:Hide()
 				end
-			end
+			    end
+			  end
 		end
 	end
 
@@ -2051,7 +2015,7 @@ local function drawStatisticsTab(container)
 	update_functions[#update_functions + 1] = updateGraph
 
 	local function setMapRegion(map_id)
-		map_container.current_map_id = map_id
+		current_map_id = map_id
 		map_container:SetParent(scroll_frame.frame)
 		map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -55)
 		map_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
@@ -2079,7 +2043,7 @@ local function drawStatisticsTab(container)
 
 			if map_container.skulls_checkbox then
 				map_container.skulls_checkbox:SetScript("OnClick", function(self)
-					setMapRegion(map_container.current_map_id)
+					setMapRegion(current_map_id)
 				end)
 			end
 		end
@@ -2115,7 +2079,7 @@ local function drawStatisticsTab(container)
 
 			if map_container.heatmap_checkbox then
 				map_container.heatmap_checkbox:SetScript("OnClick", function(self)
-					setMapRegion(map_container.current_map_id)
+					setMapRegion(current_map_id)
 				end)
 			end
 		end
@@ -2142,12 +2106,12 @@ local function drawStatisticsTab(container)
 
 			if map_container.darken_checkbox then
 				map_container.darken_checkbox:SetScript("OnClick", function(self)
-					setMapRegion(map_container.current_map_id)
+					setMapRegion(current_map_id)
 				end)
 			end
 		end
 
-		local layers = C_Map.GetMapArtLayerTextures(map_container.current_map_id, 1)
+		local layers = C_Map.GetMapArtLayerTextures(current_map_id, 1)
 		if layers == nil then
 			return
 		end
@@ -2186,7 +2150,7 @@ local function drawStatisticsTab(container)
 			return textures
 		end
 
-		local textures = getOverlayTextures(map_container.current_map_id)
+		local textures = getOverlayTextures(current_map_id)
 		if textures ~= nil then
 			local textureCount = 0
 			for k, v in ipairs(textures) do
@@ -2260,7 +2224,7 @@ local function drawStatisticsTab(container)
 		end
 
 		local function filter_by_map_function(servername, entry)
-			if entry["map_id"] == map_container.current_map_id then
+			if entry["map_id"] == current_map_id then
 				return true
 			end
 			return false
@@ -2274,26 +2238,22 @@ local function drawStatisticsTab(container)
 		if map_container.tomb_tex == nil then
 			map_container.tomb_tex = {}
 		end
-		for servername, entry_tbl in pairs(filtered_by_map) do
-			for k, v in pairs(entry_tbl) do
-				if v["map_id"] and v["map_pos"] then
-					if map_container.tomb_tex[num_entries] == nil then
-						map_container.tomb_tex[num_entries] = map_container:CreateTexture(nil, "OVERLAY")
-						map_container.tomb_tex[num_entries]:SetTexture(
+		if _skull_locs[current_map_id] then
+			for idx, v in ipairs(_skull_locs[current_map_id]) do
+					if map_container.tomb_tex[idx] == nil then
+						map_container.tomb_tex[idx] = map_container:CreateTexture(nil, "OVERLAY")
+						map_container.tomb_tex[idx]:SetTexture(
 							"Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull"
 						)
-						map_container.tomb_tex[num_entries]:SetDrawLayer("OVERLAY", 7)
-						map_container.tomb_tex[num_entries]:SetHeight(15)
-						map_container.tomb_tex[num_entries]:SetWidth(15)
-						map_container.tomb_tex[num_entries]:Hide()
+						map_container.tomb_tex[idx]:SetDrawLayer("OVERLAY", 7)
+						map_container.tomb_tex[idx]:SetHeight(15)
+						map_container.tomb_tex[idx]:SetWidth(15)
+						map_container.tomb_tex[idx]:Hide()
 					end
 
-					map_container.tomb_tex[num_entries].map_id = v["map_id"]
-					local x, y = strsplit(",", v["map_pos"], 2)
-					map_container.tomb_tex[num_entries].coordinates = { x, y }
-					map_container.tomb_tex[num_entries].source_id = v["source_id"]
-					num_entries = num_entries + 1
-				end
+					map_container.tomb_tex[idx].map_id = current_map_id
+					map_container.tomb_tex[idx].coordinates = {v[1]/1000.0, v[2]/1000.0}
+					map_container.tomb_tex[idx].source_id = v[3]
 			end
 		end
 		for k, v in ipairs(map_container.tomb_tex) do
@@ -2361,22 +2321,19 @@ local function drawStatisticsTab(container)
 			},
 		}
 		local max_intensity = 0
-		for servername, entry_tbl in pairs(filtered_by_map) do
-			for k, v in pairs(entry_tbl) do
-				if v["map_id"] and v["map_pos"] then
-					local x, y = strsplit(",", v["map_pos"], 2)
-					x = ceil(x * 100)
-					y = ceil(y * 100)
-					for xi = 1, 3 do
-						for yj = 1, 3 do
-							local x_in_map = x - 2 + xi
-							local y_in_map = y - 2 + yj
-							if map_container.heatmap[x_in_map] and map_container.heatmap[x_in_map][y_in_map] then
-								map_container.heatmap[x_in_map][y_in_map].intensity = map_container.heatmap[x_in_map][y_in_map].intensity
-									+ iv[xi][yj]
-								if map_container.heatmap[x_in_map][y_in_map].intensity > max_intensity then
-									max_intensity = map_container.heatmap[x_in_map][y_in_map].intensity
-								end
+		if _skull_locs[current_map_id] then
+			for idx, v in ipairs(_skull_locs[current_map_id]) do
+				local x = ceil(v[1] / 10)
+				local y = ceil(v[2] / 10)
+				for xi = 1, 3 do
+					for yj = 1, 3 do
+						local x_in_map = x - 2 + xi
+						local y_in_map = y - 2 + yj
+						if map_container.heatmap[x_in_map] and map_container.heatmap[x_in_map][y_in_map] then
+							map_container.heatmap[x_in_map][y_in_map].intensity = map_container.heatmap[x_in_map][y_in_map].intensity
+								+ iv[xi][yj]
+							if map_container.heatmap[x_in_map][y_in_map].intensity > max_intensity then
+								max_intensity = map_container.heatmap[x_in_map][y_in_map].intensity
 							end
 						end
 					end
@@ -2426,7 +2383,7 @@ local function drawStatisticsTab(container)
 			end
 		end
 		if button == "RightButton" then
-			info = C_Map.GetMapInfo(map_container.current_map_id)
+			info = C_Map.GetMapInfo(current_map_id)
 			if info and info.parentMapID then
 				parent_info = C_Map.GetMapInfo(info.parentMapID)
 				if parent_info then
@@ -2455,7 +2412,7 @@ local function drawStatisticsTab(container)
 			local l_x = (x - map_container:GetLeft()) / modified_width
 			local l_y = -(y - map_container:GetTop()) / modified_height
 
-			info = C_Map.GetMapInfoAtPosition(map_container.current_map_id, l_x, l_y)
+			info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 			if info then
 				overlay_highlight:Hide()
 				setMapRegion(info.mapID)
@@ -2483,11 +2440,11 @@ local function drawStatisticsTab(container)
 		local l_x = (x - map_container:GetLeft()) / modified_width
 		local l_y = -(y - map_container:GetTop()) / modified_height
 
-		info = C_Map.GetMapInfoAtPosition(map_container.current_map_id, l_x, l_y)
+		info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 
 		if info ~= nil then
 			local fileDataID, atlasID, texturePercentageX, texturePercentageY, textureX, textureY, scrollChildX, scrollChildY =
-				C_Map.GetMapHighlightInfoAtPosition(map_container.current_map_id, l_x, l_y)
+				C_Map.GetMapHighlightInfoAtPosition(current_map_id, l_x, l_y)
 			if fileDataID and textureX > 0 and textureY > 0 then
 				overlay_highlight:SetTexture(fileDataID)
 				overlay_highlight:SetPoint(
@@ -2531,13 +2488,73 @@ local function drawSettingsTab(container)
 	scroll_frame:AddChild(label)
 end
 
+local function drawWidgetsTab(container)
+	local widgets_scroll_container = AceGUI:Create("SimpleGroup")
+	widgets_scroll_container:SetFullWidth(true)
+	widgets_scroll_container:SetFullHeight(true)
+	widgets_scroll_container:SetLayout("Fill")
+	container:AddChild(widgets_scroll_container)
+
+	local widgets_scroll_frame = AceGUI:Create("ScrollFrame")
+	widgets_scroll_frame:SetLayout("Flow")
+	widgets_scroll_container:AddChild(widgets_scroll_frame)
+
+	-- Death Alerts
+	local widgets_inline_group = AceGUI:Create("InlineGroup")
+	widgets_inline_group:SetFullWidth(true)
+	widgets_inline_group:SetHeight(100)
+	widgets_scroll_frame:AddChild(widgets_inline_group)
+
+	local widgets_label = AceGUI:Create("Heading")
+	widgets_label:SetFullWidth(true)
+	widgets_label:SetText("Death Alerts")
+	widgets_inline_group:AddChild(widgets_label)
+
+	local widgets_label = AceGUI:Create("Icon")
+	widgets_label:SetWidth(500)
+	widgets_label:SetHeight(100)
+	widgets_inline_group:AddChild(widgets_label)
+
+	-- Minilog
+	local widgets_inline_group = AceGUI:Create("InlineGroup")
+	widgets_inline_group:SetFullWidth(true)
+	widgets_inline_group:SetHeight(100)
+	widgets_scroll_frame:AddChild(widgets_inline_group)
+
+	local widgets_label = AceGUI:Create("Heading")
+	widgets_label:SetFullWidth(true)
+	widgets_label:SetText("Deathlog")
+	widgets_inline_group:AddChild(widgets_label)
+
+	local widgets_label = AceGUI:Create("Icon")
+	widgets_label:SetWidth(500)
+	widgets_label:SetHeight(100)
+	widgets_inline_group:AddChild(widgets_label)
+
+	-- Danger Alert
+	local widgets_inline_group = AceGUI:Create("InlineGroup")
+	widgets_inline_group:SetFullWidth(true)
+	widgets_inline_group:SetHeight(100)
+	widgets_scroll_frame:AddChild(widgets_inline_group)
+
+	local widgets_label = AceGUI:Create("Heading")
+	widgets_label:SetFullWidth(true)
+	widgets_label:SetText("Danger Alert")
+	widgets_inline_group:AddChild(widgets_label)
+
+	local widgets_label = AceGUI:Create("Icon")
+	widgets_label:SetWidth(500)
+	widgets_label:SetHeight(100)
+	widgets_inline_group:AddChild(widgets_label)
+end
+
 local function createDeathlogMenu()
 	ace_deathlog_menu = AceGUI:Create("DeathlogMenu")
 	_G["AceDeathlogMenu"] = ace_deathlog_menu.frame -- Close on <ESC>
 	tinsert(UISpecialFrames, "AceDeathlogMenu")
 
 	ace_deathlog_menu:SetTitle("Deathlog")
-	ace_deathlog_menu:SetVersion("0.0.1")
+	ace_deathlog_menu:SetVersion(GetAddOnMetadata("Deathlog", "Version"))
 	ace_deathlog_menu:SetStatusText("")
 	ace_deathlog_menu:SetLayout("Flow")
 	ace_deathlog_menu:SetHeight(_menu_height)
@@ -2548,6 +2565,7 @@ local function createDeathlogMenu()
 		{ value = "StatisticsTab", text = "Statistics" },
 		{ value = "LogTab", text = "Search" },
 		{ value = "SettingsTab", text = "Settings" },
+		{ value = "WidgetsTab", text = "Widgets" },
 	}
 	deathlog_tabcontainer:SetTabs(tab_table)
 	deathlog_tabcontainer:SetFullWidth(true)
@@ -2562,6 +2580,8 @@ local function createDeathlogMenu()
 			drawLogTab(container)
 		elseif group == "SettingsTab" then
 			drawSettingsTab(container)
+		elseif group == "WidgetsTab" then
+			drawWidgetsTab(container)
 		end
 	end
 
@@ -2574,11 +2594,13 @@ end
 
 deathlog_menu = createDeathlogMenu()
 
-function deathlogShowMenu(deathlog_data, general_stats)
+function deathlogShowMenu(deathlog_data, stats, log_normal_params, skull_locs)
 	deathlog_menu:Show()
 	deathlog_tabcontainer:SelectTab("LogTab")
 	_deathlog_data = deathlog_data
-	_general_stats = general_stats
+	_stats = stats
+	_log_normal_params = log_normal_params
+	_skull_locs = skull_locs
 	setDeathlogMenuLogData(_deathlog_data)
 end
 
