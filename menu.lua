@@ -1190,10 +1190,9 @@ local function setDeathlogMenuLogData(data)
 end
 
 local _deathlog_data = {}
-local _local_stats = {}
-local _precomputed_stats = {}
 local _stats = {}
 local _log_normal_params = {}
+local _skull_locs = {}
 local initialized = false
 
 local function drawLogTab(container)
@@ -2295,26 +2294,22 @@ local function drawStatisticsTab(container)
 		if map_container.tomb_tex == nil then
 			map_container.tomb_tex = {}
 		end
-		for servername, entry_tbl in pairs(filtered_by_map) do
-			for k, v in pairs(entry_tbl) do
-				if v["map_id"] and v["map_pos"] then
-					if map_container.tomb_tex[num_entries] == nil then
-						map_container.tomb_tex[num_entries] = map_container:CreateTexture(nil, "OVERLAY")
-						map_container.tomb_tex[num_entries]:SetTexture(
+		if skull_locs[map_container.current_map_id] then
+			for idx, v in ipairs(skull_locs[map_container.current_map_id]) do
+					if map_container.tomb_tex[idx] == nil then
+						map_container.tomb_tex[idx] = map_container:CreateTexture(nil, "OVERLAY")
+						map_container.tomb_tex[idx]:SetTexture(
 							"Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull"
 						)
-						map_container.tomb_tex[num_entries]:SetDrawLayer("OVERLAY", 7)
-						map_container.tomb_tex[num_entries]:SetHeight(15)
-						map_container.tomb_tex[num_entries]:SetWidth(15)
-						map_container.tomb_tex[num_entries]:Hide()
+						map_container.tomb_tex[idx]:SetDrawLayer("OVERLAY", 7)
+						map_container.tomb_tex[idx]:SetHeight(15)
+						map_container.tomb_tex[idx]:SetWidth(15)
+						map_container.tomb_tex[idx]:Hide()
 					end
 
-					map_container.tomb_tex[num_entries].map_id = v["map_id"]
-					local x, y = strsplit(",", v["map_pos"], 2)
-					map_container.tomb_tex[num_entries].coordinates = { x, y }
-					map_container.tomb_tex[num_entries].source_id = v["source_id"]
-					num_entries = num_entries + 1
-				end
+					map_container.tomb_tex[idx].map_id = map_container.current_map_id
+					map_container.tomb_tex[idx].coordinates = {v[1]/1000.0, v[2]/1000.0}
+					map_container.tomb_tex[idx].source_id = v[3]
 			end
 		end
 		for k, v in ipairs(map_container.tomb_tex) do
@@ -2382,22 +2377,19 @@ local function drawStatisticsTab(container)
 			},
 		}
 		local max_intensity = 0
-		for servername, entry_tbl in pairs(filtered_by_map) do
-			for k, v in pairs(entry_tbl) do
-				if v["map_id"] and v["map_pos"] then
-					local x, y = strsplit(",", v["map_pos"], 2)
-					x = ceil(x * 100)
-					y = ceil(y * 100)
-					for xi = 1, 3 do
-						for yj = 1, 3 do
-							local x_in_map = x - 2 + xi
-							local y_in_map = y - 2 + yj
-							if map_container.heatmap[x_in_map] and map_container.heatmap[x_in_map][y_in_map] then
-								map_container.heatmap[x_in_map][y_in_map].intensity = map_container.heatmap[x_in_map][y_in_map].intensity
-									+ iv[xi][yj]
-								if map_container.heatmap[x_in_map][y_in_map].intensity > max_intensity then
-									max_intensity = map_container.heatmap[x_in_map][y_in_map].intensity
-								end
+		if skull_locs[map_container.current_map_id] then
+			for idx, v in ipairs(skull_locs[map_container.current_map_id]) do
+				local x = ceil(v[1] / 10)
+				local y = ceil(v[2] / 10)
+				for xi = 1, 3 do
+					for yj = 1, 3 do
+						local x_in_map = x - 2 + xi
+						local y_in_map = y - 2 + yj
+						if map_container.heatmap[x_in_map] and map_container.heatmap[x_in_map][y_in_map] then
+							map_container.heatmap[x_in_map][y_in_map].intensity = map_container.heatmap[x_in_map][y_in_map].intensity
+								+ iv[xi][yj]
+							if map_container.heatmap[x_in_map][y_in_map].intensity > max_intensity then
+								max_intensity = map_container.heatmap[x_in_map][y_in_map].intensity
 							end
 						end
 					end
@@ -2658,14 +2650,13 @@ end
 
 deathlog_menu = createDeathlogMenu()
 
-function deathlogShowMenu(deathlog_data, local_stats, precomputed_stats, log_normal_params)
+function deathlogShowMenu(deathlog_data, stats, log_normal_params, skull_locs)
 	deathlog_menu:Show()
 	deathlog_tabcontainer:SelectTab("LogTab")
 	_deathlog_data = deathlog_data
-	_local_stats = local_stats
-	_precomputed_stats = precomputed_stats
 	_stats = _precomputed_stats
 	_log_normal_params = log_normal_params
+	_skull_locs = skull_locs
 	setDeathlogMenuLogData(_deathlog_data)
 end
 

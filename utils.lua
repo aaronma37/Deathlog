@@ -388,8 +388,8 @@ function deathlog_serializeTable(val, name, skipnewlines, depth)
     return tmp
 end
 
-function deathlog_savePrecomputed(general_stats)
-  temp_general_stats = LibDeflate:CompressDeflate(deathlog_serializeTable(general_stats))
+function deathlog_savePrecomputed(data, compressed_saved_var)
+  compressed_saved_var = LibDeflate:CompressDeflate(deathlog_serializeTable(data))
 end
 
 local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
@@ -443,4 +443,18 @@ function deathlog_calculateLogNormalParameters(_deathlog_data)
     log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
   end
   return log_normal_params
+end
+
+function deathlog_calculateSkullLocs(_deathlog_data)
+  local skull_locs = {}
+  for servername, entry_tbl in pairs(filtered_by_map) do
+	  for _, v in pairs(entry_tbl) do
+	    if v['map_id'] then
+	      if skull_locs[v['map_id']] == nil then skull_locs[v['map_id']] = {} end
+		    local x, y = strsplit(",", v["map_pos"], 2)
+		    skull_locs[#skull_locs+1] = {x*1000,y*1000,v['source_id']}
+	    end
+	  end
+  end
+  return skull_locs
 end
