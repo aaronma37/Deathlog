@@ -30,6 +30,11 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 
 ![Westfall death statistics](statistics_westfall.png)
 
+### Preprocessed collection
+
+* Over 32k deathlog entries used for statistics page
+* The file `collected_entries.lua` can be referenced for all entries.  This file isn't actually loaded and is included for sharing.
+
 ### Widgets
 Under construction
 
