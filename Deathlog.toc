@@ -8,7 +8,7 @@
 
 
 ## DefaultState: enabled
-## SavedVariables: deathlog_settings, deathlog_data
+## SavedVariables: deathlog_settings, deathlog_data, temp_general_stats
 ## SavedVariablesPerCharacter: 
 
 embeds.xml

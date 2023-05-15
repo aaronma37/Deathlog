@@ -20,6 +20,7 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 local last_attack_source = nil
 local recent_msg = nil
 local general_stats = {}
+local log_normal_params = {}
 local most_deadly_units = {
 	["all"] = { -- server
 		["all"] = { -- map_id
@@ -27,6 +28,12 @@ local most_deadly_units = {
 		},
 	},
 }
+local precomputed_stats = nil
+
+local LibDeflate
+if LibStub then -- You are using LibDeflate as WoW addon
+	LibDeflate = LibStub:GetLibrary("LibDeflate")
+end
 
 deathlog_data = {}
 deathlog_settings = {}
@@ -38,7 +45,7 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject("Deat
 	text = "Deathlog",
 	icon = "Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull",
 	OnClick = function(self, btn)
-		deathlogShowMenu(deathlog_data, general_stats)
+		deathlogShowMenu(deathlog_data, general_stats, precomputed_stats, log_normal_params)
 	end,
 })
 local function initMinimapButton()
@@ -121,6 +128,14 @@ local function handleEvent(self, event, ...)
 				print("Complete. Retrieved " .. c)
 
 				general_stats = deathlog_calculate_statistics(deathlog_data, nil)
+				log_normal_params = deathlog_calculateLogNormalParameters(deathlog_data)
+				-- deathlog_savePrecomputed(general_stats)
+				C_Timer.After(2.0, function()
+				local t = time()
+				local decompressed = LibDeflate:DecompressDeflate(temp_general_stats)
+				local some, err = loadstring("return " .. decompressed)
+				precomputed_stats = some()
+				end)
 				most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
 
 				-- for k,v in ipairs(most_deadly_units["all"]["all"]["all"]) do
