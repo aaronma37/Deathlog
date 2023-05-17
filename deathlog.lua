@@ -47,7 +47,7 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject("Deat
 	text = "Deathlog",
 	icon = "Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull",
 	OnClick = function(self, btn)
-		  deathlogShowMenu(deathlog_data, general_stats, log_normal_params, skull_locs)
+		deathlogShowMenu(deathlog_data, general_stats, log_normal_params, skull_locs)
 	end,
 })
 local function initMinimapButton()
@@ -128,52 +128,36 @@ local function handleEvent(self, event, ...)
 					end
 				end
 				print("Complete. Retrieved " .. c)
-
 			end
 		end)
 
-				if use_precomputed then
-				    general_stats = precomputed_general_stats
-				    log_normal_params = precomputed_log_normal_params
-				    skull_locs = precomputed_skull_locs
-				    dev_precomputed_general_stats = nil
-				    dev_precomputed_log_normal_params = nil
-				    dev_precomputed_skull_locs = nil
-				  -- C_Timer.After(2.0, function()
-				    -- print("Decompressing")
-				    -- local decompressed_stats,err = LibDeflate:DecompressZlib(precomputed_general_stats)
-				    -- local decompressed_log_normal_params = LibDeflate:DecompressZlib(precomputed_log_normal_params)
-				    -- local decompressed_skull_locs = LibDeflate:DecompressZlib(precomputed_skull_locs)
-				    -- print("Loading")
-				    -- local load_stats, err = loadstring("return " .. decompressed_stats)
-				    -- local load_log_normal_params, err = loadstring("return " .. decompressed_log_normal_params)
-				    -- local load_skull_locs, err = loadstring("return " .. decompressed_skull_locs)
-				    -- general_stats = load_stats()
-				    -- log_normal_params = load_log_normal_params()
-				    -- skull_locs = load_skull_locs()
-				  -- end)
-				else
-				  general_stats = deathlog_calculate_statistics(deathlog_data, nil)
-				  log_normal_params = deathlog_calculateLogNormalParameters(deathlog_data)
-				  skull_locs = deathlog_calculateSkullLocs(deathlog_data)
-				  if save_precompute then
-				    dev_precomputed_general_stats = general_stats
-				    dev_precomputed_log_normal_params = log_normal_params
-				    dev_precomputed_skull_locs = skull_locs
-				    -- precomputed_general_stats = deathlog_compressPrecomputed(general_stats)
-				    -- precomputed_log_normal_params = deathlog_compressPrecomputed(log_normal_params)
-				    -- precomputed_skull_locs = deathlog_compressPrecomputed(skull_locs)
-				  else
-				    dev_precomputed_general_stats = nil
-				    dev_precomputed_log_normal_params = nil
-				    dev_precomputed_skull_locs = nil
-				  end
-				end
-				most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
+		if use_precomputed then
+			general_stats = precomputed_general_stats
+			log_normal_params = precomputed_log_normal_params
+			skull_locs = precomputed_skull_locs
+			dev_precomputed_general_stats = nil
+			dev_precomputed_log_normal_params = nil
+			dev_precomputed_skull_locs = nil
+		else
+			general_stats = deathlog_calculate_statistics(deathlog_data, nil)
+			log_normal_params = deathlog_calculateLogNormalParameters(deathlog_data)
+			skull_locs = deathlog_calculateSkullLocs(deathlog_data)
+			if save_precompute then
+				dev_precomputed_general_stats = general_stats
+				dev_precomputed_log_normal_params = log_normal_params
+				dev_precomputed_skull_locs = skull_locs
+			else
+				dev_precomputed_general_stats = nil
+				dev_precomputed_log_normal_params = nil
+				dev_precomputed_skull_locs = nil
+			end
+		end
+		most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
 
-				-- for k,v in ipairs(most_deadly_units["all"]["all"]["all"]) do
-				-- -- print(k,id_to_npc[v[1]])
-				-- end
+		-- for k,v in ipairs(most_deadly_units["all"]["all"]["all"]) do
+		-- -- print(k,id_to_npc[v[1]])
+		-- end
+		initDeathlogMinilogWidget(deathlog_settings)
 	end
 end
 
