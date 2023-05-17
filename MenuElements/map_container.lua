@@ -811,8 +811,8 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	map_container:Show()
 	if map_container.skulls_checkbox == nil then
 		map_container.skulls_checkbox =
-			CreateFrame("CheckButton", "DeathlogSkullsCheckbox", scroll_frame.frame, "OptionsBaseCheckButtonTemplate")
-		map_container.skulls_checkbox:SetPoint("TOPLEFT", 25, -25)
+			CreateFrame("CheckButton", "DeathlogSkullsCheckbox", map_container, "OptionsBaseCheckButtonTemplate")
+		map_container.skulls_checkbox:SetPoint("TOPLEFT", 25, 25)
 		map_container.skulls_checkbox:SetHitRectInsets(0, -75, 0, 0)
 		map_container.skulls_checkbox:SetChecked(true)
 		map_container.skulls_checkbox:Show()
@@ -842,8 +842,8 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	end
 	if map_container.heatmap_checkbox == nil then
 		map_container.heatmap_checkbox =
-			CreateFrame("CheckButton", "DeathlogHeatmapCheckbox", scroll_frame.frame, "ChatConfigCheckButtonTemplate")
-		map_container.heatmap_checkbox:SetPoint("TOPLEFT", 150, -25)
+			CreateFrame("CheckButton", "DeathlogHeatmapCheckbox", map_container, "ChatConfigCheckButtonTemplate")
+		map_container.heatmap_checkbox:SetPoint("TOPLEFT", 150, 25)
 		map_container.heatmap_checkbox:SetHitRectInsets(0, -75, 0, 0)
 		map_container.heatmap_checkbox:SetChecked(true)
 		map_container.heatmap_checkbox:Show()
@@ -864,8 +864,8 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 
 	if map_container.darken_checkbox == nil then
 		map_container.darken_checkbox =
-			CreateFrame("CheckButton", "DeathlogHeatmapCheckbox", scroll_frame.frame, "ChatConfigCheckButtonTemplate")
-		map_container.darken_checkbox:SetPoint("TOPLEFT", 275, -25)
+			CreateFrame("CheckButton", "DeathlogHeatmapCheckbox", map_container, "ChatConfigCheckButtonTemplate")
+		map_container.darken_checkbox:SetPoint("TOPLEFT", 275, 25)
 		map_container.darken_checkbox:SetHitRectInsets(0, -75, 0, 0)
 		map_container.darken_checkbox:SetChecked(true)
 		map_container.darken_checkbox:Show()

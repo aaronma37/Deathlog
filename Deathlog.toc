@@ -22,6 +22,10 @@ MenuElements/map_container.lua
 MenuElements/deadliest_creature_container.lua
 MenuElements/average_class_container.lua
 MenuElements/graph_container.lua
+
+Widgets/deathlog_widget_minilog.lua
+Widgets/deathlog_widget_minilog_settings.lua
+
 menu.lua
 deathlog_api.lua
 precomputed_stats.lua

@@ -241,6 +241,7 @@ local function createEntry(checksum)
 	end
 	local modified_checksum = deathlog_modified_fletcher16(death_ping_lru_cache_tbl[checksum]["player_data"])
 	deathlog_data[realmName][modified_checksum] = death_ping_lru_cache_tbl[checksum]["player_data"]
+	deathlog_widget_minilog_createEntry(death_ping_lru_cache_tbl[checksum]["player_data"])
 
 	-- Save in-guilds for next part of migration TODO
 	if deathlog_settings.alert_enabled then

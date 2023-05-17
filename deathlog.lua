@@ -157,6 +157,7 @@ local function handleEvent(self, event, ...)
 		-- for k,v in ipairs(most_deadly_units["all"]["all"]["all"]) do
 		-- -- print(k,id_to_npc[v[1]])
 		-- end
+		initDeathlogMinilogWidget(deathlog_settings)
 	end
 end
 

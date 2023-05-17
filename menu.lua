@@ -771,6 +771,61 @@ local function drawWidgetsTab(container)
 	widgets_scroll_frame:SetLayout("Flow")
 	widgets_scroll_container:AddChild(widgets_scroll_frame)
 
+	local widget_setting_containers = {
+		Deathlog_WidgetSettingsContainer(),
+	}
+
+	local function createHeader(container, name)
+		if container.heading == nil then
+			container.heading = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+			container.heading:SetText(name)
+			container.heading:SetWidth(widgets_scroll_container.frame:GetWidth())
+			container.heading:SetFont("Fonts\\blei00d.TTF", 20, "OUTLINE")
+			container.heading:SetJustifyV("LEFT")
+			container.heading:SetTextColor(0.9, 0.9, 0.9)
+			container.heading:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -20)
+			container.heading:Show()
+		end
+	end
+
+	local function createDescription(container, description)
+		if container.description == nil then
+			container.description = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+			container.description:SetText(description)
+			container.description:SetWidth(widgets_scroll_container.frame:GetWidth())
+			container.description:SetFont("Fonts\\blei00d.TTF", 16, "")
+			container.description:SetJustifyV("LEFT")
+			container.description:SetTextColor(0.7, 0.7, 0.7)
+			container.description:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -40)
+			container.description:Show()
+		end
+	end
+
+	for _, v in ipairs(widget_setting_containers) do
+		local widgets_inline_group = AceGUI:Create("InlineGroup")
+		widgets_inline_group:SetFullWidth(true)
+		widgets_inline_group:SetHeight(v.height)
+		widgets_inline_group:SetHeight(v.height)
+		widgets_inline_group:SetLayout("Flow")
+		widgets_scroll_frame:AddChild(widgets_inline_group)
+
+		local enable_checkbox = AceGUI:Create("CheckBox")
+		enable_checkbox:SetLabel("Enable")
+		enable_checkbox:SetValue(v.enable_checkbox_set_value_functor())
+		enable_checkbox:SetCallback("OnValueChanged", function()
+			v.enable_checkbox_check_functor(enable_checkbox:GetValue())
+		end)
+		widgets_inline_group:AddChild(enable_checkbox)
+
+		local widgets_label = AceGUI:Create("Icon")
+		widgets_label:SetFullWidth(true)
+		widgets_label:SetHeight(40)
+		widgets_label:SetDisabled(true)
+		widgets_inline_group:AddChild(widgets_label)
+
+		v.updateWidgetSettingsContainer(widgets_inline_group, createHeader, createDescription)
+	end
+
 	-- Death Alerts
 	local widgets_inline_group = AceGUI:Create("InlineGroup")
 	widgets_inline_group:SetFullWidth(true)
@@ -834,7 +889,7 @@ local function createDeathlogMenu()
 
 	deathlog_tabcontainer = AceGUI:Create("DeathlogTabGroup") -- "InlineGroup" is also good
 	local tab_table = {
-		{ value = "StatisticsTab", text = "Statistics" },
+		{ value = "StatisticsTab", text = "Zone Statistics" },
 		{ value = "LogTab", text = "Search" },
 		{ value = "SettingsTab", text = "Settings" },
 		{ value = "WidgetsTab", text = "Widgets" },
