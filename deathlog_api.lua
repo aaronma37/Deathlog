@@ -170,8 +170,24 @@ local broadcast_death_ping_queue = {}
 local death_alert_out_queue = {}
 local last_words_queue = {}
 
+local function deathlog_modified_fletcher16(_player_data)
+	return deathlog_fletcher16(
+		_player_data["name"],
+		_player_data["guild"],
+		_player_data["level"],
+		_player_data["source_id"]
+	)
+end
+
 local function fletcher16(_player_data)
-    return deathlog_fletcher16(_player_data["name"], _player_data["guild"], _player_data["level"], _player_data["source_id"])
+	local data = _player_data["name"] .. _player_data["guild"] .. _player_data["level"]
+	local sum1 = 0
+	local sum2 = 0
+	for index = 1, #data do
+		sum1 = (sum1 + string.byte(string.sub(data, index, index))) % 255
+		sum2 = (sum2 + sum1) % 255
+	end
+	return _player_data["name"] .. "-" .. bit.bor(bit.lshift(sum2, 8), sum1)
 end
 
 local death_log_cache = {}
@@ -223,7 +239,8 @@ local function createEntry(checksum)
 	if deathlog_data[realmName] == nil then
 		deathlog_data[realmName] = {}
 	end
-	deathlog_data[realmName][checksum] = death_ping_lru_cache_tbl[checksum]["player_data"]
+	local modified_checksum = deathlog_modified_fletcher16(death_ping_lru_cache_tbl[checksum]["player_data"])
+	deathlog_data[realmName][modified_checksum] = death_ping_lru_cache_tbl[checksum]["player_data"]
 
 	-- Save in-guilds for next part of migration TODO
 	if deathlog_settings.alert_enabled then
