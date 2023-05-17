@@ -105,9 +105,6 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 		deadliest_creatures_textures[i]:Hide()
 	end
 	local map_id = current_map_id
-	if map_id == 1414 or map_id == 1415 then
-		return
-	end
 	if map_id == 947 then
 		map_id = "all"
 	end
