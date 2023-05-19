@@ -46,8 +46,8 @@ function deathlog_widget_heatmap_indicator_settings_container.updateWidgetSettin
 		deathlog_settings["heatmap_indicator_pos"]["x"] = 0
 		deathlog_settings["heatmap_indicator_pos"]["y"] = 0
 
-		deathlog_settings["heatmap_indicator_size"]["x"] = 35
-		deathlog_settings["heatmap_indicator_size"]["y"] = 35
+		deathlog_settings["heatmap_indicator_size"]["x"] = 33
+		deathlog_settings["heatmap_indicator_size"]["y"] = 33
 		initDeathlogHeatmapIndicatorWidget(deathlog_settings)
 	end)
 	inline_container:AddChild(reset_position_button)
