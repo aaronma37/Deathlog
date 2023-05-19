@@ -121,6 +121,7 @@ local function handleEvent(self, event, ...)
 							["race_id"] = v["race_id"],
 							["level"] = v["level"],
 							["map_id"] = v["map_id"],
+							["instance_id"] = v["instance_id"],
 							["last_words"] = v["last_words"],
 						}
 					else
@@ -158,6 +159,7 @@ local function handleEvent(self, event, ...)
 		-- -- print(k,id_to_npc[v[1]])
 		-- end
 		initDeathlogMinilogWidget(deathlog_settings)
+		initDeathlogHeatmapIndicatorWidget(deathlog_settings)
 	end
 end
 

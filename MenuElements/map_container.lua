@@ -791,46 +791,31 @@ function Deathlog_MapContainer_showSkullSet(source_id)
 		if v.source_id == source_id then
 			v:SetVertexColor(1, 1, 1, 1)
 		else
-			v:SetVertexColor(1, 1, 1, 0.1)
+			v:SetVertexColor(1, 1, 1, 0)
 		end
 	end
 end
 
 function Deathlog_MapContainer_resetSkullSet()
 	for _, v in ipairs(map_container.tomb_tex) do
-		v:SetVertexColor(1, 1, 1, 1)
+		v:SetVertexColor(1, 1, 1, 0)
 	end
 end
 
 function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
 	local _skull_locs = stats_tbl["skull_locs"]
-	map_container:SetParent(scroll_frame.frame)
-	map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -55)
-	map_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
-	map_container:SetWidth(scroll_frame.frame:GetWidth() * 0.6)
+	if scroll_frame.frame then
+		map_container:SetParent(scroll_frame.frame)
+		map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -65)
+		map_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
+		map_container:SetWidth(scroll_frame.frame:GetWidth() * 0.6)
+	else
+		map_container:SetParent(scroll_frame)
+		map_container:SetPoint("TOPLEFT", scroll_frame, "TOPLEFT", 0, -65)
+		map_container:SetHeight(scroll_frame:GetWidth() * 0.6 * 3 / 4)
+		map_container:SetWidth(scroll_frame:GetWidth() * 0.6)
+	end
 	map_container:Show()
-	if map_container.skulls_checkbox == nil then
-		map_container.skulls_checkbox =
-			CreateFrame("CheckButton", "DeathlogSkullsCheckbox", map_container, "OptionsBaseCheckButtonTemplate")
-		map_container.skulls_checkbox:SetPoint("TOPLEFT", 25, 25)
-		map_container.skulls_checkbox:SetHitRectInsets(0, -75, 0, 0)
-		map_container.skulls_checkbox:SetChecked(true)
-		map_container.skulls_checkbox:Show()
-
-		map_container.skulls_checkbox_label = map_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		map_container.skulls_checkbox_label:SetPoint("LEFT", map_container.skulls_checkbox, "RIGHT", 0, 0)
-		map_container.skulls_checkbox_label:SetFont("Fonts\\blei00d.TTF", 14, "OUTLINE")
-		map_container.skulls_checkbox_label:SetTextColor(0.9, 0.9, 0.9)
-		map_container.skulls_checkbox_label:SetJustifyH("RIGHT")
-		map_container.skulls_checkbox_label:SetText("Show skulls")
-		map_container.skulls_checkbox_label:Show()
-	end
-	if map_container.skulls_checkbox then
-		map_container.skulls_checkbox:SetScript("OnClick", function(self)
-			map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
-		end)
-	end
-
 	if map_container.map_hint == nil then
 		map_container.map_hint = map_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		map_container.map_hint:SetPoint("BOTTOM", map_container, "BOTTOM", 0, 60)
@@ -843,7 +828,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	if map_container.heatmap_checkbox == nil then
 		map_container.heatmap_checkbox =
 			CreateFrame("CheckButton", "DeathlogHeatmapCheckbox", map_container, "ChatConfigCheckButtonTemplate")
-		map_container.heatmap_checkbox:SetPoint("TOPLEFT", 150, 25)
+		map_container.heatmap_checkbox:SetPoint("TOPLEFT", 25, 25)
 		map_container.heatmap_checkbox:SetHitRectInsets(0, -75, 0, 0)
 		map_container.heatmap_checkbox:SetChecked(true)
 		map_container.heatmap_checkbox:Show()
@@ -865,7 +850,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	if map_container.darken_checkbox == nil then
 		map_container.darken_checkbox =
 			CreateFrame("CheckButton", "DeathlogHeatmapCheckbox", map_container, "ChatConfigCheckButtonTemplate")
-		map_container.darken_checkbox:SetPoint("TOPLEFT", 275, 25)
+		map_container.darken_checkbox:SetPoint("TOPLEFT", 150, 25)
 		map_container.darken_checkbox:SetHitRectInsets(0, -75, 0, 0)
 		map_container.darken_checkbox:SetChecked(true)
 		map_container.darken_checkbox:Show()
@@ -1027,11 +1012,12 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 				modified_width * v.coordinates[1],
 				-modified_height * v.coordinates[2]
 			)
-			if map_container.skulls_checkbox:GetChecked() then
-				v:Show()
-			else
-				v:Hide()
-			end
+			-- if map_container.skulls_checkbox:GetChecked() then
+			v:Show()
+			v:SetVertexColor(1, 1, 1, 0)
+			-- else
+			-- v:Hide()
+			-- end
 		end
 	end
 
@@ -1057,6 +1043,19 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 				map_container.heatmap[i][j]:Show()
 				map_container.heatmap[i][j].intensity = 0.0
 			end
+		end
+	end
+
+	for i = 1, 100 do
+		for j = 1, 100 do
+			map_container.heatmap[i][j]:SetPoint(
+				"CENTER",
+				map_container,
+				"TOPLEFT",
+				modified_width * i / 100,
+				-modified_height * j / 100
+			)
+			map_container.heatmap[i][j]:Hide()
 		end
 	end
 
@@ -1229,9 +1228,6 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 			end
 		end
 
-		map_container.skulls_checkbox:Hide()
-		map_container.skulls_checkbox_label:Hide()
-
 		map_container.darken_checkbox:Hide()
 		map_container.darken_checkbox.label:Hide()
 
@@ -1241,9 +1237,6 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	end)
 
 	map_container:SetScript("OnShow", function()
-		map_container.skulls_checkbox:Show()
-		map_container.skulls_checkbox_label:Show()
-
 		map_container.darken_checkbox:Show()
 		map_container.darken_checkbox.label:Show()
 

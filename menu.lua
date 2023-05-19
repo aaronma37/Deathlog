@@ -690,6 +690,83 @@ local function drawLogTab(container)
 	scroll_frame.scrollbar:Hide()
 end
 
+local function drawCreatureStatisticsTab(container)
+	local current_creature_id = nil
+	local update_functions = {}
+	local scroll_container = AceGUI:Create("SimpleGroup")
+	scroll_container:SetFullWidth(true)
+	scroll_container:SetFullHeight(true)
+	scroll_container:SetLayout("Fill")
+	deathlog_tabcontainer:AddChild(scroll_container)
+
+	local scroll_frame = AceGUI:Create("SimpleGroup")
+	scroll_frame:SetLayout("Flow")
+	scroll_container:AddChild(scroll_frame)
+
+	local title_label = AceGUI:Create("Heading")
+	title_label:SetFullWidth(true)
+	title_label:SetText("Death Statistics - Azeroth")
+	title_label.label:SetFont("Fonts\\blei00d.TTF", 24, "")
+	scroll_frame:AddChild(title_label)
+	local function modifyTitle(zone)
+		title_label:SetText("Death Statistics - " .. zone)
+	end
+
+	local description_label = AceGUI:Create("Label")
+	description_label:SetFullWidth(true)
+	description_label:SetText("Death Statistics - Azeroth")
+	description_label.label:SetFont("Fonts\\blei00d.TTF", 14, "")
+	description_label.label:SetTextColor(0.6, 0.6, 0.6, 1.0)
+	description_label.label:SetJustifyH("CENTER")
+	scroll_frame:AddChild(description_label)
+	local function modifyDescription(creature_id)
+		local c_id = creature_id
+		local deaths_by_creature = 0
+		if _stats["all"]["all"]["all"][creature_id] then
+			deaths_by_creature = _stats["all"]["all"]["all"][creature_id]["num_entries"]
+		end
+		local all_deaths = _stats["all"]["all"]["all"]["all"]["num_entries"]
+		description_label:SetText(
+			string.format("%.2f", deaths_by_creature / all_deaths * 100)
+				.. "% of all deaths are caused by "
+				.. id_to_npc[creature_id]
+				.. "."
+		)
+	end
+
+	local stats_menu_elements = {
+		Deathlog_CreatureModelContainer(),
+		Deathlog_AverageClassContainer(),
+		Deathlog_MapContainerForCreatures(),
+		Deathlog_DeadliestCreatureExtContainer(),
+	}
+	stats_menu_elements[2].configure_for = "creature"
+
+	local function updateElements(creature_id, name)
+		current_creature_id = creature_id
+		if name then
+			modifyTitle(name)
+			modifyDescription(current_creature_id, name)
+		end
+		local stats_tbl = {
+			["skull_locs"] = _skull_locs,
+			["stats"] = _stats,
+			["log_normal_params"] = _log_normal_params,
+		}
+		for _, v in ipairs(stats_menu_elements) do
+			v.updateMenuElement(scroll_frame, current_creature_id, stats_tbl, updateElements)
+		end
+	end
+
+	updateElements(40, "Kobold Miner")
+
+	scroll_frame.frame:HookScript("OnHide", function()
+		for _, v in ipairs(stats_menu_elements) do
+			v:Hide()
+		end
+	end)
+end
+
 local function drawStatisticsTab(container)
 	local update_functions = {}
 	local scroll_container = AceGUI:Create("SimpleGroup")
@@ -711,12 +788,91 @@ local function drawStatisticsTab(container)
 		title_label:SetText("Death Statistics - " .. zone)
 	end
 
+	local description_label = AceGUI:Create("Label")
+	description_label:SetFullWidth(true)
+	description_label:SetText("Death Statistics - Azeroth")
+	description_label.label:SetFont("Fonts\\blei00d.TTF", 14, "")
+	description_label.label:SetTextColor(0.6, 0.6, 0.6, 1.0)
+	description_label.label:SetJustifyH("CENTER")
+	scroll_frame:AddChild(description_label)
+	local function modifyDescription(map_id, zone)
+		local mid = map_id
+		if mid == 947 then
+			mid = "all"
+		end
+		local deaths_in_zone = 0
+		if _stats["all"][mid] then
+			deaths_in_zone = _stats["all"][mid]["all"]["all"]["num_entries"]
+		end
+		local all_deaths = _stats["all"]["all"]["all"]["all"]["num_entries"]
+		description_label:SetText(
+			string.format("%.2f", deaths_in_zone / all_deaths * 100) .. "% of all deaths occur in " .. zone .. "."
+		)
+	end
+
 	local stats_menu_elements = {
 		Deathlog_MapContainer(),
 		Deathlog_DeadliestCreatureContainer(),
 		Deathlog_AverageClassContainer(),
 		Deathlog_GraphContainer(),
 	}
+
+	stats_menu_elements[3].configure_for = "map"
+
+	local function setMapRegion(map_id, name)
+		current_map_id = map_id
+		if name then
+			modifyTitle(name)
+			modifyDescription(map_id, name)
+		end
+		local stats_tbl = {
+			["skull_locs"] = _skull_locs,
+			["stats"] = _stats,
+			["log_normal_params"] = _log_normal_params,
+		}
+		for _, v in ipairs(stats_menu_elements) do
+			v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+		end
+	end
+
+	setMapRegion(947, "Azeroth")
+
+	scroll_frame.frame:HookScript("OnHide", function()
+		for _, v in ipairs(stats_menu_elements) do
+			v:Hide()
+		end
+	end)
+end
+
+local function drawInstanceStatisticsTab(container)
+	local update_functions = {}
+	local scroll_container = AceGUI:Create("SimpleGroup")
+	local current_instance_id = 36
+	scroll_container:SetFullWidth(true)
+	scroll_container:SetFullHeight(true)
+	scroll_container:SetLayout("Fill")
+	deathlog_tabcontainer:AddChild(scroll_container)
+
+	local scroll_frame = AceGUI:Create("SimpleGroup")
+	scroll_frame:SetLayout("Flow")
+	scroll_container:AddChild(scroll_frame)
+
+	local title_label = AceGUI:Create("Heading")
+	title_label:SetFullWidth(true)
+	title_label:SetText("Death Statistics - Azeroth")
+	title_label.label:SetFont("Fonts\\blei00d.TTF", 24, "")
+	scroll_frame:AddChild(title_label)
+	local function modifyTitle(zone)
+		title_label:SetText("Death Statistics - " .. zone)
+	end
+
+	local stats_menu_elements = {
+		Deathlog_InstanceContainer(),
+		Deathlog_DeadliestCreatureContainer(),
+		Deathlog_AverageClassContainer(),
+		Deathlog_GraphContainer(),
+	}
+	stats_menu_elements[3].configure_for = "map"
 
 	local function setMapRegion(map_id, name)
 		current_map_id = map_id
@@ -733,7 +889,7 @@ local function drawStatisticsTab(container)
 		end
 	end
 
-	setMapRegion(947, "Azeroth")
+	setMapRegion(36, "Deadmines")
 
 	scroll_frame.frame:HookScript("OnHide", function()
 		for _, v in ipairs(stats_menu_elements) do
@@ -773,6 +929,7 @@ local function drawWidgetsTab(container)
 
 	local widget_setting_containers = {
 		Deathlog_WidgetSettingsContainer(),
+		Deathlog_WidgetHeatmapIndicatorSettingsContainer(),
 	}
 
 	local function createHeader(container, name)
@@ -889,6 +1046,8 @@ local function createDeathlogMenu()
 
 	deathlog_tabcontainer = AceGUI:Create("DeathlogTabGroup") -- "InlineGroup" is also good
 	local tab_table = {
+		{ value = "CreatureStatisticsTab", text = "Creature Statistics" },
+		{ value = "InstanceStatisticsTab", text = "Instance Statistics" },
 		{ value = "StatisticsTab", text = "Zone Statistics" },
 		{ value = "LogTab", text = "Search" },
 		{ value = "SettingsTab", text = "Settings" },
@@ -903,6 +1062,10 @@ local function createDeathlogMenu()
 		container:ReleaseChildren()
 		if group == "StatisticsTab" then
 			drawStatisticsTab(container)
+		elseif group == "InstanceStatisticsTab" then
+			drawInstanceStatisticsTab(container)
+		elseif group == "CreatureStatisticsTab" then
+			drawCreatureStatisticsTab(container)
 		elseif group == "LogTab" then
 			drawLogTab(container)
 		elseif group == "SettingsTab" then

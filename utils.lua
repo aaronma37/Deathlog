@@ -24,6 +24,27 @@ if LibStub then -- You are using LibDeflate as WoW addon
 	LibDeflate = LibStub:GetLibrary("LibDeflate")
 end
 
+deathlog_instance_tbl = {
+	["Shadowfang Keep"] = 33,
+	["Stormwind Stockade"] = 34,
+	["Deadmines"] = 36,
+	["Wailing Caverns"] = 43,
+	["Razorfen Kraul"] = 47,
+	["Blackfathom Deeps"] = 48,
+	["Uldaman"] = 70,
+	["Gnomeregan"] = 90,
+	["Sunken Temple"] = 109,
+	["Razorfen Downs"] = 129,
+	["Scarlet Monastery"] = 189,
+	["Zul'Farrak"] = 209,
+	["Blackrock Spire"] = 229,
+	["Blackrock Depths"] = 230,
+	["Scholomance"] = 289,
+	["Stratholme"] = 329,
+	["Maraudon"] = 349,
+	["Dire Maul"] = 429,
+}
+
 deathlog_zone_tbl = {
 	["Azeroth"] = 947,
 	["Durotar"] = 1411,
@@ -83,10 +104,10 @@ deathlog_class_tbl = {
 }
 
 deathlog_class_colors = {}
-for k,_ in pairs(deathlog_class_tbl) do
-  deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)] 
+for k, _ in pairs(deathlog_class_tbl) do
+	deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)]
 end
-deathlog_class_colors["Shaman"]:SetRGBA(36/255,89/255,255/255,1)
+deathlog_class_colors["Shaman"]:SetRGBA(36 / 255, 89 / 255, 255 / 255, 1)
 
 deathlog_race_tbl = {
 	["Human"] = 1,
@@ -144,8 +165,20 @@ function deathlogConvertStringDateUnix(s)
 	if month == nil or day == nil or hour == nil or minute == nil or sec == nil or year == nil then
 		return nil
 	end
-	MON =
-		{ Jan = 1, Feb = 2, Mar = 3, Apr = 4, May = 5, Jun = 6, Jul = 7, Aug = 8, Sep = 9, Oct = 10, Nov = 11, Dec = 12 }
+	MON = {
+		Jan = 1,
+		Feb = 2,
+		Mar = 3,
+		Apr = 4,
+		May = 5,
+		Jun = 6,
+		Jul = 7,
+		Aug = 8,
+		Sep = 9,
+		Oct = 10,
+		Nov = 11,
+		Dec = 12,
+	}
 	month = MON[month]
 	offset = time() - time(date("!*t"))
 	return time({ day = day, month = month, year = year, hour = hour, minute = minute, sec = sec }) + offset
@@ -371,107 +404,121 @@ function deathlog_calculate_statistics(_deathlog_data)
 end
 
 function deathlog_serializeTable(val, name, skipnewlines, depth)
-    skipnewlines = skipnewlines or false
-    depth = depth or 0
+	skipnewlines = skipnewlines or false
+	depth = depth or 0
 
-    local tmp = string.rep(" ", depth)
+	local tmp = string.rep(" ", depth)
 
-    if name then
-      if type(name) == "string" then
-	tmp = tmp .. "['" .. name .. "']" .. " = " 
-      else
-	tmp = tmp .. "[" .. name .. "]" .. " = " 
-      end
-    end
+	if name then
+		if type(name) == "string" then
+			tmp = tmp .. "['" .. name .. "']" .. " = "
+		else
+			tmp = tmp .. "[" .. name .. "]" .. " = "
+		end
+	end
 
-    if type(val) == "table" then
-        tmp = tmp .. "{" .. (not skipnewlines and "" or "")
+	if type(val) == "table" then
+		tmp = tmp .. "{" .. (not skipnewlines and "" or "")
 
-        for k, v in pairs(val) do
-            tmp =  tmp .. deathlog_serializeTable(v, k, skipnewlines, depth + 1) .. "," .. (not skipnewlines and "" or "")
-        end
+		for k, v in pairs(val) do
+			tmp = tmp
+				.. deathlog_serializeTable(v, k, skipnewlines, depth + 1)
+				.. ","
+				.. (not skipnewlines and "" or "")
+		end
 
-        tmp = tmp .. string.rep(" ", depth) .. "}"
-    elseif type(val) == "number" then
-        tmp = tmp .. tostring(val)
-    elseif type(val) == "string" then
-        tmp = tmp .. string.format("%q", val)
-    elseif type(val) == "boolean" then
-        tmp = tmp .. (val and "true" or "false")
-    else
-        tmp = tmp .. "\"[inserializeable datatype:" .. type(val) .. "]\""
-    end
+		tmp = tmp .. string.rep(" ", depth) .. "}"
+	elseif type(val) == "number" then
+		tmp = tmp .. tostring(val)
+	elseif type(val) == "string" then
+		tmp = tmp .. string.format("%q", val)
+	elseif type(val) == "boolean" then
+		tmp = tmp .. (val and "true" or "false")
+	else
+		tmp = tmp .. '"[inserializeable datatype:' .. type(val) .. ']"'
+	end
 
-    return tmp
+	return tmp
 end
 
 function deathlog_compressPrecomputed(data)
-  return LibDeflate:CompressZlib(deathlog_serializeTable(data))
+	return LibDeflate:CompressZlib(deathlog_serializeTable(data))
 end
 
 local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
-		local function filter_by_map_function(servername, entry)
-			if map_id == 947 then
-				return true
-			end
-			if entry["map_id"] == map_id then
-				return true
-			end
-			return false
+	local function filter_by_map_function(servername, entry)
+		if map_id == 947 then
+			return true
 		end
-		local filtered_by_map = deathlogFilter(_deathlog_data, filter_by_map_function)
-		local log_normal_params_for_map_id = {}
-		log_normal_params_for_map_id["ln_mean"] = {}
-		log_normal_params_for_map_id["ln_std_dev"] = {}
-		log_normal_params_for_map_id['total'] = {}
-		for k, v in pairs(deathlog_class_tbl) do
-			log_normal_params_for_map_id['total'][v] = 0
-			log_normal_params_for_map_id["ln_mean"][v] = 0
-			log_normal_params_for_map_id["ln_std_dev"][v] = 0
+		if entry["map_id"] == map_id or entry["instance_id"] == map_id then
+			return true
 		end
+		return false
+	end
+	local filtered_by_map = deathlogFilter(_deathlog_data, filter_by_map_function)
+	local log_normal_params_for_map_id = {}
+	log_normal_params_for_map_id["ln_mean"] = {}
+	log_normal_params_for_map_id["ln_std_dev"] = {}
+	log_normal_params_for_map_id["total"] = {}
+	for k, v in pairs(deathlog_class_tbl) do
+		log_normal_params_for_map_id["total"][v] = 0
+		log_normal_params_for_map_id["ln_mean"][v] = 0
+		log_normal_params_for_map_id["ln_std_dev"][v] = 0
+	end
 
-		for servername, entry_tbl in pairs(filtered_by_map) do
-			for _, v in pairs(entry_tbl) do
-				log_normal_params_for_map_id['total'][v["class_id"]] = log_normal_params_for_map_id['total'][v["class_id"]] + 1
-				log_normal_params_for_map_id["ln_mean"][v["class_id"]] = log_normal_params_for_map_id["ln_mean"][v["class_id"]] + log(v["level"])
-			end
+	for servername, entry_tbl in pairs(filtered_by_map) do
+		for _, v in pairs(entry_tbl) do
+			log_normal_params_for_map_id["total"][v["class_id"]] = log_normal_params_for_map_id["total"][v["class_id"]]
+				+ 1
+			log_normal_params_for_map_id["ln_mean"][v["class_id"]] = log_normal_params_for_map_id["ln_mean"][v["class_id"]]
+				+ log(v["level"])
 		end
+	end
 
-		for k, v in pairs(deathlog_class_tbl) do
-			log_normal_params_for_map_id["ln_mean"][v] = log_normal_params_for_map_id["ln_mean"][v] / log_normal_params_for_map_id['total'][v]
-		end
+	for k, v in pairs(deathlog_class_tbl) do
+		log_normal_params_for_map_id["ln_mean"][v] = log_normal_params_for_map_id["ln_mean"][v]
+			/ log_normal_params_for_map_id["total"][v]
+	end
 
-		for servername, entry_tbl in pairs(filtered_by_map) do
-			for _, v in pairs(entry_tbl) do
-				log_normal_params_for_map_id["ln_std_dev"][v["class_id"]] = log_normal_params_for_map_id["ln_std_dev"][v["class_id"]]
-					+ (log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]]) * (log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]])
-			end
+	for servername, entry_tbl in pairs(filtered_by_map) do
+		for _, v in pairs(entry_tbl) do
+			log_normal_params_for_map_id["ln_std_dev"][v["class_id"]] = log_normal_params_for_map_id["ln_std_dev"][v["class_id"]]
+				+ (log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]])
+					* (log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]])
 		end
+	end
 
-		for k, v in pairs(deathlog_class_tbl) do
-			log_normal_params_for_map_id['ln_std_dev'][v] = log_normal_params_for_map_id['ln_std_dev'][v] / log_normal_params_for_map_id['total'][v]
-		end
-		return log_normal_params_for_map_id
+	for k, v in pairs(deathlog_class_tbl) do
+		log_normal_params_for_map_id["ln_std_dev"][v] = log_normal_params_for_map_id["ln_std_dev"][v]
+			/ log_normal_params_for_map_id["total"][v]
+	end
+	return log_normal_params_for_map_id
 end
 
 function deathlog_calculateLogNormalParameters(_deathlog_data)
-  local log_normal_params = {}
-  for _,v in pairs(deathlog_zone_tbl) do
-    log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
-  end
-  return log_normal_params
+	local log_normal_params = {}
+	for _, v in pairs(deathlog_zone_tbl) do
+		log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
+	end
+
+	for _, v in pairs(deathlog_instance_tbl) do
+		log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
+	end
+	return log_normal_params
 end
 
 function deathlog_calculateSkullLocs(_deathlog_data)
-  local skull_locs = {}
-  for servername, entry_tbl in pairs(_deathlog_data) do
-	  for _, v in pairs(entry_tbl) do
-	    if v['map_id'] then
-	      if skull_locs[v['map_id']] == nil then skull_locs[v['map_id']] = {} end
-		    local x, y = strsplit(",", v["map_pos"], 2)
-		    skull_locs[v['map_id']][#skull_locs[v['map_id']]+1] = {x*1000,y*1000,v['source_id']}
-	    end
-	  end
-  end
-  return skull_locs
+	local skull_locs = {}
+	for servername, entry_tbl in pairs(_deathlog_data) do
+		for _, v in pairs(entry_tbl) do
+			if v["map_id"] then
+				if skull_locs[v["map_id"]] == nil then
+					skull_locs[v["map_id"]] = {}
+				end
+				local x, y = strsplit(",", v["map_pos"], 2)
+				skull_locs[v["map_id"]][#skull_locs[v["map_id"]] + 1] = { x * 1000, y * 1000, v["source_id"] }
+			end
+		end
+	end
+	return skull_locs
 end

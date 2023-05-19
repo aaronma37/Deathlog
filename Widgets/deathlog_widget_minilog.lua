@@ -402,7 +402,7 @@ hooksecurefunc(death_log_frame.frame, "StopMovingOrSizing", function()
 	deathlog_settings["death_log_size"]["y"] = death_log_frame.frame:GetHeight()
 end)
 
-function DeathFrameDropdown(frame, level, menuList)
+local function DeathFrameDropdown(frame, level, menuList)
 	local info = UIDropDownMenu_CreateInfo()
 
 	local function minimize()

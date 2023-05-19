@@ -42,7 +42,7 @@ function deathlog_widget_minilog_settings_container.updateWidgetSettingsContaine
 
 	local reset_position_button = AceGUI:Create("Button")
 	reset_position_button:SetText("Reset Size and Position")
-	reset_position_button:SetWidth(150)
+	reset_position_button:SetWidth(200)
 	reset_position_button:SetCallback("OnClick", function(self)
 		if deathlog_settings["death_log_pos"] == nil then
 			deathlog_settings["death_log_pos"] = {}

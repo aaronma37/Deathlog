@@ -77,6 +77,23 @@ if deadliest_creatures_container.heading == nil then
 	deadliest_creatures_container.heading:Show()
 end
 
+if deadliest_creatures_container.heading_description == nil then
+	deadliest_creatures_container.heading_description =
+		deadliest_creatures_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	deadliest_creatures_container.heading_description:SetText("Mouseover to view on map.")
+	deadliest_creatures_container.heading_description:SetFont("Fonts\\blei00d.TTF", 12, "")
+	deadliest_creatures_container.heading_description:SetJustifyV("TOP")
+	deadliest_creatures_container.heading_description:SetTextColor(0.6, 0.6, 0.6)
+	deadliest_creatures_container.heading_description:SetPoint(
+		"TOP",
+		deadliest_creatures_container.heading,
+		"BOTTOM",
+		0,
+		0
+	)
+	deadliest_creatures_container.heading_description:Show()
+end
+
 if deadliest_creatures_container.left == nil then
 	deadliest_creatures_container.left = deadliest_creatures_container:CreateTexture(nil, "BACKGROUND")
 	deadliest_creatures_container.left:SetHeight(8)
@@ -100,6 +117,12 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 	deadliest_creatures_container.left:Show()
 	deadliest_creatures_container.right:Show()
 	local _stats = stats_tbl["stats"]
+	local valid_map = C_Map.GetMapInfo(current_map_id)
+	if valid_map then
+		deadliest_creatures_container.heading_description:Show()
+	else
+		deadliest_creatures_container.heading_description:Hide()
+	end
 	local num_recorded_kills = 0
 	for i = 1, 10 do
 		deadliest_creatures_textures[i]:Hide()
@@ -116,7 +139,7 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 		end
 
 		deadliest_creatures_container:SetParent(scroll_frame.frame)
-		deadliest_creatures_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 600, -10)
+		deadliest_creatures_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 600, -25)
 		deadliest_creatures_container:Show()
 		deadliest_creatures_container:SetWidth(scroll_frame.frame:GetWidth() * 0.2)
 		deadliest_creatures_container:SetHeight(scroll_frame.frame:GetWidth() * 0.4)
@@ -128,19 +151,21 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 					deadliest_creatures_container,
 					"TOPLEFT",
 					0,
-					-30 - i * 15
+					-35 - i * 15
 				)
 				deadliest_creatures_textures[i]:SetBackgroundWidth(
 					deadliest_creatures_container:GetWidth() * most_deadly_units[i][2] / max_kills
 				)
 				deadliest_creatures_textures[i]:SetCreatureName(id_to_npc[most_deadly_units[i][1]])
 				deadliest_creatures_textures[i]:SetNumKills(most_deadly_units[i][2])
-				deadliest_creatures_textures[i]:SetScript("OnEnter", function()
-					Deathlog_MapContainer_showSkullSet(most_deadly_units[i][1])
-				end)
-				deadliest_creatures_textures[i]:SetScript("OnLeave", function()
-					Deathlog_MapContainer_resetSkullSet()
-				end)
+				if valid_map then
+					deadliest_creatures_textures[i]:SetScript("OnEnter", function()
+						Deathlog_MapContainer_showSkullSet(most_deadly_units[i][1])
+					end)
+					deadliest_creatures_textures[i]:SetScript("OnLeave", function()
+						Deathlog_MapContainer_resetSkullSet()
+					end)
+				end
 				deadliest_creatures_textures[i]:SetHeight(20)
 				deadliest_creatures_textures[i]:Show()
 			end

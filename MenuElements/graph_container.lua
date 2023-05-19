@@ -34,7 +34,7 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 	graph_container.offsetx = 25
 	graph_container.zoomy = 8
 	graph_container.offsety = 0
-	graph_container:SetPoint("TOPLEFT", 590, -265)
+	graph_container:SetPoint("TOPLEFT", 590, -280)
 	graph_container:SetWidth(400)
 	graph_container:SetHeight(200)
 	graph_container:SetFrameLevel(15000)

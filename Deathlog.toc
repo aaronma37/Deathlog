@@ -17,14 +17,23 @@ embeds.xml
 utils.lua
 id_to_npc_classic.lua
 npc_to_id_classic.lua
+id_to_display_id.lua
+id_to_quote.lua
 
 MenuElements/map_container.lua
+MenuElements/map_container_for_creatures.lua
+MenuElements/creature_model_container.lua
+MenuElements/instance_container.lua
 MenuElements/deadliest_creature_container.lua
+MenuElements/deadliest_creature_container_extended.lua
 MenuElements/average_class_container.lua
 MenuElements/graph_container.lua
 
 Widgets/deathlog_widget_minilog.lua
 Widgets/deathlog_widget_minilog_settings.lua
+
+Widgets/deathlog_widget_heatmap_indicator.lua
+Widgets/deathlog_widget_heatmap_indicator_settings.lua
 
 menu.lua
 deathlog_api.lua
