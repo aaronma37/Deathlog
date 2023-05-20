@@ -29,11 +29,9 @@ MenuElements/deadliest_creature_container_extended.lua
 MenuElements/average_class_container.lua
 MenuElements/graph_container.lua
 
-Widgets/deathlog_widget_minilog.lua
-Widgets/deathlog_widget_minilog_settings.lua
-
-Widgets/deathlog_widget_heatmap_indicator.lua
-Widgets/deathlog_widget_heatmap_indicator_settings.lua
+Widgets/Minilog/widget.lua
+Widgets/HeatmapIndicator/widget.lua
+Widgets/CreatureRankingTooltip/widget.lua
 
 menu.lua
 deathlog_api.lua

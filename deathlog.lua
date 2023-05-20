@@ -31,6 +31,7 @@ local most_deadly_units = {
 		},
 	},
 }
+Deathlog_azeroth_deadliest_dict = {} -- source_name -> ranking
 
 local LibDeflate
 if LibStub then -- You are using LibDeflate as WoW addon
@@ -53,6 +54,50 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject("Deat
 local function initMinimapButton()
 	deathlog_minimap_button_stub = LibStub("LibDBIcon-1.0", true)
 	deathlog_minimap_button_stub:Register("Deathlog", deathlog_minimap_button, deathlog_minimap_button_info)
+end
+
+local function loadWidgets()
+	Deathlog_minilog_applySettings()
+	Deathlog_CRTWidget_applySettings()
+	Deathlog_HIWidget_applySettings()
+end
+
+function Deathlog_LoadFromHardcore()
+	if Hardcore_Settings and Hardcore_Settings["death_log_entries"] then
+		print("Retrieving deathlog entries...")
+		local c = 0
+		local new_entries = 0
+		if deathlog_data == nil or deathlog_data["legacy"] == nil then
+			deathlog_data["legacy"] = {}
+		end
+		local local_deathlog_fletcher16 = deathlog_fletcher16
+		for _, v in ipairs(Hardcore_Settings["death_log_entries"]) do
+			c = c + 1
+			local checksum = local_deathlog_fletcher16(v["name"], v["guild"], v["level"], v["source_id"])
+			local converted_date = deathlogConvertStringDateUnix(v["date"])
+			if converted_date then
+				if deathlog_data["legacy"][checksum] == nil then
+					new_entries = new_entries + 1
+				end
+				deathlog_data["legacy"][checksum] = {
+					["class_id"] = v["class_id"],
+					["guild"] = v["guild"],
+					["date"] = converted_date,
+					["map_pos"] = v["map_pos"],
+					["source_id"] = v["source_id"],
+					["name"] = v["name"],
+					["race_id"] = v["race_id"],
+					["level"] = v["level"],
+					["map_id"] = v["map_id"],
+					["instance_id"] = v["instance_id"],
+					["last_words"] = v["last_words"],
+				}
+			else
+				print("failed")
+			end
+		end
+		print("Complete. New entries: " .. new_entries .. ". Scanned: " .. c)
+	end
 end
 
 local function handleEvent(self, event, ...)
@@ -98,40 +143,6 @@ local function handleEvent(self, event, ...)
 		C_Timer.After(5.0, function()
 			DEATHLOG_deathlogJoinChannel()
 		end)
-		C_Timer.After(1.0, function() -- one minute to receive achievement appeal
-			if Hardcore_Settings and Hardcore_Settings["death_log_entries"] then
-				print("Retrieving deathlog entries...")
-				local c = 0
-				if deathlog_data == nil or deathlog_data["legacy"] == nil then
-					deathlog_data["legacy"] = {}
-				end
-				local local_deathlog_fletcher16 = deathlog_fletcher16
-				for _, v in ipairs(Hardcore_Settings["death_log_entries"]) do
-					c = c + 1
-					local checksum = local_deathlog_fletcher16(v["name"], v["guild"], v["level"], v["source_id"])
-					local converted_date = deathlogConvertStringDateUnix(v["date"])
-					if converted_date then
-						deathlog_data["legacy"][checksum] = {
-							["class_id"] = v["class_id"],
-							["guild"] = v["guild"],
-							["date"] = converted_date,
-							["map_pos"] = v["map_pos"],
-							["source_id"] = v["source_id"],
-							["name"] = v["name"],
-							["race_id"] = v["race_id"],
-							["level"] = v["level"],
-							["map_id"] = v["map_id"],
-							["instance_id"] = v["instance_id"],
-							["last_words"] = v["last_words"],
-						}
-					else
-						print("failed")
-					end
-				end
-				print("Complete. Retrieved " .. c)
-			end
-		end)
-
 		if use_precomputed then
 			general_stats = precomputed_general_stats
 			log_normal_params = precomputed_log_normal_params
@@ -140,6 +151,7 @@ local function handleEvent(self, event, ...)
 			dev_precomputed_log_normal_params = nil
 			dev_precomputed_skull_locs = nil
 		else
+			Deathlog_LoadFromHardcore()
 			general_stats = deathlog_calculate_statistics(deathlog_data, nil)
 			log_normal_params = deathlog_calculateLogNormalParameters(deathlog_data)
 			skull_locs = deathlog_calculateSkullLocs(deathlog_data)
@@ -155,11 +167,12 @@ local function handleEvent(self, event, ...)
 		end
 		most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
 
-		-- for k,v in ipairs(most_deadly_units["all"]["all"]["all"]) do
-		-- -- print(k,id_to_npc[v[1]])
-		-- end
-		initDeathlogMinilogWidget(deathlog_settings)
-		initDeathlogHeatmapIndicatorWidget(deathlog_settings)
+		for k, v in ipairs(most_deadly_units["all"]["all"]["all"]) do
+			if id_to_npc[v[1]] then
+				Deathlog_azeroth_deadliest_dict[id_to_npc[v[1]]] = k
+			end
+		end
+		loadWidgets()
 	end
 end
 
@@ -172,3 +185,23 @@ deathlog_event_handler:RegisterEvent("CHAT_MSG_PARTY")
 deathlog_event_handler:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
 deathlog_event_handler:SetScript("OnEvent", handleEvent)
+
+local LSM30 = LibStub("LibSharedMedia-3.0", true)
+local options = {
+	name = "Deathlog",
+	handler = Hardcore,
+	type = "group",
+	args = {
+		load_from_hc = {
+			type = "execute",
+			name = "Import deathlog from hardcore",
+			desc = "Import deathlog from hardcore. This will append entries.",
+			func = function()
+				Deathlog_LoadFromHardcore()
+			end,
+		},
+	},
+}
+
+LibStub("AceConfig-3.0"):RegisterOptionsTable("Deathlog", options)
+optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("Deathlog", "Deathlog", nil)

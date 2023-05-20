@@ -1,3 +1,10 @@
+local LSM30 = LibStub("LibSharedMedia-3.0", true)
+local default_font = "Fonts\\blei00d.TTF"
+local widget_name = "minilog"
+
+local fonts = LSM30:HashTable("font")
+fonts["blei00d"] = "Fonts\\blei00d.TTF"
+
 local AceGUI = LibStub("AceGUI-3.0")
 local death_log_icon_frame = CreateFrame("frame")
 death_log_icon_frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
@@ -101,46 +108,6 @@ death_log_frame:Show()
 local scroll_frame = AceGUI:Create("ScrollFrame")
 scroll_frame:SetLayout("List")
 death_log_frame:AddChild(scroll_frame)
-
-deathlog_settings = {}
-function initDeathlogMinilogWidget(_settings)
-	deathlog_settings = _settings
-
-	if deathlog_settings["death_log_show"] == nil or deathlog_settings["death_log_show"] == true then
-		death_log_frame.frame:Show()
-		death_log_icon_frame:Show()
-	else
-		death_log_frame.frame:Hide()
-		death_log_icon_frame:Hide()
-	end
-
-	death_log_icon_frame:ClearAllPoints()
-	death_log_frame.frame:ClearAllPoints()
-	if death_log_frame.frame and deathlog_settings["death_log_pos"] then
-		death_log_icon_frame:SetPoint(
-			"CENTER",
-			UIParent,
-			"CENTER",
-			deathlog_settings["death_log_pos"]["x"],
-			deathlog_settings["death_log_pos"]["y"]
-		)
-	else
-		death_log_icon_frame:SetPoint("CENTER", UIParent, "CENTER", 470, -100)
-	end
-
-	if death_log_frame.frame and deathlog_settings["death_log_size"] then
-		death_log_frame.frame:SetSize(
-			deathlog_settings["death_log_size"]["x"],
-			deathlog_settings["death_log_size"]["y"]
-		)
-	else
-		death_log_frame.frame:SetSize(255, 125)
-	end
-
-	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
-	death_log_frame.frame:SetFrameStrata("BACKGROUND")
-	death_log_frame.frame:Lower()
-end
 
 local selected = nil
 local row_entry = {}
@@ -389,17 +356,14 @@ death_log_icon_frame:SetScript("OnDragStop", function(self)
 	local x, y = self:GetCenter()
 	local px = (GetScreenWidth() * UIParent:GetEffectiveScale()) / 2
 	local py = (GetScreenHeight() * UIParent:GetEffectiveScale()) / 2
-	if deathlog_settings["death_log_pos"] == nil then
-		deathlog_settings["death_log_pos"] = {}
-	end
-	deathlog_settings["death_log_pos"]["x"] = x - px
-	deathlog_settings["death_log_pos"]["y"] = y - py
+	deathlog_settings[widget_name]["pos_x"] = x - px
+	deathlog_settings[widget_name]["pos_y"] = y - py
 	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
 end)
 
 hooksecurefunc(death_log_frame.frame, "StopMovingOrSizing", function()
-	deathlog_settings["death_log_size"]["x"] = death_log_frame.frame:GetWidth()
-	deathlog_settings["death_log_size"]["y"] = death_log_frame.frame:GetHeight()
+	deathlog_settings[widget_name]["size_x"] = death_log_frame.frame:GetWidth()
+	deathlog_settings[widget_name]["size_y"] = death_log_frame.frame:GetHeight()
 end)
 
 local function DeathFrameDropdown(frame, level, menuList)
@@ -416,12 +380,12 @@ local function DeathFrameDropdown(frame, level, menuList)
 	local function hide()
 		death_log_frame.frame:Hide()
 		death_log_icon_frame:Hide()
-		deathlog_settings["death_log_show"] = false
+		deathlog_settings[widget_name]["enable"] = false
 	end
 
 	local function openSettings()
 		InterfaceOptionsFrame_Show()
-		InterfaceOptionsFrame_OpenToCategory("Hardcore")
+		InterfaceOptionsFrame_OpenToCategory("Deathlog")
 	end
 
 	if level == 1 then
@@ -452,3 +416,204 @@ end)
 hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
 	death_tomb_frame:Hide()
 end)
+
+local defaults = {
+	["enable"] = true,
+	["font"] = "blei00d",
+	["entry_font"] = "blei00d",
+	["title_font_size"] = 19,
+	["entry_font_size"] = 14,
+	["title_x_offset"] = 0,
+	["pos_x"] = 470,
+	["pos_y"] = -100,
+	["size_x"] = 255,
+	["size_y"] = 125,
+}
+
+local function applyDefaults(_defaults, force)
+	if deathlog_settings[widget_name] == nil then
+		deathlog_settings[widget_name] = {}
+	end
+	for k, v in pairs(_defaults) do
+		if deathlog_settings[widget_name][k] == nil or force then
+			deathlog_settings[widget_name][k] = v
+		end
+	end
+end
+
+local options = nil
+local optionsframe = nil
+function Deathlog_minilog_applySettings()
+	applyDefaults(defaults)
+	death_log_frame.titletext:SetFont(
+		fonts[deathlog_settings[widget_name]["font"]],
+		deathlog_settings[widget_name]["title_font_size"],
+		"THICK"
+	)
+	death_log_frame.titletext:SetPoint(
+		"LEFT",
+		death_log_frame.frame,
+		"TOPLEFT",
+		deathlog_settings[widget_name]["title_x_offset"] + 32,
+		-10
+	)
+
+	for i = 1, 20 do
+		for idx, v in ipairs(subtitle_data) do
+			row_entry[i].font_strings[v[1]]:SetFont(
+				fonts[deathlog_settings[widget_name]["entry_font"]],
+				deathlog_settings[widget_name]["entry_font_size"],
+				""
+			)
+		end
+	end
+
+	if deathlog_settings[widget_name]["enable"] == nil or deathlog_settings[widget_name]["enable"] == true then
+		death_log_frame.frame:Show()
+		death_log_icon_frame:Show()
+	else
+		death_log_frame.frame:Hide()
+		death_log_icon_frame:Hide()
+	end
+
+	death_log_icon_frame:ClearAllPoints()
+	death_log_frame.frame:ClearAllPoints()
+	death_log_icon_frame:SetPoint(
+		"CENTER",
+		UIParent,
+		"CENTER",
+		deathlog_settings[widget_name]["pos_x"],
+		deathlog_settings[widget_name]["pos_y"]
+	)
+
+	death_log_frame.frame:SetSize(deathlog_settings[widget_name]["size_x"], deathlog_settings[widget_name]["size_y"])
+
+	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
+	death_log_frame.frame:SetFrameStrata("BACKGROUND")
+	death_log_frame.frame:Lower()
+
+	if optionsframe == nil then
+		LibStub("AceConfig-3.0"):RegisterOptionsTable(widget_name, options)
+		optionsframe = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(widget_name, widget_name, "Deathlog")
+	end
+end
+
+local function forceReset()
+	applyDefaults(defaults, true)
+	Deathlog_minilog_applySettings()
+end
+
+options = {
+	name = widget_name,
+	handler = Minilog,
+	type = "group",
+	args = {
+		show_death_log = {
+			type = "toggle",
+			name = "Show death log",
+			desc = "Show death log",
+			get = function()
+				if
+					deathlog_settings[widget_name]["enable"] == nil
+					or deathlog_settings[widget_name]["enable"] == true
+				then
+					return true
+				else
+					return false
+				end
+			end,
+			set = function()
+				if deathlog_settings[widget_name]["enable"] == nil then
+					deathlog_settings[widget_name]["enable"] = true
+				end
+				deathlog_settings[widget_name]["enable"] = not deathlog_settings[widget_name]["enable"]
+				Deathlog_minilog_applySettings()
+			end,
+			order = 1,
+		},
+		font = {
+			type = "select",
+			dialogControl = "LSM30_Font", --Select your widget here
+			name = "Title Font",
+			desc = "Title Font to use for the mini deathlog.",
+			values = fonts, -- pull in your font list from LSM
+			get = function()
+				return deathlog_settings[widget_name]["font"]
+			end,
+			set = function(self, key)
+				deathlog_settings[widget_name]["font"] = key
+				Deathlog_minilog_applySettings()
+			end,
+		},
+		entryfont = {
+			type = "select",
+			dialogControl = "LSM30_Font", --Select your widget here
+			name = "Entry Font",
+			desc = "Entry Font to use for the mini deathlog.",
+			values = fonts, -- pull in your font list from LSM
+			get = function()
+				return deathlog_settings[widget_name]["entry_font"]
+			end,
+			set = function(self, key)
+				deathlog_settings[widget_name]["entry_font"] = key
+				Deathlog_minilog_applySettings()
+			end,
+		},
+		fontsize = {
+			type = "range",
+			name = "Title Font Size",
+			desc = "Title Font Size",
+			min = 7,
+			max = 30,
+			step = 1,
+			get = function()
+				return deathlog_settings[widget_name]["title_font_size"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["title_font_size"] = value
+				Deathlog_minilog_applySettings()
+			end,
+			disabled = hidenametextoptions,
+		},
+		entryfontsize = {
+			type = "range",
+			name = "Entry Font Size",
+			desc = "Entry Font Size",
+			min = 7,
+			max = 30,
+			step = 1,
+			get = function()
+				return deathlog_settings[widget_name]["entry_font_size"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["entry_font_size"] = value
+				Deathlog_minilog_applySettings()
+			end,
+			disabled = hidenametextoptions,
+		},
+		titlexoffset = {
+			type = "range",
+			name = "Title x-offset",
+			desc = "Title x-offset",
+			min = -50,
+			max = 250,
+			step = 1,
+			get = function()
+				return deathlog_settings[widget_name]["title_x_offset"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["title_x_offset"] = value
+				Deathlog_minilog_applySettings()
+			end,
+			disabled = hidenametextoptions,
+		},
+		reset_size_and_pos = {
+			type = "execute",
+			name = "Reset to default",
+			desc = "Reset to default",
+			func = function()
+				forceReset()
+			end,
+		},
+	},
+}

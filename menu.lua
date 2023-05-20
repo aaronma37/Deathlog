@@ -742,7 +742,7 @@ local function drawCreatureStatisticsTab(container)
 	}
 	stats_menu_elements[2].configure_for = "creature"
 
-	local function updateElements(creature_id, name)
+	local function updateElements(creature_id, name, filter)
 		current_creature_id = creature_id
 		if name then
 			modifyTitle(name)
@@ -754,7 +754,7 @@ local function drawCreatureStatisticsTab(container)
 			["log_normal_params"] = _log_normal_params,
 		}
 		for _, v in ipairs(stats_menu_elements) do
-			v.updateMenuElement(scroll_frame, current_creature_id, stats_tbl, updateElements)
+			v.updateMenuElement(scroll_frame, current_creature_id, stats_tbl, updateElements, filter)
 		end
 	end
 
@@ -898,140 +898,6 @@ local function drawInstanceStatisticsTab(container)
 	end)
 end
 
-local function drawSettingsTab(container)
-	local scroll_container = AceGUI:Create("SimpleGroup")
-	scroll_container:SetFullWidth(true)
-	scroll_container:SetFullHeight(true)
-	scroll_container:SetLayout("Fill")
-	deathlog_tabcontainer:AddChild(scroll_container)
-
-	local scroll_frame = AceGUI:Create("ScrollFrame")
-	scroll_frame:SetLayout("Flow")
-	scroll_container:AddChild(scroll_frame)
-
-	local label = AceGUI:Create("Label")
-	label:SetWidth(500)
-	label:SetText("Settings Tab")
-	label:SetFont("Fonts\\blei00d.TTF", 15, "")
-	scroll_frame:AddChild(label)
-end
-
-local function drawWidgetsTab(container)
-	local widgets_scroll_container = AceGUI:Create("SimpleGroup")
-	widgets_scroll_container:SetFullWidth(true)
-	widgets_scroll_container:SetFullHeight(true)
-	widgets_scroll_container:SetLayout("Fill")
-	container:AddChild(widgets_scroll_container)
-
-	local widgets_scroll_frame = AceGUI:Create("ScrollFrame")
-	widgets_scroll_frame:SetLayout("Flow")
-	widgets_scroll_container:AddChild(widgets_scroll_frame)
-
-	local widget_setting_containers = {
-		Deathlog_WidgetSettingsContainer(),
-		Deathlog_WidgetHeatmapIndicatorSettingsContainer(),
-	}
-
-	local function createHeader(container, name)
-		if container.heading == nil then
-			container.heading = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-			container.heading:SetText(name)
-			container.heading:SetWidth(widgets_scroll_container.frame:GetWidth())
-			container.heading:SetFont("Fonts\\blei00d.TTF", 20, "OUTLINE")
-			container.heading:SetJustifyV("LEFT")
-			container.heading:SetTextColor(0.9, 0.9, 0.9)
-			container.heading:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -20)
-			container.heading:Show()
-		end
-	end
-
-	local function createDescription(container, description)
-		if container.description == nil then
-			container.description = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-			container.description:SetText(description)
-			container.description:SetWidth(widgets_scroll_container.frame:GetWidth())
-			container.description:SetFont("Fonts\\blei00d.TTF", 16, "")
-			container.description:SetJustifyV("LEFT")
-			container.description:SetTextColor(0.7, 0.7, 0.7)
-			container.description:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -40)
-			container.description:Show()
-		end
-	end
-
-	for _, v in ipairs(widget_setting_containers) do
-		local widgets_inline_group = AceGUI:Create("InlineGroup")
-		widgets_inline_group:SetFullWidth(true)
-		widgets_inline_group:SetHeight(v.height)
-		widgets_inline_group:SetHeight(v.height)
-		widgets_inline_group:SetLayout("Flow")
-		widgets_scroll_frame:AddChild(widgets_inline_group)
-
-		local enable_checkbox = AceGUI:Create("CheckBox")
-		enable_checkbox:SetLabel("Enable")
-		enable_checkbox:SetValue(v.enable_checkbox_set_value_functor())
-		enable_checkbox:SetCallback("OnValueChanged", function()
-			v.enable_checkbox_check_functor(enable_checkbox:GetValue())
-		end)
-		widgets_inline_group:AddChild(enable_checkbox)
-
-		local widgets_label = AceGUI:Create("Icon")
-		widgets_label:SetFullWidth(true)
-		widgets_label:SetHeight(40)
-		widgets_label:SetDisabled(true)
-		widgets_inline_group:AddChild(widgets_label)
-
-		v.updateWidgetSettingsContainer(widgets_inline_group, createHeader, createDescription)
-	end
-
-	-- Death Alerts
-	local widgets_inline_group = AceGUI:Create("InlineGroup")
-	widgets_inline_group:SetFullWidth(true)
-	widgets_inline_group:SetHeight(100)
-	widgets_scroll_frame:AddChild(widgets_inline_group)
-
-	local widgets_label = AceGUI:Create("Heading")
-	widgets_label:SetFullWidth(true)
-	widgets_label:SetText("Death Alerts")
-	widgets_inline_group:AddChild(widgets_label)
-
-	local widgets_label = AceGUI:Create("Icon")
-	widgets_label:SetWidth(500)
-	widgets_label:SetHeight(100)
-	widgets_inline_group:AddChild(widgets_label)
-
-	-- Minilog
-	local widgets_inline_group = AceGUI:Create("InlineGroup")
-	widgets_inline_group:SetFullWidth(true)
-	widgets_inline_group:SetHeight(100)
-	widgets_scroll_frame:AddChild(widgets_inline_group)
-
-	local widgets_label = AceGUI:Create("Heading")
-	widgets_label:SetFullWidth(true)
-	widgets_label:SetText("Deathlog")
-	widgets_inline_group:AddChild(widgets_label)
-
-	local widgets_label = AceGUI:Create("Icon")
-	widgets_label:SetWidth(500)
-	widgets_label:SetHeight(100)
-	widgets_inline_group:AddChild(widgets_label)
-
-	-- Danger Alert
-	local widgets_inline_group = AceGUI:Create("InlineGroup")
-	widgets_inline_group:SetFullWidth(true)
-	widgets_inline_group:SetHeight(100)
-	widgets_scroll_frame:AddChild(widgets_inline_group)
-
-	local widgets_label = AceGUI:Create("Heading")
-	widgets_label:SetFullWidth(true)
-	widgets_label:SetText("Danger Alert")
-	widgets_inline_group:AddChild(widgets_label)
-
-	local widgets_label = AceGUI:Create("Icon")
-	widgets_label:SetWidth(500)
-	widgets_label:SetHeight(100)
-	widgets_inline_group:AddChild(widgets_label)
-end
-
 local function createDeathlogMenu()
 	ace_deathlog_menu = AceGUI:Create("DeathlogMenu")
 	_G["AceDeathlogMenu"] = ace_deathlog_menu.frame -- Close on <ESC>
@@ -1050,8 +916,6 @@ local function createDeathlogMenu()
 		{ value = "InstanceStatisticsTab", text = "Instance Statistics" },
 		{ value = "StatisticsTab", text = "Zone Statistics" },
 		{ value = "LogTab", text = "Search" },
-		{ value = "SettingsTab", text = "Settings" },
-		{ value = "WidgetsTab", text = "Widgets" },
 	}
 	deathlog_tabcontainer:SetTabs(tab_table)
 	deathlog_tabcontainer:SetFullWidth(true)
@@ -1068,10 +932,6 @@ local function createDeathlogMenu()
 			drawCreatureStatisticsTab(container)
 		elseif group == "LogTab" then
 			drawLogTab(container)
-		elseif group == "SettingsTab" then
-			drawSettingsTab(container)
-		elseif group == "WidgetsTab" then
-			drawWidgetsTab(container)
 		end
 	end
 
