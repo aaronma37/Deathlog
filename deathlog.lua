@@ -60,6 +60,7 @@ local function loadWidgets()
 	Deathlog_minilog_applySettings()
 	Deathlog_CRTWidget_applySettings()
 	Deathlog_HIWidget_applySettings()
+	Deathlog_HWMWidget_applySettings()
 end
 
 function Deathlog_LoadFromHardcore()
