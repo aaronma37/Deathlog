@@ -10,5 +10,4 @@
   <Include file="Libs\LibSharedMedia-3.0\lib.xml"/>
   <Include file="Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml"/>
   <Include file="Libs\ChatThrottleLib.lua"/>
-  <Include file="Libs\LibDeflate\lib.xml"/>
 </Ui>

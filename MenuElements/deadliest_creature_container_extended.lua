@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+local min_lvl = 0
+local max_lvl = 60
 local AceGUI = LibStub("AceGUI-3.0")
 local max_row_num = 25
 local page_number = 1
@@ -61,8 +63,12 @@ local function createDeadliestCreaturesEntry()
 		end
 	end
 
-	frame.SetNumKills = function(self, num)
-		frame.num_kills_text:SetText(num .. " kills")
+	frame.SetNumKills = function(self, num, metric)
+		if metric == "Total Kills" then
+			frame.num_kills_text:SetText(num .. " kills")
+		elseif metric == "Normalized Score" then
+			frame.num_kills_text:SetText(string.format("%.1f", num) .. " pts.")
+		end
 	end
 
 	return frame
@@ -80,7 +86,7 @@ if deadliest_creatures_container.heading == nil then
 	deadliest_creatures_container.heading:SetFont("Fonts\\blei00d.TTF", 18, "")
 	deadliest_creatures_container.heading:SetJustifyV("TOP")
 	deadliest_creatures_container.heading:SetTextColor(0.9, 0.9, 0.9)
-	deadliest_creatures_container.heading:SetPoint("TOP", deadliest_creatures_container, "TOP", 0, -20)
+	deadliest_creatures_container.heading:SetPoint("TOP", deadliest_creatures_container, "TOP", 0, 20)
 	deadliest_creatures_container.heading:Show()
 end
 
@@ -92,7 +98,7 @@ if deadliest_creatures_container.page_str == nil then
 	deadliest_creatures_container.page_str:SetJustifyV("BOTTOM")
 	deadliest_creatures_container.page_str:SetJustifyH("CENTER")
 	deadliest_creatures_container.page_str:SetTextColor(0.7, 0.7, 0.7)
-	deadliest_creatures_container.page_str:SetPoint("TOP", deadliest_creatures_container, "TOP", 0, -430)
+	deadliest_creatures_container.page_str:SetPoint("TOP", deadliest_creatures_container, "TOP", 0, -438)
 	deadliest_creatures_container.page_str:Show()
 end
 
@@ -170,13 +176,17 @@ if deadliest_creatures_container.right == nil then
 	deadliest_creatures_container.right:SetTexCoord(0.81, 0.94, 0.5, 1)
 end
 
-function deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filter)
+function deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filter, metric)
+	if metric == nil then
+		metric = "Normalized Score"
+	end
 	local current_map_id = 947
 	deadliest_creatures_container.page_str:SetText("Page " .. page_number)
 	deadliest_creatures_container.heading:Show()
 	deadliest_creatures_container.left:Show()
 	deadliest_creatures_container.right:Show()
 	local _stats = stats_tbl["stats"]
+	local _log_normal_params = stats_tbl["log_normal_params"]
 	local valid_map = C_Map.GetMapInfo(current_map_id)
 	if valid_map then
 		deadliest_creatures_container.heading_description:Show()
@@ -192,36 +202,86 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_
 		map_id = "all"
 	end
 
+	if deadliest_creatures_container.sort_by_text == nil then
+		deadliest_creatures_container.sort_by_text =
+			deadliest_creatures_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+
+	deadliest_creatures_container.sort_by_text:SetPoint("TOPLEFT", deadliest_creatures_container, "TOPLEFT", 0, -8)
+	deadliest_creatures_container.sort_by_text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	deadliest_creatures_container.sort_by_text:SetTextColor(255 / 255, 215 / 255, 0)
+	deadliest_creatures_container.sort_by_text:SetText("Sort Metric")
+	deadliest_creatures_container.sort_by_text:SetJustifyH("LEFT")
+	deadliest_creatures_container.sort_by_text:Show()
+
 	if deadliest_creatures_container.player_search_box == nil then
 		deadliest_creatures_container.player_search_box =
 			CreateFrame("EditBox", nil, deadliest_creatures_container, "InputBoxTemplate")
 	end
 
+	if deadliest_creatures_container.lvl_min_search_box == nil then
+		deadliest_creatures_container.lvl_min_search_box =
+			CreateFrame("EditBox", nil, deadliest_creatures_container, "InputBoxTemplate")
+	end
+
+	if deadliest_creatures_container.lvl_max_search_box == nil then
+		deadliest_creatures_container.lvl_max_search_box =
+			CreateFrame("EditBox", nil, deadliest_creatures_container, "InputBoxTemplate")
+	end
+
+	if deadliest_creatures_container.metric_dd == nil then
+		deadliest_creatures_container.metric_dd =
+			CreateFrame("Frame", nil, deadliest_creatures_container, "UIDropDownMenuTemplate")
+	end
+	local function filterFunction(name)
+		if name == nil then
+			return false
+		end
+		if string.find(string.lower(name), string.lower(deadliest_creatures_container.player_search_box:GetText())) then
+			return true
+		end
+		return false
+	end
+	local function dropdownFunctions(frame, level, menuList)
+		local info = UIDropDownMenu_CreateInfo()
+		info.text, info.checked, info.func =
+			"Normalized Score", metric == "Normalized Score", function()
+				deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, "Normalized Score")
+			end
+		UIDropDownMenu_AddButton(info)
+		info.text, info.checked, info.func =
+			"Total Kills", metric == "Total Kills", function()
+				deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, "Total Kills")
+			end
+		UIDropDownMenu_AddButton(info)
+	end
+	deadliest_creatures_container.metric_dd:SetPoint(
+		"TOPLEFT",
+		deadliest_creatures_container.sort_by_text,
+		"BOTTOMLEFT",
+		-20,
+		0
+	)
+	UIDropDownMenu_SetText(deadliest_creatures_container.metric_dd, metric)
+	UIDropDownMenu_SetWidth(deadliest_creatures_container.metric_dd, 150)
+	UIDropDownMenu_Initialize(deadliest_creatures_container.metric_dd, dropdownFunctions)
+	UIDropDownMenu_JustifyText(deadliest_creatures_container.metric_dd, "LEFT")
+
 	if deadliest_creatures_container.player_search_box.text == nil then
 		deadliest_creatures_container.player_search_box.text =
 			deadliest_creatures_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	end
-	deadliest_creatures_container.player_search_box:SetPoint("TOP", deadliest_creatures_container, "TOP", -190, -25)
+	deadliest_creatures_container.player_search_box:SetPoint("TOP", deadliest_creatures_container, "TOP", -25, -20)
+	deadliest_creatures_container.player_search_box:SetPoint("BOTTOM", deadliest_creatures_container, "TOP", -25, -50)
 	deadliest_creatures_container.player_search_box:SetWidth(130)
-	deadliest_creatures_container.player_search_box:SetHeight(30)
+	deadliest_creatures_container.player_search_box:SetFont("Fonts\\blei00d.TTF", 14, "")
 	deadliest_creatures_container.player_search_box:SetMovable(false)
 	deadliest_creatures_container.player_search_box:SetBlinkSpeed(1)
 	deadliest_creatures_container.player_search_box:SetAutoFocus(false)
 	deadliest_creatures_container.player_search_box:SetMultiLine(false)
 	deadliest_creatures_container.player_search_box:SetMaxLetters(20)
 	deadliest_creatures_container.player_search_box:SetScript("OnEnterPressed", function()
-		deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, function(name)
-			if name == nil then
-				return false
-			end
-			if
-				string.find(string.lower(name), string.lower(deadliest_creatures_container.player_search_box:GetText()))
-			then
-				return true
-			else
-				return false
-			end
-		end)
+		deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric)
 	end)
 
 	deadliest_creatures_container.player_search_box.text:SetPoint(
@@ -233,16 +293,166 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_
 	)
 	deadliest_creatures_container.player_search_box.text:SetFont("Fonts\\blei00d.TTF", 12, "")
 	deadliest_creatures_container.player_search_box.text:SetTextColor(255 / 255, 215 / 255, 0)
-	deadliest_creatures_container.player_search_box.text:SetText("Creature Search")
+	deadliest_creatures_container.player_search_box.text:SetText("Name Filter")
 	deadliest_creatures_container.player_search_box.text:Show()
 
-	local most_deadly_units = deathlogGetOrdered(_stats, { "all", map_id, "all", nil })
+	deadliest_creatures_container.lvl_min_search_box:SetPoint("TOP", deadliest_creatures_container, "TOP", 65, -20)
+	deadliest_creatures_container.lvl_min_search_box:SetPoint("BOTTOM", deadliest_creatures_container, "TOP", 65, -50)
+	deadliest_creatures_container.lvl_min_search_box:SetWidth(45)
+	deadliest_creatures_container.lvl_min_search_box:SetFont("Fonts\\blei00d.TTF", 14, "")
+	deadliest_creatures_container.lvl_min_search_box:SetMovable(false)
+	deadliest_creatures_container.lvl_min_search_box:SetBlinkSpeed(1)
+	deadliest_creatures_container.lvl_min_search_box:SetAutoFocus(false)
+	deadliest_creatures_container.lvl_min_search_box:SetText(min_lvl)
+	deadliest_creatures_container.lvl_min_search_box:SetMultiLine(false)
+	deadliest_creatures_container.lvl_min_search_box:SetMaxLetters(20)
+	deadliest_creatures_container.lvl_min_search_box:SetScript("OnEnterPressed", function()
+		if tonumber(deadliest_creatures_container.lvl_min_search_box:GetText()) == nil then
+			return
+		end
+		min_lvl = tonumber(deadliest_creatures_container.lvl_min_search_box:GetText())
+		print(min_lvl)
+		deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric)
+	end)
+
+	if deadliest_creatures_container.lvl_min_search_box.text == nil then
+		deadliest_creatures_container.lvl_min_search_box.text =
+			deadliest_creatures_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+
+	deadliest_creatures_container.lvl_min_search_box.text:SetPoint(
+		"LEFT",
+		deadliest_creatures_container.lvl_min_search_box,
+		"LEFT",
+		0,
+		15
+	)
+	deadliest_creatures_container.lvl_min_search_box.text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	deadliest_creatures_container.lvl_min_search_box.text:SetTextColor(255 / 255, 215 / 255, 0)
+	deadliest_creatures_container.lvl_min_search_box.text:SetText("Min. Lvl.")
+	deadliest_creatures_container.lvl_min_search_box.text:Show()
+
+	deadliest_creatures_container.lvl_max_search_box:SetPoint("TOP", deadliest_creatures_container, "TOP", 115, -20)
+	deadliest_creatures_container.lvl_max_search_box:SetPoint("BOTTOM", deadliest_creatures_container, "TOP", 115, -50)
+	deadliest_creatures_container.lvl_max_search_box:SetWidth(45)
+	deadliest_creatures_container.lvl_max_search_box:SetFont("Fonts\\blei00d.TTF", 14, "")
+	deadliest_creatures_container.lvl_max_search_box:SetMovable(false)
+	deadliest_creatures_container.lvl_max_search_box:SetBlinkSpeed(1)
+	deadliest_creatures_container.lvl_max_search_box:SetText(max_lvl)
+	deadliest_creatures_container.lvl_max_search_box:SetAutoFocus(false)
+	deadliest_creatures_container.lvl_max_search_box:SetMultiLine(false)
+	deadliest_creatures_container.lvl_max_search_box:SetMaxLetters(20)
+	deadliest_creatures_container.lvl_max_search_box:SetScript("OnEnterPressed", function()
+		if tonumber(deadliest_creatures_container.lvl_max_search_box:GetText()) == nil then
+			return
+		end
+		max_lvl = tonumber(deadliest_creatures_container.lvl_max_search_box:GetText())
+		deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric)
+	end)
+
+	if deadliest_creatures_container.lvl_max_search_box.text == nil then
+		deadliest_creatures_container.lvl_max_search_box.text =
+			deadliest_creatures_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+
+	deadliest_creatures_container.lvl_max_search_box.text:SetPoint(
+		"LEFT",
+		deadliest_creatures_container.lvl_max_search_box,
+		"LEFT",
+		0,
+		15
+	)
+	deadliest_creatures_container.lvl_max_search_box.text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	deadliest_creatures_container.lvl_max_search_box.text:SetTextColor(255 / 255, 215 / 255, 0)
+	deadliest_creatures_container.lvl_max_search_box.text:SetText("Max. Lvl.")
+	deadliest_creatures_container.lvl_max_search_box.text:Show()
+
+	if deadliest_creatures_container.normalized_metric_frame == nil then
+		deadliest_creatures_container.normalized_metric_frame =
+			CreateFrame("Frame", nil, deadliest_creatures_container, "BackdropTemplate")
+		local PaneBackdrop = {
+			bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
+			tile = true,
+			tileSize = 16,
+			edgeSize = 16,
+			insets = { left = 3, right = 3, top = 5, bottom = 3 },
+			deadliest_creatures_container.normalized_metric_frame:SetBackdrop(PaneBackdrop),
+		}
+		if deadliest_creatures_container.normalized_metric_desc == nil then
+			deadliest_creatures_container.normalized_metric_desc =
+				deadliest_creatures_container.normalized_metric_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		end
+	end
+
+	deadliest_creatures_container.normalized_metric_frame:SetPoint(
+		"TOPRIGHT",
+		deadliest_creatures_container,
+		"TOPRIGHT",
+		0,
+		0
+	)
+	deadliest_creatures_container.normalized_metric_frame:SetBackdropColor(0, 0, 0, 0.6)
+	deadliest_creatures_container.normalized_metric_frame:SetBackdropBorderColor(1, 1, 1, 1)
+	deadliest_creatures_container.normalized_metric_frame:SetSize(100, 100)
+	deadliest_creatures_container.normalized_metric_frame:Show()
+
+	deadliest_creatures_container.normalized_metric_frame:SetScript("OnEnter", function()
+		GameTooltip:SetOwner(WorldFrame, "ANCHOR_CURSOR")
+		GameTooltip:SetMinimumWidth(450)
+		GameTooltip:AddLine(
+			"Normalized Score: #Kills/(1-CumulativeDensityFunction(x))\nWhere the cumulative density function represents the ratio of characters whom have died by `x` lvl.  This metric normalizes the creatures kill count by the fraction of population that is alive around that creature's level.  We can extract the cumulative density function from the probability density function using a log normal distribution.  Most Hardcore characters don't make it to 60, so we assume that the remaining population at `x` level is roughly 1 - CDF(lvl) \n \nTotal Kills: This just uses the number of kills to sort the creatures.  Note that there are more Hardcore players at lower levels, so lower level creatures have a higher kill count in general.",
+			1,
+			1,
+			1,
+			1,
+			true
+		)
+		GameTooltip:Show()
+	end)
+	deadliest_creatures_container.normalized_metric_frame:SetScript("OnLeave", function()
+		GameTooltip:Hide()
+	end)
+
+	deadliest_creatures_container.normalized_metric_desc:SetFont("Fonts\\blei00d.TTF", 14, "OUTLINE")
+	deadliest_creatures_container.normalized_metric_desc:SetTextColor(0.8, 0.8, 0.8)
+	deadliest_creatures_container.normalized_metric_desc:SetText("Mouseover for\nmetric details")
+	deadliest_creatures_container.normalized_metric_desc:SetPoint(
+		"TOP",
+		deadliest_creatures_container.normalized_metric_frame,
+		"TOP",
+		0,
+		0
+	)
+	deadliest_creatures_container.normalized_metric_desc:Show()
+
+	local most_deadly_units = nil
+	if metric == "Total Kills" then
+		most_deadly_units = deathlogGetOrdered(_stats, { "all", map_id, "all", nil })
+	elseif metric == "Normalized Score" then
+		most_deadly_units = deathlogGetOrderedNormalized(
+			_stats,
+			{ "all", "all", "all", nil },
+			_log_normal_params[947]["ln_mean"][1],
+			_log_normal_params[947]["ln_std_dev"][1]
+		)
+	end
+
 	local filtered_most_deadly_units = {}
+	local function lvlFunction(lvl)
+		if lvl >= min_lvl then
+			if lvl <= max_lvl then
+				return true
+			end
+		end
+		return false
+	end
+
 	if filter == nil then
 		filtered_most_deadly_units = most_deadly_units
 	else
 		for k, v in ipairs(most_deadly_units) do
-			if filter(id_to_npc[v[1]]) then
+			if filter(id_to_npc[v[1]]) and lvlFunction(_stats["all"]["all"]["all"][v[1]]["avg_lvl"]) then
 				filtered_most_deadly_units[#filtered_most_deadly_units + 1] = v
 			end
 		end
@@ -254,7 +464,7 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_
 		end
 
 		deadliest_creatures_container:SetParent(scroll_frame.frame)
-		deadliest_creatures_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -25)
+		deadliest_creatures_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -70)
 		deadliest_creatures_container:Show()
 		deadliest_creatures_container:SetWidth(scroll_frame.frame:GetWidth() * 0.5)
 		deadliest_creatures_container:SetHeight(scroll_frame.frame:GetWidth() * 0.8)
@@ -273,7 +483,7 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_
 					deadliest_creatures_container:GetWidth() * filtered_most_deadly_units[idx][2] / max_kills
 				)
 				deadliest_creatures_textures[i]:SetCreatureName(id_to_npc[filtered_most_deadly_units[idx][1]])
-				deadliest_creatures_textures[i]:SetNumKills(filtered_most_deadly_units[idx][2])
+				deadliest_creatures_textures[i]:SetNumKills(filtered_most_deadly_units[idx][2], metric)
 				if valid_map then
 					deadliest_creatures_textures[i]:SetScript("OnMouseDown", function()
 						local c_id = filtered_most_deadly_units[idx][1]

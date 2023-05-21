@@ -19,10 +19,6 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 --
-local LibDeflate
-if LibStub then -- You are using LibDeflate as WoW addon
-	LibDeflate = LibStub:GetLibrary("LibDeflate")
-end
 
 deathlog_instance_tbl = {
 	["Shadowfang Keep"] = 33,
@@ -233,6 +229,72 @@ function deathlogOrderBy(_deathlog, order_function)
 	return ordered
 end
 
+local function calculateCDF(ln_mean, ln_std_dev)
+	local function logNormal(x, mean, sigma)
+		return (1 / (x * sigma * sqrt(2 * 3.14)))
+			* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
+	end
+	cdf = {}
+	cdf[1] = logNormal(1, ln_mean, sqrt(ln_std_dev))
+	for i = 2, 60 do
+		cdf[i] = cdf[i - 1] + logNormal(i, ln_mean, sqrt(ln_std_dev))
+	end
+	return cdf
+end
+
+-- Example input stats, {"all", "all", "all", nil} to get most deadly mob
+function deathlogGetOrderedNormalized(stats, parameters, ln_mean, ln_std_dev)
+	local function normalizeFunc(kills, pr)
+		return kills / pr
+	end
+	local function logNormal(x, mean, sigma)
+		return (1 / (x * sigma * sqrt(2 * 3.14)))
+			* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
+	end
+	local function calculateNormalizedValue(kills, avg_lvl, cdf)
+		local pr = 1 - cdf[ceil(avg_lvl)]
+		return normalizeFunc(kills, pr)
+	end
+	local cdf = calculateCDF(ln_mean, ln_std_dev)
+	local unordered_list = {}
+	local ordered = {}
+	local prefix_stats = stats
+	local post_parameters = {}
+	local active = false
+	for _, v in ipairs(parameters) do
+		if active then
+			post_parameters[#post_parameters + 1] = v
+		else
+			if v == nil then
+				active = true
+			else
+				if prefix_stats[v] == nil then
+					return nil
+				end
+				prefix_stats = prefix_stats[v]
+			end
+		end
+	end
+
+	for k, v in pairs(prefix_stats) do
+		if k ~= "all" then
+			local postfix_stats = v
+			for _, v in ipairs(post_parameters) do
+				postfix_stats = postfix_stats[v]
+			end
+			table.insert(unordered_list, { k, postfix_stats["num_entries"], postfix_stats["avg_lvl"] })
+		end
+	end
+	for i, v in
+		spairs(unordered_list, function(t, a, b)
+			return calculateNormalizedValue(t[b][2], t[b][3], cdf) < calculateNormalizedValue(t[a][2], t[a][3], cdf)
+		end)
+	do
+		table.insert(ordered, { v[1], calculateNormalizedValue(v[2], v[3], cdf) })
+	end
+	return ordered
+end
+
 -- Example input stats, {"all", "all", "all", nil} to get most deadly mob
 function deathlogGetOrdered(stats, parameters)
 	local unordered_list = {}
@@ -439,10 +501,6 @@ function deathlog_serializeTable(val, name, skipnewlines, depth)
 	end
 
 	return tmp
-end
-
-function deathlog_compressPrecomputed(data)
-	return LibDeflate:CompressZlib(deathlog_serializeTable(data))
 end
 
 local function calculateLogNormalParametersForMap(_deathlog_data, map_id)

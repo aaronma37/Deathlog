@@ -31,12 +31,17 @@ local most_deadly_units = {
 		},
 	},
 }
-Deathlog_azeroth_deadliest_dict = {} -- source_name -> ranking
 
-local LibDeflate
-if LibStub then -- You are using LibDeflate as WoW addon
-	LibDeflate = LibStub:GetLibrary("LibDeflate")
-end
+local most_deadly_units_normalized = {
+	["all"] = { -- server
+		["all"] = { -- map_id
+			["all"] = {}, -- class_id
+		},
+	},
+}
+
+Deathlog_azeroth_deadliest_dict = {} -- source_name -> ranking
+Deathlog_azeroth_deadliest_dict_normalized = {} -- source_name -> ranking
 
 deathlog_data = {}
 deathlog_settings = {}
@@ -57,7 +62,7 @@ local function initMinimapButton()
 end
 
 local function loadWidgets()
-	Deathlog_minilog_applySettings()
+	Deathlog_minilog_applySettings(true)
 	Deathlog_CRTWidget_applySettings()
 	Deathlog_HIWidget_applySettings()
 	Deathlog_HWMWidget_applySettings()
@@ -173,6 +178,19 @@ local function handleEvent(self, event, ...)
 				Deathlog_azeroth_deadliest_dict[id_to_npc[v[1]]] = k
 			end
 		end
+
+		-- most_deadly_units_normalized["all"]["all"]["all"] = deathlogGetOrderedNormalized(
+		-- 	general_stats,
+		-- 	{ "all", "all", "all", nil },
+		-- 	log_normal_params[947]["ln_mean"][1],
+		-- 	log_normal_params[947]["ln_std_dev"][1]
+		-- )
+
+		-- for k, v in ipairs(most_deadly_units_normalized["all"]["all"]["all"]) do
+		-- 	if id_to_npc[v[1]] then
+		-- 		Deathlog_azeroth_deadliest_dict_normalized[id_to_npc[v[1]]] = k
+		-- 	end
+		-- end
 		loadWidgets()
 	end
 end
@@ -197,6 +215,7 @@ local options = {
 			type = "execute",
 			name = "Import deathlog from hardcore",
 			desc = "Import deathlog from hardcore. This will append entries.",
+			width = 1.3,
 			func = function()
 				Deathlog_LoadFromHardcore()
 			end,

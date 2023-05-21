@@ -67,7 +67,8 @@ options = {
 		enable = {
 			type = "toggle",
 			name = "Show Deadly Creature Ranking Tooltip",
-			desc = "Show Deadly Creature Ranking Tooltip",
+			desc = "Show Deadly Creature Ranking Tooltip.  This add a line to your tooltip when hovering over a creature, which specifies its rank.",
+			width = 1.6,
 			get = function()
 				return deathlog_settings[widget_name]["enable"]
 			end,

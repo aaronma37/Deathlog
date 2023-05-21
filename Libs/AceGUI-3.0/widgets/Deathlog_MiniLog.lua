@@ -14,6 +14,7 @@ local wipe = table.wipe
 -- WoW APIs
 local PlaySound = PlaySound
 local CreateFrame, UIParent = CreateFrame, UIParent
+local column_types = { "Name", "Guild", "Lvl", "F's", "Race", "Class", "Source", "ColoredName", "Zone" }
 
 --[[-----------------------------------------------------------------------------
 Scripts
@@ -124,6 +125,11 @@ local methods = {
 		local column_offset = 17
 		if subtitle_data == nil then
 			return
+		end
+
+		--clear
+		for _, v in ipairs(column_types) do
+			self.subtitletext_tbl[v]:SetText("")
 		end
 		for _, v in ipairs(subtitle_data) do
 			self.subtitletext_tbl[v[1]]:SetText(v[1])
@@ -277,13 +283,13 @@ local function Constructor()
 	titletext:SetFont("Fonts\\FRIZQT__.TTF", 13, "")
 	titletext:SetPoint("LEFT", frame, "TOPLEFT", 32, -10)
 
-	local column_types = { "Name", "Guild", "Lvl", "F's", "Race", "Class" }
 	local subtitletext_tbl = {}
 	for _, v in ipairs(column_types) do
 		subtitletext_tbl[v] = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		subtitletext_tbl[v]:SetPoint("LEFT", frame, "TOPLEFT", 20, -26)
 		subtitletext_tbl[v]:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 		subtitletext_tbl[v]:SetTextColor(0.5, 0.5, 0.5)
+		subtitletext_tbl[v]:SetWordWrap(false)
 	end
 
 	local titlebg_l = frame:CreateTexture(nil, "OVERLAY")
