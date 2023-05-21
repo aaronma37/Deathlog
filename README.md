@@ -1,10 +1,6 @@
 # Deathlog
 
-A WoW Era Hardcore addon which provides a ui for exploring the deathlog and death statistics.
-
-## Work-in-Progress
-* Widgets haven't been created yet.
-* Not yet hooked up to deathlog chat channel.  Until then, this imports the Hardcore addon deathlog data.
+A WoW Era Hardcore addon which provides a ui for exploring the deathlog and death statistics. __NOTE__ I am currently looking for more deathlog data! Please consider reaching out (discord lakai.#2409) to share your deathlog data.  Current 50k entries, goal 500k.
 
 ## Compatibility
 
@@ -30,26 +26,43 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 
 ![Westfall death statistics](statistics_westfall.png)
 
+### Deathlog Statistics per Instance
+
+* View death stats per instance.  (WIP Needs more data)
+
+![Instance Stats](instance_stats.png)
+
+### Deathlog Statistics by NPC/Creature
+
+* See what creatures do the most killing in Azeroth. Normalized and total kill ranking
+* Creature locations and models
+
+![Instance Stats](creature_stats.png)
+
+### Customizable Deathlog (minilog widget)
+
+* Configure columns of the deathlog
+* Configure font of the deathlog
+
+![custom deathlog](deathlog_custom.png)
+
+### Heatmap Indicator
+
+* Skull icon which turns red when the player is in a dangerous area
+
+![heatmap icon](heatmap_icon.png)
+
+### Heatmap WorldMap Overlay
+
+* Open the world map to see an overlay of dangerous areas
+
 ### Preprocessed collection
 
 * Over 45k deathlog entries used for statistics page
 * The file `collected_entries.lua` can be referenced for all entries.  This file isn't actually loaded and is included for sharing.
 
-### Widgets
-Under construction
+### Tooltip Information
 
-#### Deathlog widget
+* View deadly ranking in npc hover over tooltip
 
-* Similar functionality to the Hardcore deathlog widget with some modified UI
-
-#### Death Alerts
-
-* Similar functionality to the Hardcore death alerts widget with some modified UI
-
-#### Danger notifications
-
-* Visual indicators for when your character is nearby dangerous coordinates
-
-#### Tooltip information
-
-* Indicate number of hardcore kills that the target/hover over unit has
+![tooltip](tooltip_mod.png)
