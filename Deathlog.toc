@@ -8,7 +8,7 @@
 
 
 ## DefaultState: enabled
-## SavedVariables: deathlog_settings, deathlog_data, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs
+## SavedVariables: deathlog_settings, deathlog_data, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs, dev_class_data
 ## SavedVariablesPerCharacter:
 
 embeds.xml
@@ -28,6 +28,10 @@ MenuElements/deadliest_creature_container.lua
 MenuElements/deadliest_creature_container_extended.lua
 MenuElements/average_class_container.lua
 MenuElements/graph_container.lua
+MenuElements/class_graph_container.lua
+MenuElements/class_stats_container.lua
+MenuElements/class_stats_comparison_container.lua
+MenuElements/class_selector_container.lua
 
 Widgets/Minilog/widget.lua
 Widgets/HeatmapIndicator/widget.lua

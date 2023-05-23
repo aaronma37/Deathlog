@@ -242,6 +242,10 @@ local function calculateCDF(ln_mean, ln_std_dev)
 	return cdf
 end
 
+function Deathlog_CalculateCDF(ln_mean, ln_std_dev)
+	return calculateCDF(ln_mean, ln_std_dev)
+end
+
 -- Example input stats, {"all", "all", "all", nil} to get most deadly mob
 function deathlogGetOrderedNormalized(stats, parameters, ln_mean, ln_std_dev)
 	local function normalizeFunc(kills, pr)
@@ -252,6 +256,9 @@ function deathlogGetOrderedNormalized(stats, parameters, ln_mean, ln_std_dev)
 			* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
 	end
 	local function calculateNormalizedValue(kills, avg_lvl, cdf)
+		if kills < 10 then
+			return 0
+		end
 		local pr = 1 - cdf[ceil(avg_lvl)]
 		return normalizeFunc(kills, pr)
 	end
@@ -551,6 +558,20 @@ local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
 			/ log_normal_params_for_map_id["total"][v]
 	end
 	return log_normal_params_for_map_id
+end
+
+function deathlog_calculateClassData(_deathlog_data)
+	local class_data = {} --[class_id] -> {lvl,}
+
+	for servername, entry_tbl in pairs(_deathlog_data) do
+		for _, v in pairs(entry_tbl) do
+			if class_data[v["class_id"]] == nil then
+				class_data[v["class_id"]] = {}
+			end
+			class_data[v["class_id"]][#class_data[v["class_id"]] + 1] = v["level"]
+		end
+	end
+	return class_data
 end
 
 function deathlog_calculateLogNormalParameters(_deathlog_data)

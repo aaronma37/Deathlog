@@ -311,7 +311,6 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_
 			return
 		end
 		min_lvl = tonumber(deadliest_creatures_container.lvl_min_search_box:GetText())
-		print(min_lvl)
 		deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric)
 	end)
 

@@ -844,6 +844,59 @@ local function drawStatisticsTab(container)
 	end)
 end
 
+local function drawClassStatisticsTab(container)
+	local update_functions = {}
+	local scroll_container = AceGUI:Create("SimpleGroup")
+	local current_instance_id = 36
+	scroll_container:SetFullWidth(true)
+	scroll_container:SetFullHeight(true)
+	scroll_container:SetLayout("Fill")
+	deathlog_tabcontainer:AddChild(scroll_container)
+
+	local scroll_frame = AceGUI:Create("SimpleGroup")
+	scroll_frame:SetLayout("Flow")
+	scroll_container:AddChild(scroll_frame)
+
+	local title_label = AceGUI:Create("Heading")
+	title_label:SetFullWidth(true)
+	title_label:SetText("Death Statistics - Azeroth")
+	title_label.label:SetFont("Fonts\\blei00d.TTF", 24, "")
+	scroll_frame:AddChild(title_label)
+	local function modifyTitle(zone)
+		title_label:SetText("Death Statistics - " .. zone)
+	end
+
+	local stats_menu_elements = {
+		Deathlog_ClassGraphContainer(),
+		Deathlog_ClassStatsContainer(),
+		Deathlog_ClassSelectorContainer(),
+		Deathlog_ClassStatsComparisonContainer(),
+	}
+
+	local function setMapRegion(map_id, name)
+		current_map_id = map_id
+		if name then
+			modifyTitle(name)
+		end
+		local stats_tbl = {
+			["skull_locs"] = _skull_locs,
+			["stats"] = _stats,
+			["log_normal_params"] = _log_normal_params,
+		}
+		for _, v in ipairs(stats_menu_elements) do
+			v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+		end
+	end
+
+	setMapRegion(1, "Warrior")
+
+	scroll_frame.frame:HookScript("OnHide", function()
+		for _, v in ipairs(stats_menu_elements) do
+			v:Hide()
+		end
+	end)
+end
+
 local function drawInstanceStatisticsTab(container)
 	local update_functions = {}
 	local scroll_container = AceGUI:Create("SimpleGroup")
@@ -912,6 +965,7 @@ local function createDeathlogMenu()
 
 	deathlog_tabcontainer = AceGUI:Create("DeathlogTabGroup") -- "InlineGroup" is also good
 	local tab_table = {
+		{ value = "ClassStatisticsTab", text = "Class Statistics" },
 		{ value = "CreatureStatisticsTab", text = "Creature Statistics" },
 		{ value = "InstanceStatisticsTab", text = "Instance Statistics" },
 		{ value = "StatisticsTab", text = "Zone Statistics" },
@@ -928,6 +982,8 @@ local function createDeathlogMenu()
 			drawStatisticsTab(container)
 		elseif group == "InstanceStatisticsTab" then
 			drawInstanceStatisticsTab(container)
+		elseif group == "ClassStatisticsTab" then
+			drawClassStatisticsTab(container)
 		elseif group == "CreatureStatisticsTab" then
 			drawCreatureStatisticsTab(container)
 		elseif group == "LogTab" then
