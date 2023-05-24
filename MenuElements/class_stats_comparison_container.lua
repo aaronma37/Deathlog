@@ -160,7 +160,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 		* 100.0
 	s_class_info["Avg. Lvl."] = _stats["all"][map_id][inc_class_id]["all"]["avg_lvl"]
 	local cdf =
-		Deathlog_CalculateCDF(class_log_normal_params[inc_class_id][1], class_log_normal_params[inc_class_id][2])
+		Deathlog_CalculateCDF2(class_log_normal_params[inc_class_id][1], class_log_normal_params[inc_class_id][2])
 	s_class_info["10"] = (1 - cdf[10]) * 100
 	s_class_info["20"] = (1 - cdf[20]) * 100
 	s_class_info["30"] = (1 - cdf[30]) * 100
@@ -221,13 +221,13 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 					cdf[i] = 0
 				end
 				for k, v in pairs(deathlog_class_tbl) do
-					local l_cdf = Deathlog_CalculateCDF(class_log_normal_params[v][1], class_log_normal_params[v][2])
+					local l_cdf = Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
 					for i = 1, 60 do
 						cdf[i] = cdf[i] + l_cdf[i] / 9
 					end
 				end
 			else
-				cdf = Deathlog_CalculateCDF(class_log_normal_params[class_id][1], class_log_normal_params[class_id][2])
+				cdf = Deathlog_CalculateCDF2(class_log_normal_params[class_id][1], class_log_normal_params[class_id][2])
 			end
 
 			entry_data[class_id]["Avg. Lvl."] = s_class_info["Avg. Lvl."] - v["all"]["avg_lvl"]

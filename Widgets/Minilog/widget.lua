@@ -110,7 +110,7 @@ local subtitle_metadata = {
 				return mapinfo.name or ""
 			end
 			if _entry.player_data["instance_id"] then
-				return deathlog_instance_tbl[_entry.player_data["instance_id"]] or nil
+				return deathlog_id_to_instance_tbl[_entry.player_data["instance_id"]] or nil
 			end
 			return ""
 		end,

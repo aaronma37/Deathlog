@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
-deathlog_instance_tbl = {
+local instance_tbl = {
 	{ 33, "SHADOWFANGKEEP", "Shadowfang Keep" },
 	{ 36, "DEADMINES", "Deadmines" },
 	{ 34, "STORMWINDSTOCKADES", "Stockades" },
@@ -70,7 +70,7 @@ local function createInstanceButton(path_postfix, title_text)
 end
 
 instance_container.instance_buttons = {}
-for i, v in ipairs(deathlog_instance_tbl) do
+for i, v in ipairs(instance_tbl) do
 	instance_container.instance_buttons[i] = createInstanceButton(v[2], v[3])
 	instance_container.instance_buttons[i]:Show()
 end
@@ -94,7 +94,7 @@ function instance_container.updateMenuElement(scroll_frame, current_instance_id,
 
 	local vert_sep = -75
 
-	for i = 1, #deathlog_instance_tbl do
+	for i = 1, #instance_tbl do
 		instance_container.instance_buttons[i]:SetHeight(instance_container:GetWidth() / 10)
 		instance_container.instance_buttons[i]:SetWidth(instance_container:GetWidth() / 10 * 2)
 		instance_container.instance_buttons[i].instance_texture:SetHeight(instance_container:GetWidth() / 10)
@@ -228,7 +228,7 @@ function instance_container.updateMenuElement(scroll_frame, current_instance_id,
 	)
 
 	local idx = 1
-	for i, v in ipairs(deathlog_instance_tbl) do
+	for i, v in ipairs(instance_tbl) do
 		if current_instance_id == v[1] then
 			idx = i
 			break
@@ -243,7 +243,7 @@ function instance_container.updateMenuElement(scroll_frame, current_instance_id,
 
 	for i, v in ipairs(instance_container.instance_buttons) do
 		instance_container.instance_buttons[i]:SetScript("OnMouseDown", function()
-			setMapRegion(deathlog_instance_tbl[i][1], deathlog_instance_tbl[i][3])
+			setMapRegion(instance_tbl[i][1], instance_tbl[i][3])
 		end)
 	end
 end

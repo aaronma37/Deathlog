@@ -41,6 +41,11 @@ deathlog_instance_tbl = {
 	["Dire Maul"] = 429,
 }
 
+deathlog_id_to_instance_tbl = {}
+for k, v in pairs(deathlog_instance_tbl) do
+	deathlog_id_to_instance_tbl[v] = k
+end
+
 deathlog_zone_tbl = {
 	["Azeroth"] = 947,
 	["Durotar"] = 1411,
@@ -244,6 +249,32 @@ end
 
 function Deathlog_CalculateCDF(ln_mean, ln_std_dev)
 	return calculateCDF(ln_mean, ln_std_dev)
+end
+
+function Deathlog_CalculateCDF2(ln_mean, ln_sig)
+	local a1 = 0.278393
+	local a2 = 0.230389
+	local a3 = 0.000972
+	local a4 = 0.078108
+
+	local function erf(x)
+		local negative = 1
+		if x < 0 then
+			x = -x
+			negative = -1
+		end
+		local denom = (1 + a1 * x + a2 * x * x + a3 * x * x * x + a4 * x * x * x * x)
+		local denom = denom * denom * denom * denom
+		return negative * (1 - 1 / denom)
+	end
+
+	local cdf = {}
+
+	for i = 1, 60 do
+		local err_term = erf((log(i) - ln_mean) / (sqrt(2) * ln_sig))
+		cdf[i] = (1 / 2) * (1 + err_term)
+	end
+	return cdf
 end
 
 -- Example input stats, {"all", "all", "all", nil} to get most deadly mob

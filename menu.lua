@@ -27,6 +27,7 @@ local deathlog_tabcontainer = nil
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl
 local zone_tbl = deathlog_zone_tbl
+local instance_tbl = deathlog_instance_tbl
 
 local deathlog_menu = nil
 
@@ -84,7 +85,7 @@ local subtitle_data = {
 		function(_entry, _server_name)
 			if _entry["map_id"] == nil then
 				if _entry["instance_id"] ~= nil then
-					return _entry["instance_id"]
+					return deathlog_id_to_instance_tbl[_entry["instance_id"]] or _entry["instance_id"]
 				else
 					return "-----------"
 				end
@@ -350,18 +351,25 @@ local function drawLogTab(container)
 	local zone_search_box = AceGUI:Create("DeathlogDropdown")
 	zone_search_box:SetWidth(140)
 	zone_search_box:SetDisabled(false)
-	zone_search_box:SetLabel("Zone")
+	zone_search_box:SetLabel("Zone/Instance")
 	zone_search_box:SetPoint("TOP", 0, 0)
 	zone_search_box.label:SetFont("Fonts\\blei00d.TTF", 13, "")
 	zone_search_box:AddItem("", "")
 	for zone_name, _ in pairs(zone_tbl) do
 		zone_search_box:AddItem(zone_name, zone_name)
 	end
+	zone_search_box:AddItem("", "---------")
+	for zone_name, _ in pairs(instance_tbl) do
+		zone_search_box:AddItem(zone_name, zone_name)
+	end
 	zone_search_box:SetCallback("OnValueChanged", function()
 		local key = zone_search_box:GetValue()
 		if key ~= "" then
 			zone_filter = function(_, _entry)
-				if zone_tbl[key] == tonumber(_entry["map_id"]) then
+				if
+					(zone_tbl[key] and zone_tbl[key] == tonumber(_entry["map_id"]))
+					or (instance_tbl[key] and instance_tbl[key] == tonumber(_entry["instance_id"]))
+				then
 					return true
 				else
 					return false

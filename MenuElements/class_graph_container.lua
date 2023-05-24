@@ -133,7 +133,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		for k, v in pairs(class_tbl) do
 			if class_log_normal_params and class_log_normal_params[v][1] then
 				for i = 1, 60 do
-					y_values[v][i] = logNormal(i, class_log_normal_params[v][1], sqrt(class_log_normal_params[v][2]))
+					y_values[v][i] = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 					if y_values[v][i] > max_y then
 						max_y = y_values[v][i]
 					end
@@ -171,8 +171,8 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 						alpha = 1
 					end
 					if class_log_normal_params[v][1] then
-						local y1 = logNormal(i - 1, class_log_normal_params[v][1], sqrt(class_log_normal_params[v][2]))
-						local y2 = logNormal(i, class_log_normal_params[v][1], sqrt(class_log_normal_params[v][2]))
+						local y1 = logNormal(i - 1, class_log_normal_params[v][1], class_log_normal_params[v][2])
+						local y2 = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 						createLine(k .. i, {
 							graph_container.offsetx + (i - 2) / 60 * graph_container.width,
 							y1 * graph_container.height * graph_container.zoomy,
@@ -215,7 +215,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		for k, v in pairs(class_tbl) do
 			if class_log_normal_params and class_log_normal_params[v][1] then
 				for i = 1, 60 do
-					y_values[v][i] = logNormal(i, class_log_normal_params[v][1], sqrt(class_log_normal_params[v][2]))
+					y_values[v][i] = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 					if y_values[v][i] > max_y then
 						max_y = y_values[v][i]
 					end
@@ -253,7 +253,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 						alpha = 1
 					end
 					if class_log_normal_params[v][1] then
-						local cdf = Deathlog_CalculateCDF(class_log_normal_params[v][1], class_log_normal_params[v][2])
+						local cdf = Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
 						createLine("cdf" .. k .. i, {
 							graph_container.offsetx + (i - 1) / 60 * graph_container.width,
 							(1 - cdf[i - 1]) * graph_container.height + _offsety,

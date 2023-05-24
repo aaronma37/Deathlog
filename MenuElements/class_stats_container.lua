@@ -191,13 +191,13 @@ function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_cla
 					cdf[i] = 0
 				end
 				for k, v in pairs(deathlog_class_tbl) do
-					local l_cdf = Deathlog_CalculateCDF(class_log_normal_params[v][1], class_log_normal_params[v][2])
+					local l_cdf = Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
 					for i = 1, 60 do
 						cdf[i] = cdf[i] + l_cdf[i] / 9
 					end
 				end
 			else
-				cdf = Deathlog_CalculateCDF(class_log_normal_params[class_id][1], class_log_normal_params[class_id][2])
+				cdf = Deathlog_CalculateCDF2(class_log_normal_params[class_id][1], class_log_normal_params[class_id][2])
 			end
 
 			entry_data[class_id]["Avg. Lvl."] = string.format("%.1f", v["all"]["avg_lvl"])
