@@ -1234,6 +1234,10 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		map_container.heatmap_checkbox:Hide()
 		map_container.heatmap_checkbox.label:Hide()
 		map_container.map_hint:Hide()
+
+		for _, v in ipairs(world_map_overlay) do
+			v:Hide()
+		end
 	end)
 
 	map_container:SetScript("OnShow", function()
