@@ -1,25 +1,42 @@
-local loaded = false
+local loaded_crt = false
 local widget_name = "Creature Ranking Tooltip"
 
+local creature_ranking = {}
+local creature_avg_lvl = {}
+
 function Deathlog_activateCreatureRankingTooltip()
-	if loaded == false then
+	if loaded_crt == false then
 		GameTooltip:HookScript("OnTooltipSetUnit", function()
-			if deathlog_settings[widget_name]["enable"] then
-				if Deathlog_azeroth_deadliest_dict then
+			if deathlog_settings[widget_name]["enable_crt"] then
+				if creature_ranking then
 					local a, _ = GameTooltip:GetUnit()
-					local rank = Deathlog_azeroth_deadliest_dict[a]
+					local rank = creature_ranking[a]
 					if rank then
 						GameTooltip:AddLine("#" .. rank .. " deadliest in Azeroth", 0.6, 0.6, 0.6, 0.6, true)
 					end
 				end
 			end
+
+			if deathlog_settings[widget_name]["enable_avg_lvl"] then
+				local a, _ = GameTooltip:GetUnit()
+				if creature_avg_lvl[a] then
+					GameTooltip:AddLine(
+						"Avg. prey lvl. " .. string.format("%.1f", creature_avg_lvl[a]),
+						0.6,
+						0.6,
+						0.6,
+						0.6,
+						true
+					)
+				end
+			end
 		end)
 	end
-	loaded = true
+	loaded_crt = true
 end
 
 local function handleEvent(self, event, ...)
-	if loaded == false and deathlog_settings["creature_ranking_tooltip_enabled"] then
+	if loaded_crt == false and deathlog_settings[widget_name]["enable_crt"] then
 		Deathlog_activateCreatureRankingTooltip()
 	end
 end
@@ -28,7 +45,9 @@ event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 event_handler:SetScript("OnEvent", handleEvent)
 
 local defaults = {
-	["enable"] = true,
+	["enable_crt"] = true,
+	["enable_avg_lvl"] = true,
+	["crt_metric"] = "Normalized Score",
 }
 
 local function applyDefaults(_defaults, force)
@@ -46,6 +65,38 @@ local options = nil
 local optionsframe = nil
 function Deathlog_CRTWidget_applySettings()
 	applyDefaults(defaults)
+
+	creature_ranking = {}
+	if deathlog_settings[widget_name]["enable_crt"] then
+		if deathlog_settings[widget_name]["crt_metric"] == "Total Kills" then
+			local most_deadly_units = deathlogGetOrdered(precomputed_general_stats, { "all", "all", "all", nil })
+			for k, v in ipairs(most_deadly_units) do
+				if id_to_npc[v[1]] then
+					creature_ranking[id_to_npc[v[1]]] = k
+				end
+			end
+		elseif deathlog_settings[widget_name]["crt_metric"] == "Normalized Score" then
+			local most_deadly_units_normalized = deathlogGetOrderedNormalized(
+				precomputed_general_stats,
+				{ "all", "all", "all", nil },
+				precomputed_log_normal_params[947]["ln_mean"][1],
+				precomputed_log_normal_params[947]["ln_std_dev"][1]
+			)
+
+			for k, v in ipairs(most_deadly_units_normalized) do
+				if id_to_npc[v[1]] then
+					creature_ranking[id_to_npc[v[1]]] = k
+				end
+			end
+		end
+	end
+
+	for k, v in pairs(precomputed_general_stats["all"]["all"]["all"]) do
+		if id_to_npc[k] then
+			creature_avg_lvl[id_to_npc[k]] = v["avg_lvl"]
+		end
+	end
+
 	Deathlog_activateCreatureRankingTooltip()
 
 	if optionsframe == nil then
@@ -59,23 +110,55 @@ local function forceReset()
 	Deathlog_CRTWidget_applySettings()
 end
 
+local metric_values = { ["Normalized Score"] = "Normalized Score", ["Total Kills"] = "Total Kills" }
+
 options = {
 	name = widget_name,
 	handler = Minilog,
 	type = "group",
 	args = {
-		enable = {
+		enable_crt = {
 			type = "toggle",
 			name = "Show Deadly Creature Ranking Tooltip",
 			desc = "Show Deadly Creature Ranking Tooltip.  This add a line to your tooltip when hovering over a creature, which specifies its rank.",
 			width = 1.6,
+			order = 1,
 			get = function()
-				return deathlog_settings[widget_name]["enable"]
+				return deathlog_settings[widget_name]["enable_crt"]
 			end,
 			set = function()
-				deathlog_settings[widget_name]["enable"] = not deathlog_settings[widget_name]["enable"]
+				deathlog_settings[widget_name]["enable_crt"] = not deathlog_settings[widget_name]["enable_crt"]
 				Deathlog_CRTWidget_applySettings()
 			end,
+		},
+		enable_avg_lvl = {
+			type = "toggle",
+			name = "Show average level of slain prey.",
+			desc = "Shows the average level of the player that this creature has kill historically.",
+			width = 1.6,
+			order = 1,
+			get = function()
+				return deathlog_settings[widget_name]["enable_avg_lvl"]
+			end,
+			set = function()
+				deathlog_settings[widget_name]["enable_avg_lvl"] = not deathlog_settings[widget_name]["enable_avg_lvl"]
+				Deathlog_CRTWidget_applySettings()
+			end,
+		},
+		crt_metric = {
+			type = "select",
+			dialogControl = "LSM30_Font", --Select your widget here
+			name = "Creature Ranking Tooltip metric",
+			desc = "Which metric to use to rank creatures.\n\nNormalized score: #Kills/(1-CDF(lvl)).  This metric normalizes the creature kills based on the remaining population around that creatures kill level.\nTotal Kills: Just based on the number of kills a creature has.",
+			values = metric_values, -- pull in your font list from LSM
+			get = function()
+				return deathlog_settings[widget_name]["crt_metric"]
+			end,
+			set = function(self, key)
+				deathlog_settings[widget_name]["crt_metric"] = key
+				Deathlog_CRTWidget_applySettings()
+			end,
+			order = 2,
 		},
 	},
 }

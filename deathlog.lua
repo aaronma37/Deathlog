@@ -41,9 +41,6 @@ local most_deadly_units_normalized = {
 	},
 }
 
-Deathlog_azeroth_deadliest_dict = {} -- source_name -> ranking
-Deathlog_azeroth_deadliest_dict_normalized = {} -- source_name -> ranking
-
 deathlog_data = {}
 deathlog_settings = {}
 
@@ -176,25 +173,6 @@ local function handleEvent(self, event, ...)
 			end
 		end
 		most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
-
-		for k, v in ipairs(most_deadly_units["all"]["all"]["all"]) do
-			if id_to_npc[v[1]] then
-				Deathlog_azeroth_deadliest_dict[id_to_npc[v[1]]] = k
-			end
-		end
-
-		-- most_deadly_units_normalized["all"]["all"]["all"] = deathlogGetOrderedNormalized(
-		-- 	general_stats,
-		-- 	{ "all", "all", "all", nil },
-		-- 	log_normal_params[947]["ln_mean"][1],
-		-- 	log_normal_params[947]["ln_std_dev"][1]
-		-- )
-
-		-- for k, v in ipairs(most_deadly_units_normalized["all"]["all"]["all"]) do
-		-- 	if id_to_npc[v[1]] then
-		-- 		Deathlog_azeroth_deadliest_dict_normalized[id_to_npc[v[1]]] = k
-		-- 	end
-		-- end
 		loadWidgets()
 	end
 end
