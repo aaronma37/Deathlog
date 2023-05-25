@@ -29,11 +29,11 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 	local _log_normal_params = stats_tbl["log_normal_params"]
 	graph_container:Show()
 	graph_container:SetParent(scroll_frame.frame)
-	graph_container.height = 225
-	graph_container.width = 400
-	graph_container.offsetx = 25
+	graph_container.height = 205
+	graph_container.width = 380
+	graph_container.offsetx = 45
 	graph_container.zoomy = 8
-	graph_container.offsety = 0
+	graph_container.offsety = 10
 	graph_container:SetPoint("TOPLEFT", 590, -280)
 	graph_container:SetWidth(400)
 	graph_container:SetHeight(200)
@@ -65,6 +65,26 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 		graph_container.right:SetPoint("LEFT", graph_container.heading, "RIGHT", 5, 0)
 		graph_container.right:SetTexture(137057) -- Interface\\Tooltips\\UI-Tooltip-Border
 		graph_container.right:SetTexCoord(0.81, 0.94, 0.5, 1)
+	end
+
+	if graph_container.y_label == nil then
+		graph_container.y_label = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		graph_container.y_label:SetText("P(lvl)")
+		graph_container.y_label:SetFont("Fonts\\blei00d.TTF", 14, "")
+		graph_container.y_label:SetJustifyV("TOP")
+		graph_container.y_label:SetTextColor(0.7, 0.7, 0.7)
+		graph_container.y_label:SetPoint("BOTTOM", graph_container, "BOTTOM", -165, 225)
+		graph_container.y_label:Show()
+	end
+
+	if graph_container.x_label == nil then
+		graph_container.x_label = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		graph_container.x_label:SetText("Lvl.")
+		graph_container.x_label:SetFont("Fonts\\blei00d.TTF", 14, "")
+		graph_container.x_label:SetJustifyV("TOP")
+		graph_container.x_label:SetTextColor(0.7, 0.7, 0.7)
+		graph_container.x_label:SetPoint("BOTTOM", graph_container, "BOTTOM", 25, -15)
+		graph_container.x_label:Show()
 	end
 
 	local function createLine(name, start_coords, end_coords, color, label)
@@ -156,7 +176,7 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 		createLine(
 			"x_tick_" .. i .. "0",
 			{ graph_container.offsetx + graph_container.width * i / 6, graph_container.offsety },
-			{ graph_container.offsetx + graph_container.width * i / 6, 5 },
+			{ graph_container.offsetx + graph_container.width * i / 6, graph_container.offsety + 5 },
 			nil,
 			{ i .. "0", -5, -11 }
 		)
@@ -181,10 +201,10 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 					)
 					createLine(k .. i, {
 						graph_container.offsetx + (i - 2) / 60 * graph_container.width,
-						y1 * graph_container.height * graph_container.zoomy,
+						y1 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 					}, {
 						graph_container.offsetx + (i - 1) / 60 * graph_container.width,
-						y2 * graph_container.height * graph_container.zoomy,
+						y2 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 					}, class_colors[k])
 
 					if _log_normal_params[current_map_id]["total"][v] < 3 and graph_lines[k .. i] then
