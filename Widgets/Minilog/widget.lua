@@ -675,10 +675,10 @@ options = {
 				end
 			end,
 			set = function()
-				if deathlog_settings[widget_name]["enable"] == nil then
-					deathlog_settings[widget_name]["enable"] = true
+				if deathlog_settings[widget_name]["show_icon"] == nil then
+					deathlog_settings[widget_name]["show_icon"] = true
 				end
-				deathlog_settings[widget_name]["enable"] = not deathlog_settings[widget_name]["enable"]
+				deathlog_settings[widget_name]["show_icon"] = not deathlog_settings[widget_name]["show_icon"]
 				Deathlog_minilog_applySettings()
 			end,
 			order = 2,
