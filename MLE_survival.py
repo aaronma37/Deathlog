@@ -70292,7 +70292,7 @@ for i in range(0,11):
     tr = 60
     x = np.array(data_dict[i])
     x = x[(x<tr)]
-    model = surv.LogNormal.fit(x=x, tr=tr)
+    model = surv.Weibull.fit(x=x, tr=tr)
     output_str += "["+str(i+1)+"] = {"+ str(model.params[0]) +","+ str(model.params[1])
     output_str += "},"
     print(i, model.params)

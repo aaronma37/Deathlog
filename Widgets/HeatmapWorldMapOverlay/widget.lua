@@ -99,8 +99,12 @@ local function updateWMOHeatmap(map_id)
 	local mWidth, mHeight = WorldMapFrame:GetCanvas():GetSize()
 	for i = 1, granularity do
 		for j = 1, granularity do
-			heatmap_wm_overlay_frame.heatmap[i][j].intensity = heatmap_wm_overlay_frame.heatmap[i][j].intensity
-				/ max_intensity
+			if max_intensity > 0 then
+				heatmap_wm_overlay_frame.heatmap[i][j].intensity = heatmap_wm_overlay_frame.heatmap[i][j].intensity
+					/ max_intensity
+			else
+				heatmap_wm_overlay_frame.heatmap[i][j].intensity = 0
+			end
 			local alpha = heatmap_wm_overlay_frame.heatmap[i][j].intensity * 4
 			if map_id == 947 then
 				alpha = 0
@@ -149,7 +153,8 @@ function Deathlog_HWMWidget_applySettings()
 	heatmap_wm_overlay_frame:SetParent(WorldMapButton)
 	heatmap_wm_overlay_frame:ClearAllPoints()
 	heatmap_wm_overlay_frame:SetAllPoints()
-	heatmap_wm_overlay_frame:SetFrameLevel(15000)
+	heatmap_wm_overlay_frame:SetFrameLevel(2010)
+	heatmap_wm_overlay_frame:SetFrameStrata("MEDIUM")
 	heatmap_wm_overlay_frame:Show()
 
 	heatmap_wm_overlay_checkbox_frame:SetParent(WorldMapButton)
@@ -170,8 +175,8 @@ function Deathlog_HWMWidget_applySettings()
 		for i = 1, granularity do
 			heatmap_wm_overlay_frame.heatmap[i] = {}
 			for j = 1, granularity do
-				heatmap_wm_overlay_frame.heatmap[i][j] = heatmap_wm_overlay_frame:CreateTexture(nil, "OVERLAY")
-				heatmap_wm_overlay_frame.heatmap[i][j]:SetDrawLayer("OVERLAY", 6)
+				heatmap_wm_overlay_frame.heatmap[i][j] = heatmap_wm_overlay_frame:CreateTexture(nil, "BACKGROUND")
+				heatmap_wm_overlay_frame.heatmap[i][j]:SetDrawLayer("OVERLAY", -7)
 				heatmap_wm_overlay_frame.heatmap[i][j]:SetHeight(grid_x)
 				heatmap_wm_overlay_frame.heatmap[i][j]:SetColorTexture(1.0, 0.1, 0.1, 0)
 				heatmap_wm_overlay_frame.heatmap[i][j]:SetWidth(grid_y)

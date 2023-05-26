@@ -503,10 +503,13 @@ local defaults = {
 	["title_font_size"] = 19,
 	["entry_font_size"] = 14,
 	["title_x_offset"] = 0,
+	["title_y_offset"] = 0,
+	["border_alpha"] = 1.0,
 	["pos_x"] = 470,
 	["pos_y"] = -100,
 	["size_x"] = 255,
 	["size_y"] = 125,
+	["show_icon"] = true,
 	["columns"] = { "Name", "Class", "Race", "Lvl" },
 }
 
@@ -540,7 +543,7 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		death_log_frame.frame,
 		"TOPLEFT",
 		deathlog_settings[widget_name]["title_x_offset"] + 32,
-		-10
+		deathlog_settings[widget_name]["title_y_offset"] - 10
 	)
 
 	for i = 1, 20 do
@@ -556,6 +559,14 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 	if deathlog_settings[widget_name]["enable"] == nil or deathlog_settings[widget_name]["enable"] == true then
 		death_log_frame.frame:Show()
 		death_log_icon_frame:Show()
+		if
+			deathlog_settings[widget_name]["show_icon"] == nil
+			or deathlog_settings[widget_name]["show_icon"] == true
+		then
+			death_log_icon_frame:Show()
+		else
+			death_log_icon_frame:Hide()
+		end
 	else
 		death_log_frame.frame:Hide()
 		death_log_icon_frame:Hide()
@@ -570,6 +581,7 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		deathlog_settings[widget_name]["pos_x"],
 		deathlog_settings[widget_name]["pos_y"]
 	)
+	death_log_frame.frame:SetBackdropBorderColor(1, 1, 1, deathlog_settings[widget_name]["border_alpha"])
 
 	death_log_frame.frame:SetSize(deathlog_settings[widget_name]["size_x"], deathlog_settings[widget_name]["size_y"])
 
@@ -648,6 +660,29 @@ options = {
 			end,
 			order = 1,
 		},
+		show_icon = {
+			type = "toggle",
+			name = "Show Icon (Required to move the frame)",
+			desc = "Show the deathlog icon.",
+			get = function()
+				if
+					deathlog_settings[widget_name]["show_icon"] == nil
+					or deathlog_settings[widget_name]["show_icon"] == true
+				then
+					return true
+				else
+					return false
+				end
+			end,
+			set = function()
+				if deathlog_settings[widget_name]["enable"] == nil then
+					deathlog_settings[widget_name]["enable"] = true
+				end
+				deathlog_settings[widget_name]["enable"] = not deathlog_settings[widget_name]["enable"]
+				Deathlog_minilog_applySettings()
+			end,
+			order = 2,
+		},
 		font = {
 			type = "select",
 			dialogControl = "LSM30_Font", --Select your widget here
@@ -692,6 +727,22 @@ options = {
 			end,
 			disabled = hidenametextoptions,
 		},
+		borderalpha = {
+			type = "range",
+			name = "Border Alpha",
+			desc = "Change border alpha",
+			min = 0,
+			max = 1,
+			step = 0.05,
+			get = function()
+				return deathlog_settings[widget_name]["border_alpha"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["border_alpha"] = value
+				Deathlog_minilog_applySettings()
+			end,
+			disabled = hidenametextoptions,
+		},
 		entryfontsize = {
 			type = "range",
 			name = "Entry Font Size",
@@ -720,6 +771,22 @@ options = {
 			end,
 			set = function(self, value)
 				deathlog_settings[widget_name]["title_x_offset"] = value
+				Deathlog_minilog_applySettings()
+			end,
+			disabled = hidenametextoptions,
+		},
+		titleyoffset = {
+			type = "range",
+			name = "Title y-offset",
+			desc = "Title y-offset",
+			min = -50,
+			max = 250,
+			step = 1,
+			get = function()
+				return deathlog_settings[widget_name]["title_y_offset"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["title_y_offset"] = value
 				Deathlog_minilog_applySettings()
 			end,
 			disabled = hidenametextoptions,
