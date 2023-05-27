@@ -4,7 +4,7 @@
 ## Author: Yazpad
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.0.1
+## Version: 0.0.1b10
 
 
 ## DefaultState: enabled

@@ -79,8 +79,8 @@ function Deathlog_CRTWidget_applySettings()
 			local most_deadly_units_normalized = deathlogGetOrderedNormalized(
 				precomputed_general_stats,
 				{ "all", "all", "all", nil },
-				precomputed_log_normal_params[947]["ln_mean"][1],
-				precomputed_log_normal_params[947]["ln_std_dev"][1]
+				precomputed_log_normal_params["all"][1][1],
+				precomputed_log_normal_params["all"][1][2]
 			)
 
 			for k, v in ipairs(most_deadly_units_normalized) do

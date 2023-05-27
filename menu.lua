@@ -21,6 +21,8 @@ local _menu_width = 1100
 local _inner_menu_width = 800
 local _menu_height = 600
 local current_map_id = nil
+local max_rows = 26
+local page_number = 1
 
 local deathlog_tabcontainer = nil
 
@@ -142,7 +144,7 @@ for idx, v in ipairs(subtitle_data) do
 	header_strings[v[1]]:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 end
 
-for i = 1, 100 do
+for i = 1, max_rows do
 	font_strings[i] = {}
 	local last_font_string = nil
 	for idx, v in ipairs(subtitle_data) do
@@ -183,28 +185,30 @@ local function setDeathlogMenuLogData(data)
 	local ordered = deathlogOrderBy(data, function(t, a, b)
 		return tonumber(t[b]["date"]) < tonumber(t[a]["date"])
 	end)
-	for idx, v in ipairs(ordered) do
-		for _, col in ipairs(subtitle_data) do
-			font_strings[idx][col[1]]:SetText(col[3](v, ""))
-		end
-		if idx > 99 then
+	for i = 1, max_rows do
+		local idx = (i + (page_number - 1) * max_rows)
+		if idx > #ordered then
 			break
+		end
+		for _, col in ipairs(subtitle_data) do
+			font_strings[i][col[1]]:SetText(col[3](ordered[idx], ""))
 		end
 	end
 	if #ordered == 1 then
-		deathlog_menu:SetStatusText(#ordered .. " result")
+		deathlog_menu:SetStatusText(
+			#ordered
+				.. " search result/"
+				.. precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]
+				.. " preprocessed"
+		)
 	else
-		deathlog_menu:SetStatusText(#ordered .. " results")
+		deathlog_menu:SetStatusText(
+			#ordered
+				.. " search results/"
+				.. precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]
+				.. " preprocessed"
+		)
 	end
-	-- for server_name,entry_tbl in pairs(data) do
-	--   for checksum,v in pairs(entry_tbl) do
-	-- for _,col in ipairs(subtitle_data) do
-	-- font_strings[c][col[1]]:SetText(col[3](v, server_name))
-	-- end
-	-- c=c+1
-	-- if c > 99 then break end
-	--   end
-	-- end
 end
 
 local _deathlog_data = {}
@@ -277,7 +281,7 @@ local function drawLogTab(container)
 	end
 
 	local server_search_box = AceGUI:Create("DeathlogDropdown")
-	server_search_box:SetWidth(150)
+	server_search_box:SetWidth(100)
 	server_search_box:SetDisabled(false)
 	server_search_box:SetLabel("Server")
 	server_search_box:SetPoint("TOP", 2, 5)
@@ -543,7 +547,7 @@ local function drawLogTab(container)
 	-- font_container:SetPoint("TOP", deathlog_group.frame, "TOP", 0, -100)
 	font_container:SetHeight(400)
 	font_container:Show()
-	for i = 1, 100 do
+	for i = 1, max_rows do
 		local idx = 101 - i
 		local _entry = AceGUI:Create("InteractiveLabel")
 		_entry:SetHighlight("Interface\\Glues\\CharacterSelect\\Glues-CharacterSelect-Highlight")
@@ -696,6 +700,54 @@ local function drawLogTab(container)
 		deathlog_group:AddChild(_entry)
 	end
 	scroll_frame.scrollbar:Hide()
+
+	if deathlog_group.page_str == nil then
+		deathlog_group.page_str = deathlog_group.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		deathlog_group.page_str:SetText("Page " .. page_number)
+		deathlog_group.page_str:SetFont("Fonts\\blei00d.TTF", 14, "")
+		deathlog_group.page_str:SetJustifyV("BOTTOM")
+		deathlog_group.page_str:SetJustifyH("CENTER")
+		deathlog_group.page_str:SetTextColor(0.7, 0.7, 0.7)
+		deathlog_group.page_str:SetPoint("TOP", deathlog_group.frame, "TOP", 0, -505)
+		deathlog_group.page_str:Show()
+	end
+
+	if deathlog_group.prev_button == nil then
+		deathlog_group.prev_button = CreateFrame("Button", nil, deathlog_group.frame)
+		deathlog_group.prev_button:SetPoint("CENTER", deathlog_group.page_str, "CENTER", -50, 0)
+		deathlog_group.prev_button:SetWidth(25)
+		deathlog_group.prev_button:SetHeight(25)
+		deathlog_group.prev_button:SetNormalTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
+		deathlog_group.prev_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
+		deathlog_group.prev_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Down.PNG")
+	end
+
+	deathlog_group.prev_button:SetScript("OnClick", function()
+		page_number = page_number - 1
+		if page_number < 1 then
+			page_number = 1
+		end
+		clearDeathlogMenuLogData()
+		deathlog_group.page_str:SetText("Page " .. page_number)
+		setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+	end)
+
+	if deathlog_group.next_button == nil then
+		deathlog_group.next_button = CreateFrame("Button", nil, deathlog_group.frame)
+		deathlog_group.next_button:SetPoint("CENTER", deathlog_group.page_str, "CENTER", 50, 0)
+		deathlog_group.next_button:SetWidth(25)
+		deathlog_group.next_button:SetHeight(25)
+		deathlog_group.next_button:SetNormalTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Up.PNG")
+		deathlog_group.next_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Up.PNG")
+		deathlog_group.next_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Down.PNG")
+	end
+
+	deathlog_group.next_button:SetScript("OnClick", function()
+		page_number = page_number + 1
+		clearDeathlogMenuLogData()
+		deathlog_group.page_str:SetText("Page " .. page_number)
+		setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+	end)
 end
 
 local function drawCreatureStatisticsTab(container)

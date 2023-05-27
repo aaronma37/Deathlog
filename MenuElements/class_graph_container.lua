@@ -26,7 +26,7 @@ local race_tbl = deathlog_race_tbl
 local zone_tbl = deathlog_zone_tbl
 
 function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, setMapRegion)
-	local class_log_normal_params = precomputed_survival_stats
+	local class_log_normal_params = precomputed_log_normal_params["all"]
 	graph_container:Show()
 	graph_container:SetParent(scroll_frame.frame)
 	graph_container.height = 180

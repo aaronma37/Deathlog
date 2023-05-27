@@ -3,7 +3,9 @@ Frame Container
 -------------------------------------------------------------------------------]]
 local Type, Version = "DeathlogMenu", 28
 local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
-if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then return end
+if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then
+	return
+end
 
 local background_inset = 10
 
@@ -90,7 +92,7 @@ local methods = {
 		self:SetStatusText()
 		self:ApplyStatus()
 		self:Show()
-        self:EnableResize(true)
+		self:EnableResize(false)
 	end,
 
 	["OnRelease"] = function(self)
@@ -106,7 +108,7 @@ local methods = {
 		end
 		content:SetWidth(contentwidth)
 		content.width = contentwidth
-		self.background_texture:SetWidth(self.frame:GetWidth() - background_inset*2)
+		self.background_texture:SetWidth(self.frame:GetWidth() - background_inset * 2)
 	end,
 
 	["OnHeightSet"] = function(self, height)
@@ -117,7 +119,7 @@ local methods = {
 		end
 		content:SetHeight(contentheight)
 		content.height = contentheight
-		self.background_texture:SetHeight(self.frame:GetHeight() - background_inset*2)
+		self.background_texture:SetHeight(self.frame:GetHeight() - background_inset * 2)
 	end,
 
 	["SetTitle"] = function(self, title)
@@ -167,7 +169,7 @@ local methods = {
 		else
 			frame:SetPoint("CENTER")
 		end
-	end
+	end,
 }
 
 --[[-----------------------------------------------------------------------------
@@ -176,24 +178,28 @@ Constructor
 local FrameBackdrop = {
 	bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
 	edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-	tile = true, tileSize = 32, edgeSize = 32,
-	insets = { left = 8, right = 8, top = 8, bottom = 8 }
+	tile = true,
+	tileSize = 32,
+	edgeSize = 32,
+	insets = { left = 8, right = 8, top = 8, bottom = 8 },
 }
 
-local PaneBackdrop  = {
+local PaneBackdrop = {
 	bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
 	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true, tileSize = 16, edgeSize = 16,
-	insets = { left = 3, right = 3, top = 5, bottom = 3 }
+	tile = true,
+	tileSize = 16,
+	edgeSize = 16,
+	insets = { left = 3, right = 3, top = 5, bottom = 3 },
 }
 
 local function Constructor()
 	local frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	frame:Hide()
 
-	frame:EnableMouse(true)
-	frame:SetMovable(true)
-	frame:SetResizable(true)
+	frame:EnableMouse(false)
+	frame:SetMovable(false)
+	frame:SetResizable(false)
 	frame:SetFrameStrata("FULLSCREEN_DIALOG")
 	frame:SetFrameLevel(100) -- Lots of room to draw under it
 	frame:SetBackdrop(FrameBackdrop)
@@ -205,7 +211,6 @@ local function Constructor()
 	if frame.SetMinResize then
 		frame:SetMinResize(400, 200)
 	end
-
 
 	frame:SetToplevel(true)
 	frame:SetScript("OnShow", Frame_OnShow)
@@ -225,8 +230,8 @@ local function Constructor()
 	statusbg:SetPoint("BOTTOMRIGHT", -132, 15)
 	statusbg:SetHeight(24)
 	statusbg:SetBackdrop(PaneBackdrop)
-	statusbg:SetBackdropColor(0.1,0.1,0.1)
-	statusbg:SetBackdropBorderColor(0.4,0.4,0.4)
+	statusbg:SetBackdropColor(0.1, 0.1, 0.1)
+	statusbg:SetBackdropBorderColor(0.4, 0.4, 0.4)
 	statusbg:SetScript("OnEnter", StatusBar_OnEnter)
 	statusbg:SetScript("OnLeave", StatusBar_OnLeave)
 	statusbg:Hide()
@@ -234,7 +239,7 @@ local function Constructor()
 	local statustext = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	statustext:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, 10)
 	statustext:SetHeight(20)
-	statustext:SetTextColor(1,1,1,1)
+	statustext:SetTextColor(1, 1, 1, 1)
 	statustext:SetFont("Fonts\\blei00d.TTF", 16)
 	statustext:SetJustifyH("RIGHT")
 	statustext:SetText("")
@@ -243,7 +248,7 @@ local function Constructor()
 	titlebg:SetTexture(131080) -- Interface\\DialogFrame\\UI-DialogBox-Header
 	titlebg:SetTexCoord(0.31, 0.67, 0, 0.63)
 	titlebg:SetPoint("TOPLEFT", 20, 18)
-	titlebg:SetVertexColor(0,0,0,0)
+	titlebg:SetVertexColor(0, 0, 0, 0)
 	titlebg:SetWidth(100)
 	titlebg:SetHeight(60)
 
@@ -255,20 +260,19 @@ local function Constructor()
 
 	local titletext = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	titletext:SetFont("Fonts\\blei00d.TTF", 40, "OUTLINE")
-	titletext:SetTextColor(1,1,1,1)
+	titletext:SetTextColor(1, 1, 1, 1)
 	titletext:SetPoint("TOP", titlebg, "TOP", 0, -38)
 
 	local versiontext = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	versiontext:SetFont("Fonts\\blei00d.TTF", 16)
-	versiontext:SetTextColor(1,1,1,1)
+	versiontext:SetTextColor(1, 1, 1, 1)
 	versiontext:SetPoint("BOTTOMLEFT", titletext, "BOTTOMRIGHT", 5, 0)
-
 
 	local titlebg_l = frame:CreateTexture(nil, "OVERLAY")
 	titlebg_l:SetTexture(131080) -- Interface\\DialogFrame\\UI-DialogBox-Header
 	titlebg_l:SetTexCoord(0.21, 0.31, 0, 0.63)
 	titlebg_l:SetPoint("RIGHT", titlebg, "LEFT")
-	titlebg_l:SetVertexColor(0,0,0,0)
+	titlebg_l:SetVertexColor(0, 0, 0, 0)
 	titlebg_l:SetWidth(30)
 	titlebg_l:SetHeight(60)
 
@@ -276,7 +280,7 @@ local function Constructor()
 	titlebg_r:SetTexture(131080) -- Interface\\DialogFrame\\UI-DialogBox-Header
 	titlebg_r:SetTexCoord(0.67, 0.77, 0, 0.63)
 	titlebg_r:SetPoint("LEFT", titlebg, "RIGHT")
-	titlebg_r:SetVertexColor(0,0,0,0)
+	titlebg_r:SetVertexColor(0, 0, 0, 0)
 	titlebg_r:SetWidth(30)
 	titlebg_r:SetHeight(60)
 
@@ -285,7 +289,7 @@ local function Constructor()
 	sizer_se:SetWidth(25)
 	sizer_se:SetHeight(25)
 	sizer_se:EnableMouse()
-	sizer_se:SetScript("OnMouseDown",SizerSE_OnMouseDown)
+	sizer_se:SetScript("OnMouseDown", SizerSE_OnMouseDown)
 	sizer_se:SetScript("OnMouseUp", MoverSizer_OnMouseUp)
 
 	local line1 = sizer_se:CreateTexture(nil, "BACKGROUND")
@@ -293,7 +297,7 @@ local function Constructor()
 	line1:SetHeight(14)
 	line1:SetPoint("BOTTOMRIGHT", -8, 8)
 	line1:SetTexture(137057) -- Interface\\Tooltips\\UI-Tooltip-Border
-	local x = 0.1 * 14/17
+	local x = 0.1 * 14 / 17
 	line1:SetTexCoord(0.05 - x, 0.5, 0.05, 0.5 + x, 0.05, 0.5 - x, 0.5 + x, 0.5)
 
 	local line2 = sizer_se:CreateTexture(nil, "BACKGROUND")
@@ -301,7 +305,7 @@ local function Constructor()
 	line2:SetHeight(8)
 	line2:SetPoint("BOTTOMRIGHT", -8, 8)
 	line2:SetTexture(137057) -- Interface\\Tooltips\\UI-Tooltip-Border
-	local x = 0.1 * 8/17
+	local x = 0.1 * 8 / 17
 	line2:SetTexCoord(0.05 - x, 0.5, 0.05, 0.5 + x, 0.05, 0.5 - x, 0.5 + x, 0.5)
 
 	local sizer_s = CreateFrame("Frame", nil, frame)
@@ -327,17 +331,17 @@ local function Constructor()
 
 	local widget = {
 		localstatus = {},
-		titletext   = titletext,
-		versiontext   = versiontext,
-		statustext  = statustext,
-		background_texture  = background_texture,
-		titlebg     = titlebg,
-		sizer_se    = sizer_se,
-		sizer_s     = sizer_s,
-		sizer_e     = sizer_e,
-		content     = content,
-		frame       = frame,
-		type        = Type
+		titletext = titletext,
+		versiontext = versiontext,
+		statustext = statustext,
+		background_texture = background_texture,
+		titlebg = titlebg,
+		sizer_se = sizer_se,
+		sizer_s = sizer_s,
+		sizer_e = sizer_e,
+		content = content,
+		frame = frame,
+		type = Type,
 	}
 	for method, func in pairs(methods) do
 		widget[method] = func

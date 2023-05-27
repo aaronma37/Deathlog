@@ -147,14 +147,18 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 			* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
 	end
 	for k, v in pairs(class_tbl) do
-		if _log_normal_params[current_map_id] and _log_normal_params[current_map_id]["ln_mean"][v] then
+		if
+			_log_normal_params[current_map_id]
+			and _log_normal_params[current_map_id][v]
+			and _log_normal_params[current_map_id][v][1]
+		then
 			for i = 1, 60 do
 				y_values[v][i] = logNormal(
 					i,
-					_log_normal_params[current_map_id]["ln_mean"][v],
-					sqrt(_log_normal_params[current_map_id]["ln_std_dev"][v])
+					_log_normal_params[current_map_id][v][1],
+					sqrt(_log_normal_params[current_map_id][v][2])
 				)
-				if y_values[v][i] > max_y and _log_normal_params[current_map_id]["total"][v] > 2 then
+				if y_values[v][i] > max_y and _log_normal_params[current_map_id][v][3] > 2 then
 					max_y = y_values[v][i]
 				end
 			end
@@ -186,18 +190,18 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 	if _log_normal_params[current_map_id] then
 		for i = 2, 60 do
 			for k, v in pairs(class_tbl) do
-				if _log_normal_params[current_map_id]["ln_mean"][v] then
+				if _log_normal_params[current_map_id][v] and _log_normal_params[current_map_id][v][1] then
 					-- level_num[v][i] = level_num[v][i] / total[v]
 					-- createLine(k..i, {25+(i-2)/60*375,level_num[v][i-1]*100*8}, {25+(i-1)/60*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
 					local y1 = logNormal(
 						i - 1,
-						_log_normal_params[current_map_id]["ln_mean"][v],
-						sqrt(_log_normal_params[current_map_id]["ln_std_dev"][v])
+						_log_normal_params[current_map_id][v][1],
+						sqrt(_log_normal_params[current_map_id][v][2])
 					)
 					local y2 = logNormal(
 						i,
-						_log_normal_params[current_map_id]["ln_mean"][v],
-						sqrt(_log_normal_params[current_map_id]["ln_std_dev"][v])
+						_log_normal_params[current_map_id][v][1],
+						sqrt(_log_normal_params[current_map_id][v][2])
 					)
 					createLine(k .. i, {
 						graph_container.offsetx + (i - 2) / 60 * graph_container.width,
@@ -207,7 +211,7 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 						y2 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 					}, class_colors[k])
 
-					if _log_normal_params[current_map_id]["total"][v] < 3 and graph_lines[k .. i] then
+					if _log_normal_params[current_map_id][v][3] < 3 and graph_lines[k .. i] then
 						graph_lines[k .. i]:Hide()
 					end
 				else

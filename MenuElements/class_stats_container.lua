@@ -90,7 +90,7 @@ for _, v in ipairs(average_class_subtitles) do
 end
 
 function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_class_id, stats_tbl, setMapRegion)
-	local class_log_normal_params = precomputed_survival_stats
+	local class_log_normal_params = precomputed_log_normal_params["all"]
 	class_stat_comparison_container:Show()
 	local entry_data = {}
 	local map_id = 947

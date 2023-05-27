@@ -523,8 +523,8 @@ function deadliest_creatures_container.updateMenuElement(
 		most_deadly_units = deathlogGetOrderedNormalized(
 			_stats,
 			{ "all", "all", class_id, nil },
-			_log_normal_params[947]["ln_mean"][1],
-			_log_normal_params[947]["ln_std_dev"][1]
+			_log_normal_params["all"][1][1],
+			_log_normal_params["all"][1][2] * _log_normal_params["all"][1][2]
 		)
 	end
 
