@@ -748,6 +748,28 @@ local function drawLogTab(container)
 		deathlog_group.page_str:SetText("Page " .. page_number)
 		setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
 	end)
+
+	if deathlog_group.import_hc_button == nil then
+		deathlog_group.import_hc_button = CreateFrame("Button", nil, deathlog_group.frame)
+		deathlog_group.import_hc_button:SetPoint("CENTER", deathlog_group.page_str, "CENTER", -395, -4)
+		deathlog_group.import_hc_button:SetWidth(275)
+		deathlog_group.import_hc_button:SetHeight(25)
+		deathlog_group.import_hc_button:SetNormalTexture("Interface/Buttons/UI-SILVER-BUTTON-UP")
+		deathlog_group.import_hc_button:GetNormalTexture():SetVertexColor(1, 1, 1, 0.5)
+		deathlog_group.import_hc_button:SetHighlightTexture("Interface/Buttons/UI-Panel-Button-Highlight")
+		deathlog_group.import_hc_button:SetPushedTexture("Interface/Buttons/UI-SILVER-BUTTON-Down")
+
+		deathlog_group.import_hc_button:SetText("Import from Hardcore")
+		deathlog_group.import_hc_button:SetNormalFontObject("GameFontNormalSmall")
+
+		local font_str = deathlog_group.import_hc_button:GetFontString()
+		font_str:SetPoint("TOPLEFT", 12, -1)
+		font_str:SetFont("Fonts\\blei00d.TTF", 16, "")
+	end
+
+	deathlog_group.import_hc_button:SetScript("OnClick", function()
+		Deathlog_LoadFromHardcore()
+	end)
 end
 
 local function drawCreatureStatisticsTab(container)

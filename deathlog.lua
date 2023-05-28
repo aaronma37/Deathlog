@@ -177,6 +177,13 @@ local function handleEvent(self, event, ...)
 	end
 end
 
+local function SlashHandler(msg, editbox)
+	deathlogShowMenu(deathlog_data, general_stats, log_normal_params, skull_locs)
+end
+
+SLASH_DEATHLOG1, SLASH_DEATHLOG2 = "/deathlog", "/dl"
+SlashCmdList["DEATHLOG"] = SlashHandler
+
 local deathlog_event_handler = CreateFrame("Frame", "deathlog", nil, "BackdropTemplate")
 deathlog_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 deathlog_event_handler:RegisterEvent("PLAYER_DEAD")
