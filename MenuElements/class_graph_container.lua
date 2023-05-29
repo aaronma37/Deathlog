@@ -25,18 +25,23 @@ local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl
 local zone_tbl = deathlog_zone_tbl
 
-function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, setMapRegion)
+function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, setMapRegion, model)
+	if model == nil then
+		model = "Kaplan-Meier"
+	end
+
 	local class_log_normal_params = precomputed_log_normal_params["all"]
+	local kaplan_meier = precomputed_kaplan_meier
 	graph_container:Show()
 	graph_container:SetParent(scroll_frame.frame)
-	graph_container.height = 180
+	graph_container.height = 140
 	graph_container.width = 400
 	graph_container.offsetx = 25
 	graph_container.zoomy = 8
-	graph_container.offsety = 0
-	graph_container:SetPoint("TOPLEFT", 590, -20)
+	graph_container.offsety = -30
+	graph_container:SetPoint("TOPLEFT", 590, -70)
 	graph_container:SetWidth(400)
-	graph_container:SetHeight(200)
+	graph_container:SetHeight(140)
 	graph_container:SetFrameLevel(15000)
 
 	if graph_container.heading == nil then
@@ -145,10 +150,14 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		for i = 1, 5 do
 			createLine(
 				"y_tick_" .. i .. "0",
-				{ graph_container.offsetx, (graph_container.height + graph_container.offsety) * i / 5 },
-				{ graph_container.offsetx + 5, (graph_container.height + graph_container.offsety) * i / 5 },
+				{ graph_container.offsetx, graph_container.height * i / 5 + graph_container.offsety },
+				{ graph_container.offsetx + 5, graph_container.height * i / 5 + graph_container.offsety },
 				nil,
-				{ string.format("%.1f", i / 5 / graph_container.zoomy * 100.0) .. "%", -23, -5 }
+				{
+					string.format("%.1f", i / 5 / graph_container.zoomy * 100.0) .. "%",
+					-23,
+					-5,
+				}
 			)
 		end
 
@@ -156,7 +165,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 			createLine(
 				"x_tick_" .. i .. "0",
 				{ graph_container.offsetx + graph_container.width * i / 6, graph_container.offsety },
-				{ graph_container.offsetx + graph_container.width * i / 6, 5 },
+				{ graph_container.offsetx + graph_container.width * i / 6, graph_container.offsety + 5 },
 				nil,
 				{ i .. "0", -5, -11 }
 			)
@@ -175,10 +184,10 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 						local y2 = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 						createLine(k .. i, {
 							graph_container.offsetx + (i - 2) / 60 * graph_container.width,
-							y1 * graph_container.height * graph_container.zoomy,
+							y1 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 						}, {
 							graph_container.offsetx + (i - 1) / 60 * graph_container.width,
-							y2 * graph_container.height * graph_container.zoomy,
+							y2 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 						}, class_colors[k], nil, alpha)
 					else
 						if graph_lines[k .. i] then
@@ -244,28 +253,51 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 			)
 		end
 
-		local class_colors = deathlog_class_colors
-		if class_log_normal_params then
+		if model == "LogNormal" then
+			local class_colors = deathlog_class_colors
+			if class_log_normal_params then
+				local cdf = {}
+				for i = 2, 60 do
+					for k, v in pairs(class_tbl) do
+						if cdf[v] == nil then
+							cdf[v] =
+								Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
+						end
+						local alpha = 0.2
+						if class_id == v then
+							alpha = 1
+						end
+						if class_log_normal_params[v][1] then
+							createLine("cdf" .. k .. i, {
+								graph_container.offsetx + (i - 1) / 60 * graph_container.width,
+								(1 - cdf[v][i - 1]) * graph_container.height + _offsety,
+							}, {
+								graph_container.offsetx + i / 60 * graph_container.width,
+								(1 - cdf[v][i]) * graph_container.height + _offsety,
+							}, class_colors[k], nil, alpha)
+						else
+							if graph_lines["cdf" .. k .. i] then
+								graph_lines["cdf" .. k .. i]:Hide()
+							end
+						end
+					end
+				end
+			end
+		elseif model == "Kaplan-Meier" then
+			local class_colors = deathlog_class_colors
 			for i = 2, 60 do
 				for k, v in pairs(class_tbl) do
 					local alpha = 0.2
 					if class_id == v then
 						alpha = 1
 					end
-					if class_log_normal_params[v][1] then
-						local cdf = Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
-						createLine("cdf" .. k .. i, {
-							graph_container.offsetx + (i - 1) / 60 * graph_container.width,
-							(1 - cdf[i - 1]) * graph_container.height + _offsety,
-						}, {
-							graph_container.offsetx + i / 60 * graph_container.width,
-							(1 - cdf[i]) * graph_container.height + _offsety,
-						}, class_colors[k], nil, alpha)
-					else
-						if graph_lines["cdf" .. k .. i] then
-							graph_lines["cdf" .. k .. i]:Hide()
-						end
-					end
+					createLine("cdf" .. k .. i, {
+						graph_container.offsetx + (i - 1) / 60 * graph_container.width,
+						kaplan_meier[v][i - 1] * graph_container.height + _offsety,
+					}, {
+						graph_container.offsetx + i / 60 * graph_container.width,
+						kaplan_meier[v][i] * graph_container.height + _offsety,
+					}, class_colors[k], nil, alpha)
 				end
 			end
 		end
@@ -279,7 +311,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		graph_container.cdf_heading:SetFont("Fonts\\blei00d.TTF", 18, "")
 		graph_container.cdf_heading:SetJustifyV("TOP")
 		graph_container.cdf_heading:SetTextColor(0.9, 0.9, 0.9)
-		graph_container.cdf_heading:SetPoint("TOP", graph_container, "TOP", 25, -250)
+		graph_container.cdf_heading:SetPoint("TOP", graph_container, "TOP", 25, -210)
 		graph_container.cdf_heading:Show()
 	end
 
@@ -300,7 +332,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		graph_container.cdf_right:SetTexture(137057) -- Interface\\Tooltips\\UI-Tooltip-Border
 		graph_container.cdf_right:SetTexCoord(0.81, 0.94, 0.5, 1)
 	end
-	createCDF(-250)
+	createCDF(-220)
 
 	if graph_container.cdf_desc == nil then
 		graph_container.cdf_desc = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -308,7 +340,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		graph_container.cdf_desc:SetFont("Fonts\\blei00d.TTF", 11, "")
 		graph_container.cdf_desc:SetJustifyV("TOP")
 		graph_container.cdf_desc:SetTextColor(0.7, 0.7, 0.7)
-		graph_container.cdf_desc:SetPoint("TOP", graph_container, "TOP", 25, -465)
+		graph_container.cdf_desc:SetPoint("TOP", graph_container, "TOP", 25, -405)
 		graph_container.cdf_desc:Show()
 	end
 
@@ -318,7 +350,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		graph_container.desc:SetFont("Fonts\\blei00d.TTF", 11, "")
 		graph_container.desc:SetJustifyV("TOP")
 		graph_container.desc:SetTextColor(0.7, 0.7, 0.7)
-		graph_container.desc:SetPoint("TOP", graph_container, "TOP", 25, -215)
+		graph_container.desc:SetPoint("TOP", graph_container, "TOP", 25, -185)
 		graph_container.desc:Show()
 	end
 

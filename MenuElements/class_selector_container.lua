@@ -64,7 +64,10 @@ for i = 2, num_classes do
 	)
 end
 
-function class_selector_container.updateMenuElement(scroll_frame, class_id, stats_tbl, setMapRegion)
+function class_selector_container.updateMenuElement(scroll_frame, class_id, stats_tbl, updateFun, model)
+	if model == nil then
+		model = "Kaplan-Meier"
+	end
 	class_selector_container:SetParent(scroll_frame.frame)
 	class_selector_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 45, -30)
 	class_selector_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
@@ -160,12 +163,52 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 
 	for i, v in ipairs(class_selector_container.class_buttons) do
 		class_selector_container.class_buttons[i]:SetScript("OnMouseDown", function()
-			setMapRegion(
+			updateFun(
 				class_selector_container.class_buttons[i].class_id,
 				class_selector_container.class_buttons[i].class_name
 			)
 		end)
 	end
+
+	if class_selector_container.metric_dd == nil then
+		class_selector_container.metric_dd =
+			CreateFrame("Frame", nil, class_selector_container, "UIDropDownMenuTemplate")
+	end
+
+	local current_class_name = GetClassInfo(class_id)
+
+	local function dropdownFunctions(frame, level, menuList)
+		local info = UIDropDownMenu_CreateInfo()
+		info.text, info.checked, info.func =
+			"Kaplan-Meier", model == "Kaplan-Meier", function()
+				updateFun(class_id, current_class_name, "Kaplan-Meier")
+			end
+
+		UIDropDownMenu_AddButton(info)
+		info.text, info.checked, info.func =
+			"LogNormal", model == "LogNormal", function()
+				updateFun(class_id, current_class_name, "LogNormal")
+			end
+
+		UIDropDownMenu_AddButton(info)
+	end
+	class_selector_container.metric_dd:SetPoint("TOPLEFT", class_selector_container, "TOPLEFT", 500, -10)
+	UIDropDownMenu_SetText(class_selector_container.metric_dd, model)
+	UIDropDownMenu_SetWidth(class_selector_container.metric_dd, 130)
+	UIDropDownMenu_Initialize(class_selector_container.metric_dd, dropdownFunctions)
+	UIDropDownMenu_JustifyText(class_selector_container.metric_dd, "LEFT")
+
+	if class_selector_container.metric_text == nil then
+		class_selector_container.metric_text =
+			class_selector_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+
+	class_selector_container.metric_text:SetPoint("TOPLEFT", class_selector_container.metric_dd, "TOPLEFT", 20, 12)
+	class_selector_container.metric_text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	class_selector_container.metric_text:SetTextColor(255 / 255, 215 / 255, 0)
+	class_selector_container.metric_text:SetText("Model")
+	class_selector_container.metric_text:SetJustifyH("LEFT")
+	class_selector_container.metric_text:Show()
 end
 
 function Deathlog_ClassSelectorContainer()

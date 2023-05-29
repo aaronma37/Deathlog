@@ -955,7 +955,7 @@ local function drawClassStatisticsTab(container)
 		Deathlog_ClassStatsComparisonContainer(),
 	}
 
-	local function setMapRegion(map_id, name)
+	local function setMapRegion(map_id, name, model)
 		current_map_id = map_id
 		if name then
 			modifyTitle(name)
@@ -966,11 +966,11 @@ local function drawClassStatisticsTab(container)
 			["log_normal_params"] = _log_normal_params,
 		}
 		for _, v in ipairs(stats_menu_elements) do
-			v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+			v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion, model)
 		end
 	end
 
-	setMapRegion(1, "Warrior")
+	setMapRegion(1, "Warrior", "LogNormal")
 
 	scroll_frame.frame:HookScript("OnHide", function()
 		for _, v in ipairs(stats_menu_elements) do

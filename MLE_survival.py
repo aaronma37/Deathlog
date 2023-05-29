@@ -70286,27 +70286,52 @@ print(len(data_dict[1]))
 output_str = "precomputed_survival_stats = {"
 import numpy as np
 import surpyval as surv
+from matplotlib import pyplot as plt
+
+# from surpyval import Turnbull as TB
+
 for i in range(0,11):
     if len(data_dict[i]) < 1:
         continue
     tr = 60
     x = np.array(data_dict[i])
     x = x[(x<tr)]
-    model = surv.LogNormal.fit(x=x, tr=tr)
-    output_str += "["+str(i+1)+"] = {"+ str(model.params[0]) +","+ str(model.params[1])
-    output_str += "},"
-    print(i, model.params)
-    model.plot()
+    model = surv.Turnbull.fit(x=x, tr=tr)
+    print(model.R)
+    pr = 1
+    for j in range(30,40):
+        pr*=(1-(model.R[j-1] - model.R[j])/model.R[j-1])
+    print(i, "30-40 seg", pr)
+    pr = 1
+    for j in range(40,50):
+        pr*=(1-(model.R[j-1] - model.R[j])/model.R[j-1])
+    print(i, "40-50 seg", pr)
+    pr = 1
+    for j in range(50,60):
+        pr*=(1-(model.R[j-1] - model.R[j])/model.R[j-1])
+    print(i, "50-60 seg", pr)
+    # output_str += "["+str(i+1)+"] = {"+ str(model.params[0]) +","+ str(model.params[1])
+    # output_str += "},"
+    # print(i, model.params)
 
-    avgs = []
+    # plt.figure(figsize=(10, 7));
+    # plt.ylabel('Survival Probability')
+    # plt.xlabel('Stress [1.275kg/mm2]')
+    # plt.ylim([0, 1])
+    # plt.xlim([0, 60])
+    # plt.step(model.x, model.R)
+    # plt.title('Survival Prob vs Stress of Bofors Steel');
+    # model.plot()
 
-    for j in range(1,60):
-        avgs.append(0)
-        for lvl in data_dict[i]:
-            if lvl == j:
-                avgs[-1] += 1
-        avgs[-1]/=len(data_dict[i])
-    print(i, avgs)
+    # avgs = []
+
+    # for j in range(1,60):
+    #     avgs.append(0)
+    #     for lvl in data_dict[i]:
+    #         if lvl == j:
+    #             avgs[-1] += 1
+    #     avgs[-1]/=len(data_dict[i])
+    # print(i, avgs)
 
 output_str += "}"
 print(output_str)

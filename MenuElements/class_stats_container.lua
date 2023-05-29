@@ -89,7 +89,12 @@ for _, v in ipairs(average_class_subtitles) do
 	average_class_font_strings["all"][v[1]]:SetTextColor(1, 1, 1, 1)
 end
 
-function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_class_id, stats_tbl, setMapRegion)
+function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_class_id, stats_tbl, setMapRegion, model)
+	if model == nil then
+		model = "Kaplan-Meier"
+	end
+
+	local kaplan_meier = precomputed_kaplan_meier
 	local class_log_normal_params = precomputed_log_normal_params["all"]
 	class_stat_comparison_container:Show()
 	local entry_data = {}
@@ -186,27 +191,54 @@ function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_cla
 				v["all"]["num_entries"] / _stats["all"][map_id]["all"]["all"]["num_entries"] * 100.0
 			) .. "%"
 			local cdf = {}
-			if class_id == "all" then
-				for i = 1, 60 do
-					cdf[i] = 0
-				end
-				for k, v in pairs(deathlog_class_tbl) do
-					local l_cdf = Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
+			local cdf_values = nil
+			if model == "LogNormal" then
+				if class_id == "all" then
 					for i = 1, 60 do
-						cdf[i] = cdf[i] + l_cdf[i] / 9
+						cdf[i] = 0
 					end
+					for k, v in pairs(deathlog_class_tbl) do
+						local l_cdf =
+							Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
+						for i = 1, 60 do
+							cdf[i] = cdf[i] + l_cdf[i] / 9
+						end
+					end
+				else
+					cdf = Deathlog_CalculateCDF2(
+						class_log_normal_params[class_id][1],
+						class_log_normal_params[class_id][2]
+					)
 				end
-			else
-				cdf = Deathlog_CalculateCDF2(class_log_normal_params[class_id][1], class_log_normal_params[class_id][2])
+				cdf_values = function(x)
+					return 1 - cdf[x]
+				end
+			elseif model == "Kaplan-Meier" then
+				if class_id == "all" then
+					for i = 1, 60 do
+						cdf[i] = 0
+					end
+					for k, v in pairs(deathlog_class_tbl) do
+						local l_cdf = kaplan_meier[v]
+						for i = 1, 60 do
+							cdf[i] = cdf[i] + l_cdf[i] / 9
+						end
+					end
+				else
+					cdf = kaplan_meier[class_id]
+				end
+				cdf_values = function(x)
+					return cdf[x]
+				end
 			end
 
 			entry_data[class_id]["Avg. Lvl."] = string.format("%.1f", v["all"]["avg_lvl"])
-			entry_data[class_id]["10"] = string.format("%.1f", (1 - cdf[10]) * 100) .. "%"
-			entry_data[class_id]["20"] = string.format("%.1f", (1 - cdf[20]) * 100) .. "%"
-			entry_data[class_id]["30"] = string.format("%.1f", (1 - cdf[30]) * 100) .. "%"
-			entry_data[class_id]["40"] = string.format("%.1f", (1 - cdf[40]) * 100) .. "%"
-			entry_data[class_id]["50"] = string.format("%.2f", (1 - cdf[50]) * 100) .. "%"
-			entry_data[class_id]["60"] = string.format("%.2f", (1 - cdf[60]) * 100) .. "%"
+			entry_data[class_id]["10"] = string.format("%.1f", cdf_values(10) * 100) .. "%"
+			entry_data[class_id]["20"] = string.format("%.1f", cdf_values(20) * 100) .. "%"
+			entry_data[class_id]["30"] = string.format("%.1f", cdf_values(30) * 100) .. "%"
+			entry_data[class_id]["40"] = string.format("%.1f", cdf_values(40) * 100) .. "%"
+			entry_data[class_id]["50"] = string.format("%.2f", cdf_values(50) * 100) .. "%"
+			entry_data[class_id]["60"] = string.format("%.2f", cdf_values(60) * 100) .. "%"
 		end
 	end
 
