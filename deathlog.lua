@@ -178,7 +178,12 @@ local function handleEvent(self, event, ...)
 end
 
 local function SlashHandler(msg, editbox)
-	deathlogShowMenu(deathlog_data, general_stats, log_normal_params, skull_locs)
+	if msg == "option" or msg == "options" then
+		InterfaceOptionsFrame_Show()
+		InterfaceOptionsFrame_OpenToCategory("Deathlog")
+	else
+		deathlogShowMenu(deathlog_data, general_stats, log_normal_params, skull_locs)
+	end
 end
 
 SLASH_DEATHLOG1, SLASH_DEATHLOG2 = "/deathlog", "/dl"
