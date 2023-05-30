@@ -4,7 +4,7 @@
 ## Author: Yazpad
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.0.1b10
+## Version: 0.0.1b12
 
 
 ## DefaultState: enabled
@@ -37,6 +37,7 @@ Widgets/Minilog/widget.lua
 Widgets/HeatmapIndicator/widget.lua
 Widgets/HeatmapWorldMapOverlay/widget.lua
 Widgets/CreatureRankingTooltip/widget.lua
+Widgets/DeathAlert/widget.lua
 
 menu.lua
 deathlog_api.lua

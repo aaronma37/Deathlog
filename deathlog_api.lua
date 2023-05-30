@@ -192,42 +192,6 @@ end
 
 local death_log_cache = {}
 
-local function alertIfValid(_player_data)
-	local race_info = C_CreatureInfo.GetRaceInfo(_player_data["race_id"])
-	local race_str = race_info.raceName
-	local class_str, _, _ = GetClassInfo(_player_data["class_id"])
-	if class_str and RAID_CLASS_COLORS[class_str:upper()] then
-		class_str = "|c" .. RAID_CLASS_COLORS[class_str:upper()].colorStr .. class_str .. "|r"
-	end
-
-	local level_str = tostring(_player_data["level"])
-	local level_num = tonumber(_player_data["level"])
-	local min_level = tonumber(hardcore_settings.minimum_show_death_alert_lvl) or 0
-	if level_num < tonumber(min_level) then
-		return
-	end
-
-	local map_info = nil
-	local map_name = "?"
-	if _player_data["map_id"] then
-		map_info = C_Map.GetMapInfo(_player_data["map_id"])
-	end
-	if map_info then
-		map_name = map_info.name
-	end
-
-	local msg = _player_data["name"]
-		.. " the "
-		.. (race_str or "")
-		.. " "
-		.. (class_str or "")
-		.. " has died at level "
-		.. level_str
-		.. " in "
-		.. map_name
-	print(msg) -- TODO REPLACE WITH DEATH ALERT
-end
-
 local function createEntry(checksum)
 	death_ping_lru_cache_tbl[checksum]["player_data"]["date"] = time()
 	death_ping_lru_cache_tbl[checksum]["committed"] = 1
@@ -243,16 +207,7 @@ local function createEntry(checksum)
 	deathlog_data[realmName][modified_checksum] = death_ping_lru_cache_tbl[checksum]["player_data"]
 	deathlog_widget_minilog_createEntry(death_ping_lru_cache_tbl[checksum]["player_data"])
 
-	-- Save in-guilds for next part of migration TODO
-	if deathlog_settings.alert_enabled then
-		if death_ping_lru_cache_tbl[checksum]["player_data"]["in_guild"] then
-			return
-		end
-		if deathlog_settings.alert_subset ~= nil and deathlog_settings.alert_subset == "faction_wide" then
-			alertIfValid(death_ping_lru_cache_tbl[checksum]["player_data"])
-			return
-		end
-	end
+	Deathlog_DeathAlertPlay(death_ping_lru_cache_tbl[checksum]["player_data"])
 end
 
 local function recentEntryCreated(entry_name)

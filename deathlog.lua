@@ -64,6 +64,7 @@ local function loadWidgets()
 	Deathlog_CRTWidget_applySettings()
 	Deathlog_HIWidget_applySettings()
 	Deathlog_HWMWidget_applySettings()
+	Deathlog_DeathAlertWidget_applySettings()
 end
 
 function Deathlog_LoadFromHardcore()
@@ -181,6 +182,8 @@ local function SlashHandler(msg, editbox)
 	if msg == "option" or msg == "options" then
 		InterfaceOptionsFrame_Show()
 		InterfaceOptionsFrame_OpenToCategory("Deathlog")
+	elseif msg == "alert" then
+		Deathlog_DeathAlertFakeDeath()
 	else
 		deathlogShowMenu(deathlog_data, general_stats, log_normal_params, skull_locs)
 	end

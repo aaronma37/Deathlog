@@ -108,9 +108,9 @@ local function startUpdate()
 				local x = ceil(position.x * 100)
 				local y = ceil(position.y * 100)
 				updateHeatmap(map)
-				if heatmap_indicator_frame.heatmap[x][y] < 0.2 then
+				if heatmap_indicator_frame.heatmap[x][y] < 0.1 then
 					heatmap_indicator_frame.tex:SetVertexColor(1, 1, 1, 1)
-				elseif heatmap_indicator_frame.heatmap[x][y] < 0.7 then
+				elseif heatmap_indicator_frame.heatmap[x][y] < 0.25 then
 					heatmap_indicator_frame.tex:SetVertexColor(1, 1, 0, 1)
 				else
 					heatmap_indicator_frame.tex:SetVertexColor(1, 0, 0, 1)
@@ -167,7 +167,7 @@ local defaults = {
 	["pos_y"] = 0,
 	["size_x"] = 40,
 	["size_y"] = 40,
-	["show_value"] = true,
+	["show_value"] = false,
 }
 
 local function applyDefaults(_defaults, force)

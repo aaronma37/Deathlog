@@ -85,7 +85,7 @@ end
 
 function average_class_container.updateMenuElement(scroll_frame, inc_class_id, stats_tbl, setMapRegion, model)
 	if model == nil then
-		model = "Kapler-Meien"
+		model = "Kaplan-Meier"
 	end
 
 	local kaplan_meier = precomputed_kaplan_meier
@@ -175,7 +175,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 		s_class_info["40"] = (1 - cdf[40]) * 100
 		s_class_info["50"] = (1 - cdf[50]) * 100
 		s_class_info["60"] = (1 - cdf[60]) * 100
-	elseif model == "Kapler-Meien" then
+	elseif model == "Kaplan-Meier" then
 		cdf = kaplan_meier[inc_class_id]
 		s_class_info["10"] = cdf[10] * 100
 		s_class_info["20"] = cdf[20] * 100
@@ -255,7 +255,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 				cdf_values = function(x)
 					return 1 - cdf[x]
 				end
-			elseif model == "Kapler-Meien" then
+			elseif model == "Kaplan-Meier" then
 				if class_id == "all" then
 					for i = 1, 60 do
 						cdf[i] = 0
