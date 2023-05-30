@@ -13,6 +13,9 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 * Receives and records incoming death notifications
 * Can be set to guild only
 
+### Highly customizable Death Alerts
+![DeathAlert](deathalert.png)
+
 ### Browse the Deathlog
 * Search by name, level, class, race, etc..
 
