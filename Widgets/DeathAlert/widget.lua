@@ -84,7 +84,7 @@ function Deathlog_DeathAlertPlay(entry)
 			.. class
 			.. " "
 			.. race
-			.. " has beenslain\nby "
+			.. " has been slain\nby "
 			.. source_name
 			.. ", at level "
 			.. entry["level"]
