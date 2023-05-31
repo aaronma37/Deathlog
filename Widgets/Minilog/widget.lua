@@ -25,6 +25,7 @@ local widget_name = "minilog"
 
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
+local themes = { ["None"] = "None", ["Parchment"] = "Parchment" }
 
 local AceGUI = LibStub("AceGUI-3.0")
 local death_log_icon_frame = CreateFrame("frame")
@@ -511,6 +512,7 @@ local defaults = {
 	["size_y"] = 125,
 	["show_icon"] = true,
 	["columns"] = { "Name", "Class", "Race", "Lvl" },
+	["theme"] = "None",
 }
 
 local function applyDefaults(_defaults, force)
@@ -588,6 +590,33 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
 	death_log_frame.frame:SetFrameStrata("BACKGROUND")
 	death_log_frame.frame:Lower()
+
+	if deathlog_settings[widget_name]["theme"] == "Parchment" then
+		local PaneBackdrop = {
+			bgFile = "Interface\\ACHIEVEMENTFRAME\\UI-Achievement-Parchment-Horizontal",
+			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
+			tile = false,
+			tileSize = 512,
+			edgeSize = 16,
+			insets = { left = 3, right = 3, top = 5, bottom = 3 },
+		}
+
+		death_log_frame.frame:SetBackdrop(PaneBackdrop)
+		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
+		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+	else
+		local PaneBackdrop = {
+			bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
+			tile = true,
+			tileSize = 16,
+			edgeSize = 16,
+			insets = { left = 3, right = 3, top = 5, bottom = 3 },
+		}
+		death_log_frame.frame:SetBackdrop(PaneBackdrop)
+		death_log_frame.frame:SetBackdropColor(0, 0, 0, 0.6)
+		death_log_frame.frame:SetBackdropBorderColor(1, 1, 1, 1)
+	end
 
 	if optionsframe == nil then
 		LibStub("AceConfig-3.0"):RegisterOptionsTable(widget_name, options)
@@ -797,6 +826,21 @@ options = {
 			desc = "Reset to default",
 			func = function()
 				forceReset()
+			end,
+		},
+
+		theme = {
+			type = "select",
+			dialogControl = "LSM30_Font", --Select your widget here
+			name = "Theme",
+			desc = "Texture theme",
+			values = themes, -- pull in your font list from LSM
+			get = function()
+				return deathlog_settings[widget_name]["theme"]
+			end,
+			set = function(self, key)
+				deathlog_settings[widget_name]["theme"] = key
+				Deathlog_minilog_applySettings()
 			end,
 		},
 
