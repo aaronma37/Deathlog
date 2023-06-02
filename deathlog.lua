@@ -217,6 +217,21 @@ local options = {
 				Deathlog_LoadFromHardcore()
 			end,
 		},
+		require_validation = {
+			type = "toggle",
+			name = "Allow guildless death logging",
+			desc = "Toggle guildless death logging.  Guild-based death logging requires validation from guildmates to validate.  Guildless logging allows deaths to get logged without being validated.",
+			width = 1.3,
+			get = function()
+				if deathlog_settings["deathless_logging"] == nil then
+					deathlog_settings["deathless_logging"] = true
+				end
+				return deathlog_settings["deathless_logging"]
+			end,
+			set = function()
+				deathlog_settings["deathless_logging"] = not deathlog_settings["deathless_logging"]
+			end,
+		},
 	},
 }
 

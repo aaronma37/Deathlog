@@ -770,6 +770,10 @@ local function drawLogTab(container)
 	deathlog_group.import_hc_button:SetScript("OnClick", function()
 		Deathlog_LoadFromHardcore()
 	end)
+
+	deathlog_group.frame:HookScript("OnHide", function()
+		font_container:Hide()
+	end)
 end
 
 local function drawCreatureStatisticsTab(container)

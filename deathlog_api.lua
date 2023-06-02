@@ -240,8 +240,10 @@ local function shouldCreateEntry(checksum)
 			and recentEntryCreated(death_ping_lru_cache_tbl[checksum]["player_data"]["name"]) == false
 	then
 		if
-			death_ping_lru_cache_tbl[checksum]["peer_report"]
-			and death_ping_lru_cache_tbl[checksum]["peer_report"] > HC_REQUIRED_ACKS
+			(
+				death_ping_lru_cache_tbl[checksum]["peer_report"]
+				and death_ping_lru_cache_tbl[checksum]["peer_report"] > HC_REQUIRED_ACKS
+			) or (deathlog_settings["deathless_logging"] == nil or deathlog_settings["deathless_logging"] == true)
 		then
 			return true
 		else

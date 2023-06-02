@@ -14,7 +14,20 @@ local wipe = table.wipe
 -- WoW APIs
 local PlaySound = PlaySound
 local CreateFrame, UIParent = CreateFrame, UIParent
-local column_types = { "Name", "Guild", "Lvl", "F's", "Race", "Class", "Source", "ColoredName", "Zone" }
+local column_types = {
+	"Name",
+	"Guild",
+	"Lvl",
+	"F's",
+	"Race",
+	"Class",
+	"Source",
+	"ColoredName",
+	"Zone",
+	"ClassLogo1",
+	"ClassLogo2",
+	"RaceLogoSquare",
+}
 
 --[[-----------------------------------------------------------------------------
 Scripts
@@ -132,7 +145,11 @@ local methods = {
 			self.subtitletext_tbl[v]:SetText("")
 		end
 		for _, v in ipairs(subtitle_data) do
-			self.subtitletext_tbl[v[1]]:SetText(v[1])
+			if v[1] == "ClassLogo1" or v[1] == "ClassLogo2" or v[1] == "RaceLogoSquare" then
+				self.subtitletext_tbl[v[1]]:SetText("")
+			else
+				self.subtitletext_tbl[v[1]]:SetText(v[1])
+			end
 			self.subtitletext_tbl[v[1]]:SetPoint("LEFT", self.frame, "TOPLEFT", column_offset, -26)
 			column_offset = column_offset + v[2]
 		end
@@ -210,7 +227,7 @@ local PaneBackdrop = {
 	edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
 	tile = true,
 	tileSize = 16,
-	edgeSize = 16,
+	edgeSize = 32,
 	insets = { left = 3, right = 3, top = 5, bottom = 3 },
 }
 

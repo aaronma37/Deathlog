@@ -19,12 +19,41 @@ local deathlog_instance_tbl = {
 	{ 429, "DIREMAUL", "Diremaul" },
 }
 
+local tmap = {
+	["Warrior"] = { 0, 0.25, 0, 0.25 },
+	["Mage"] = { 0.25, 0.5, 0, 0.25 },
+	["Rogue"] = { 0.5, 0.75, 0, 0.25 },
+	["Druid"] = { 0.75, 1, 0, 0.25 },
+	["Hunter"] = { 0, 0.25, 0.25, 0.5 },
+	["Shaman"] = { 0.25, 0.5, 0.25, 0.5 },
+	["Priest"] = { 0.5, 0.75, 0.25, 0.5 },
+	["Warlock"] = { 0.75, 1, 0.25, 0.5 },
+	["Paladin"] = { 0, 0.25, 0.5, 0.75 },
+}
+
+local rmap = {
+	["Human"] = { 0, 0.25, 0, 0.25 },
+	["Dwarf"] = { 0.25, 0.5, 0, 0.25 },
+	["Gnome"] = { 0.5, 0.75, 0, 0.25 },
+	["Night Elf"] = { 0.75, 1, 0, 0.25 },
+	["Tauren"] = { 0, 0.25, 0.25, 0.5 },
+	["Undead"] = { 0.25, 0.5, 0.25, 0.5 },
+	["Troll"] = { 0.5, 0.75, 0.25, 0.5 },
+	["Orc"] = { 0.75, 1, 0.25, 0.5 },
+}
+
+local presets = {
+	[""] = "",
+	["concise"] = "concise",
+}
+
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
 local default_font = "Fonts\\blei00d.TTF"
 local widget_name = "minilog"
 
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
+fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
 local themes = { ["None"] = "None", ["Parchment"] = "Parchment" }
 
 local AceGUI = LibStub("AceGUI-3.0")
@@ -90,7 +119,7 @@ death_log_frame.titletext:SetFont("Fonts\\blei00d.TTF", 19, "THICK")
 local subtitle_metadata = {
 	["ColoredName"] = {
 		"Name",
-		70,
+		80,
 		function(_entry)
 			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
 			if RAID_CLASS_COLORS[class_str:upper()] then
@@ -118,7 +147,7 @@ local subtitle_metadata = {
 	},
 	["Name"] = {
 		"Name",
-		70,
+		80,
 		function(_entry)
 			return _entry.player_data["name"] or ""
 		end,
@@ -154,9 +183,75 @@ local subtitle_metadata = {
 	},
 	["Lvl"] = {
 		"Lvl",
-		30,
+		20,
 		function(_entry)
 			return _entry.player_data["level"] or ""
+		end,
+	},
+	["ClassLogo1"] = {
+		"ClassLogo1",
+		20,
+		function(_entry)
+			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
+			if class_str then
+				local msg = "|TInterface\\WorldStateFrame\\ICONS-CLASSES:16:16:0:0:64:64:"
+					.. tmap[class_str][1] * 64
+					.. ":"
+					.. tmap[class_str][2] * 64
+					.. ":"
+					.. tmap[class_str][3] * 64
+					.. ":"
+					.. tmap[class_str][4] * 64
+					.. "|t"
+
+				return msg
+			else
+				return ""
+			end
+		end,
+	},
+	["ClassLogo2"] = {
+		"ClassLogo2",
+		20,
+		function(_entry)
+			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
+			if class_str then
+				local msg = "|TInterface\\ARENAENEMYFRAME\\UI-CLASSES-CIRCLES:16:16:0:0:64:64:"
+					.. tmap[class_str][1] * 64
+					.. ":"
+					.. tmap[class_str][2] * 64
+					.. ":"
+					.. tmap[class_str][3] * 64
+					.. ":"
+					.. tmap[class_str][4] * 64
+					.. "|t"
+
+				return msg
+			else
+				return ""
+			end
+		end,
+	},
+	["RaceLogoSquare"] = {
+		"RaceLogoSquare",
+		20,
+		function(_entry)
+			local race_info = C_CreatureInfo.GetRaceInfo(_entry.player_data["race_id"])
+			if race_info.raceName and rmap[race_info.raceName] and _entry.player_data["level"] then
+				local msg = "|TInterface\\Glues\\CHARACTERCREATE\\UI-CHARACTERCREATE-RACES.PNG:16:16:0:0:64:64:"
+					.. rmap[race_info.raceName][1] * 64
+					.. ":"
+					.. rmap[race_info.raceName][2] * 64
+					.. ":"
+					.. rmap[race_info.raceName][3] * 64 + (_entry.player_data["level"] % 2) * 32
+					.. ":"
+					.. rmap[race_info.raceName][4] * 64 + (_entry.player_data["level"] % 2) * 32
+					.. "|t"
+
+				return msg
+			else
+				return ""
+			end
 		end,
 	},
 }
@@ -513,6 +608,8 @@ local defaults = {
 	["show_icon"] = true,
 	["columns"] = { "Name", "Class", "Race", "Lvl" },
 	["theme"] = "None",
+	["hide_subtitle_heading"] = false,
+	["presets"] = "",
 }
 
 local function applyDefaults(_defaults, force)
@@ -567,7 +664,10 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		then
 			death_log_icon_frame:Show()
 		else
-			death_log_icon_frame:Hide()
+			death_log_icon_frame:Show()
+			hc_fire_tex:Hide()
+			gold_ring_tex:Hide()
+			black_round_tex:Hide()
 		end
 	else
 		death_log_frame.frame:Hide()
@@ -591,14 +691,24 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 	death_log_frame.frame:SetFrameStrata("BACKGROUND")
 	death_log_frame.frame:Lower()
 
+	if deathlog_settings[widget_name]["hide_subtitle_heading"] then
+		for _, v in pairs(death_log_frame.subtitletext_tbl) do
+			v:Hide()
+		end
+	else
+		for _, v in pairs(death_log_frame.subtitletext_tbl) do
+			v:Show()
+		end
+	end
+
 	if deathlog_settings[widget_name]["theme"] == "Parchment" then
 		local PaneBackdrop = {
 			bgFile = "Interface\\ACHIEVEMENTFRAME\\UI-Achievement-Parchment-Horizontal",
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
 			tile = false,
 			tileSize = 512,
-			edgeSize = 16,
-			insets = { left = 3, right = 3, top = 5, bottom = 3 },
+			edgeSize = 24,
+			insets = { left = 3, right = 3, top = 3, bottom = 3 },
 		}
 
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
@@ -610,8 +720,8 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
 			tile = true,
 			tileSize = 16,
-			edgeSize = 16,
-			insets = { left = 3, right = 3, top = 5, bottom = 3 },
+			edgeSize = 24,
+			insets = { left = 3, right = 3, top = 3, bottom = 3 },
 		}
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
 		death_log_frame.frame:SetBackdropColor(0, 0, 0, 0.6)
@@ -708,6 +818,30 @@ options = {
 					deathlog_settings[widget_name]["show_icon"] = true
 				end
 				deathlog_settings[widget_name]["show_icon"] = not deathlog_settings[widget_name]["show_icon"]
+				Deathlog_minilog_applySettings()
+			end,
+			order = 2,
+		},
+		show_icon = {
+			type = "toggle",
+			name = "Hide Subtitle Heading",
+			desc = "Hide subtitle heading.",
+			get = function()
+				if
+					deathlog_settings[widget_name]["hide_subtitle_heading"] == nil
+					or deathlog_settings[widget_name]["hide_subtitle_heading"] == true
+				then
+					return true
+				else
+					return false
+				end
+			end,
+			set = function()
+				if deathlog_settings[widget_name]["hide_subtitle_heading"] == nil then
+					deathlog_settings[widget_name]["hide_subtitle_heading"] = true
+				end
+				deathlog_settings[widget_name]["hide_subtitle_heading"] =
+					not deathlog_settings[widget_name]["hide_subtitle_heading"]
 				Deathlog_minilog_applySettings()
 			end,
 			order = 2,
@@ -840,6 +974,44 @@ options = {
 			end,
 			set = function(self, key)
 				deathlog_settings[widget_name]["theme"] = key
+				Deathlog_minilog_applySettings()
+			end,
+		},
+
+		preset_ = {
+			type = "select",
+			dialogControl = "LSM30_Font", --Select your widget here
+			name = "Preset Settings",
+			desc = "Preset Settings",
+			order = 3,
+			values = presets, -- pull in your font list from LSM
+			get = function()
+				return deathlog_settings[widget_name]["presets"]
+			end,
+			set = function(self, key)
+				deathlog_settings[widget_name]["presets"] = key
+				if deathlog_settings[widget_name]["presets"] == "concise" then
+					deathlog_settings[widget_name]["enable"] = true
+					deathlog_settings[widget_name]["font"] = "BreatheFire"
+					deathlog_settings[widget_name]["entry_font"] = "blei00d"
+					deathlog_settings[widget_name]["title_font_size"] = 19
+					deathlog_settings[widget_name]["entry_font_size"] = 16
+					deathlog_settings[widget_name]["title_x_offset"] = 13
+					deathlog_settings[widget_name]["title_y_offset"] = -9
+					deathlog_settings[widget_name]["border_alpha"] = 1.0
+					deathlog_settings[widget_name]["size_x"] = 181.8763122558594
+					deathlog_settings[widget_name]["size_y"] = 102.3703765869141
+					deathlog_settings[widget_name]["show_icon"] = false
+					deathlog_settings[widget_name]["columns"] = {
+						"Lvl", -- [1]
+						"Name", -- [2]
+						"RaceLogoSquare", -- [3]
+						"ClassLogo1", -- [4]
+					}
+					deathlog_settings[widget_name]["theme"] = "Parchment"
+					deathlog_settings[widget_name]["hide_subtitle_heading"] = true
+					deathlog_settings[widget_name]["presets"] = "concise"
+				end
 				Deathlog_minilog_applySettings()
 			end,
 		},

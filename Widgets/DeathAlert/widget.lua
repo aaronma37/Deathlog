@@ -63,6 +63,23 @@ function Deathlog_DeathAlertPlay(entry)
 	if deathlog_settings[widget_name]["enable"] == false then
 		return
 	end
+	if
+		entry["level"]
+		and (
+			entry["level"] < deathlog_settings[widget_name]["min_lvl"]
+			or entry["level"] > deathlog_settings[widget_name]["max_lvl"]
+		)
+	then
+		return
+	end
+
+	if deathlog_settings[widget_name]["guild_only"] then
+		local guildName, guildRankName, guildRankIndex = GetGuildInfo("player")
+		if entry["guild"] ~= guildName then
+			return
+		end
+	end
+
 	PlaySound(8959)
 	death_alert_frame.text:SetText("Some text")
 
@@ -244,6 +261,9 @@ local defaults = {
 	["font_color_b"] = 1,
 	["font_color_a"] = 1,
 	["message"] = "<name> the <race> <class> has been slain\nby <source> at lvl <level> in <zone>.",
+	["min_lvl"] = 1,
+	["max_lvl"] = 80,
+	["guild_only"] = false,
 }
 
 local function applyDefaults(_defaults, force)
@@ -696,6 +716,50 @@ options = {
 			end,
 			set = function(self, msg)
 				deathlog_settings[widget_name]["message"] = msg
+				Deathlog_DeathAlertWidget_applySettings()
+			end,
+		},
+		min_lvl = {
+			type = "range",
+			name = "Min. Lvl. to Display",
+			desc = "Minimum level to display",
+			min = 1,
+			max = 80,
+			step = 1,
+			order = 20,
+			get = function()
+				return deathlog_settings[widget_name]["min_lvl"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["min_lvl"] = value
+				Deathlog_DeathAlertWidget_applySettings()
+			end,
+		},
+		max_lvl = {
+			type = "range",
+			name = "Max. Lvl. to Display",
+			desc = "Maximum level to display",
+			min = 1,
+			max = 80,
+			step = 1,
+			order = 21,
+			get = function()
+				return deathlog_settings[widget_name]["max_lvl"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["max_lvl"] = value
+				Deathlog_DeathAlertWidget_applySettings()
+			end,
+		},
+		guild_only_toggle = {
+			type = "toggle",
+			name = "Guild only alerts",
+			desc = "Only show alerts for deaths within the player's guild.",
+			get = function()
+				return deathlog_settings[widget_name]["guild_only"]
+			end,
+			set = function()
+				deathlog_settings[widget_name]["guild_only"] = not deathlog_settings[widget_name]["guild_only"]
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},
