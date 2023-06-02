@@ -103,13 +103,19 @@ function Deathlog_DeathAlertPlay(entry)
 		zone = deathlog_id_to_instance_tbl[entry["instance_id"]] or ""
 	end
 
+	local msg = deathlog_settings[widget_name]["message"]
 	local source_name = ""
 	if entry["source_id"] then
 		if id_to_npc[entry["source_id"]] then
 			source_name = id_to_npc[entry["source_id"]]
 		end
 	end
-	local msg = deathlog_settings[widget_name]["message"]
+	if entry["source_id"] == -2 then
+		msg = deathlog_settings[widget_name]["drown_message"]
+	end
+	if entry["source_id"] == -3 then
+		msg = deathlog_settings[widget_name]["fall_message"]
+	end
 	msg = msg:gsub("%<name>", entry["name"])
 	msg = msg:gsub("%<class>", class)
 	msg = msg:gsub("%<race>", race)
@@ -261,6 +267,8 @@ local defaults = {
 	["font_color_b"] = 1,
 	["font_color_a"] = 1,
 	["message"] = "<name> the <race> <class> has been slain\nby <source> at lvl <level> in <zone>.",
+	["fall_message"] = "<name> the <race> <class> fell to\ndeath at lvl <level> in <zone>.",
+	["drown_message"] = "<name> the <race> <class> drowned\n at lvl <level> in <zone>.",
 	["min_lvl"] = 1,
 	["max_lvl"] = 80,
 	["guild_only"] = false,

@@ -302,8 +302,12 @@ function DEATHLOG_selfDeathAlert(death_source_str)
 	local _, _, race_id = UnitRace("player")
 	local _, _, class_id = UnitClass("player")
 	local death_source = "-1"
-	if DeathLog_Last_Attack_Source then
+	if death_source_str and npc_to_id[death_source_str] then
 		death_source = npc_to_id[death_source_str]
+	end
+
+	if death_source_str and environment_damage[death_source_str] then
+		death_source = death_source_str
 	end
 
 	msg = encodeMessage(
