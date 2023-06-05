@@ -7,10 +7,19 @@ local death_alert_styles = {
 	["boss_banner_enemy_icon_small"] = "boss_banner_enemy_icon_small",
 	["boss_banner_enemy_icon_medium"] = "boss_banner_enemy_icon_medium",
 	["boss_banner_enemy_icon_animated"] = "boss_banner_enemy_icon_animated",
+	-- ["lf_animated"] = "lf_animated",
 }
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
+fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
+fonts["BlackChancery"] = "Interface\\AddOns\\Deathlog\\Fonts\\BLKCHCRY.TTF"
+fonts["ArgosGeorge"] = "Interface\\AddOns\\Deathlog\\Fonts\\ArgosGeorge.ttf"
+fonts["GothicaBook"] = "Interface\\AddOns\\Deathlog\\Fonts\\Gothica-Book.ttf"
+fonts["Immortal"] = "Interface\\AddOns\\Deathlog\\Fonts\\IMMORTAL.ttf"
+fonts["BlackwoodCastle"] = "Interface\\AddOns\\Deathlog\\Fonts\\BlackwoodCastle.ttf"
+fonts["Alegreya"] = "Interface\\AddOns\\Deathlog\\Fonts\\alegreya.regular.ttf"
+
 death_alert_frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 death_alert_frame:SetWidth(25)
 death_alert_frame:SetHeight(25)
@@ -151,12 +160,16 @@ function Deathlog_DeathAlertPlay(entry)
 					id_to_display_id[entry["source_id"]]
 				)
 				death_alert_frame.textures.enemy_portrait:AddMaskTexture(death_alert_frame.textures.enemy_portrait_mask)
+			elseif entry["source_id"] == -2 then
+				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Ability_Suffocate")
+			elseif entry["source_id"] == -3 then
+				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Spell_Magic_FeatherFall")
 			end
 		end
-	elseif deathlog_settings[widget_name]["style"] == "boss_banner_enemy_icon_animated" then
-		---
-		---
-		---
+	elseif
+		deathlog_settings[widget_name]["style"] == "boss_banner_enemy_icon_animated"
+		or deathlog_settings[widget_name]["style"] == "lf_animated"
+	then
 		local texture = death_alert_frame.textures.enemy_portrait
 		death_alert_frame.textures.enemy_portrait:Hide()
 		local drawLayer = texture:GetDrawLayer()
@@ -167,14 +180,12 @@ function Deathlog_DeathAlertPlay(entry)
 		portrait.cx = texture:GetWidth()
 		portrait.cy = texture:GetHeight()
 
-		-- push model layers down (overlay->artwork, border/artwork->background)
 		if drawLayer == "OVERLAY" then
 			drawLayer = "ARTWORK"
 		else
 			drawLayer = "BACKGROUND"
 		end
 
-		-- create a backLayer whose parent is the old texture's parent (textureSubLevel -1 to be beneath model)
 		if death_alert_frame.textures.backlayer == nil then
 			death_alert_frame.textures.backlayer = texture:GetParent():CreateTexture(nil, drawLayer, nil, -1)
 		end
@@ -187,7 +198,6 @@ function Deathlog_DeathAlertPlay(entry)
 			portrait.backLayer:SetPoint(texture:GetPoint(i))
 		end
 
-		-- create a modelLayer whose parent is the old texture's parent, with useParentLevel="true"
 		if death_alert_frame.textures.modelLayer == nil then
 			death_alert_frame.textures.modelLayer = CreateFrame("PlayerModel", nil, death_alert_frame)
 		end
@@ -207,38 +217,28 @@ function Deathlog_DeathAlertPlay(entry)
 		portrait.maskLayer:SetTexture("Interface\\AddOns\\Adapt\\Adapt-Mask")
 
 		local parent = texture:GetParent()
-		-- parent.adaptPortrait = adapt.portraits[texture]
-		-- parent:HookScript("OnShow", function(self)
-		-- 	adapt.AddToRunway(self.adaptPortrait.modelLayer.parentTexture, "high")
-		-- end)
 		local xoff, yoff, toff = 0, 0, 0.2
 		if 1 == 1 then -- round portraits
-			-- old coefficient was 0.0985 but corners stuck out; they stop at 0.1175 but clip too much imho :(
 			local coeff = 0.1175
 			xoff = coeff * portrait.cx -- circle portrait has model slightly smaller
 			yoff = coeff * portrait.cy
 			toff = 0 -- and full texcoord of background texture
 		end
-		-- portrait.modelLayer:SetPoint("TOPLEFT", portrait.backLayer, "TOPLEFT", xoff, -yoff)
-		-- portrait.modelLayer:SetPoint("BOTTOMRIGHT", portrait.backLayer, "BOTTOMRIGHT", -xoff, yoff)
 		portrait.modelLayer:SetPoint("CENTER", death_alert_frame.textures.top_emblem_overlay, "CENTER", 0, 0)
 		portrait.modelLayer:SetWidth(death_alert_frame.textures.top_emblem_overlay:GetWidth() * 0.55)
 		portrait.modelLayer:SetHeight(death_alert_frame.textures.top_emblem_overlay:GetHeight() * 0.55)
 		portrait.modelLayer:SetShown(true)
 		portrait.backLayer:SetTexCoord(toff, 1 - toff, toff, 1 - toff)
 		portrait.maskLayer:SetShown(false)
-		portrait.modelLayer:SetDisplayInfo(id_to_display_id[entry["source_id"]])
+		if id_to_display_id[entry["source_id"]] then
+			portrait.modelLayer:SetDisplayInfo(id_to_display_id[entry["source_id"]])
+		end
 		portrait.modelLayer:SetPortraitZoom(1)
 		if 2 == 1 then
 			portrait.modelLayer:SetRotation(MODELFRAME_DEFAULT_ROTATION)
 		else
 			portrait.modelLayer:SetRotation(0)
 		end
-		-- adapt.ShapeModel(texture)
-
-		-- return adapt.portraits[texture]
-
-		---
 	end
 
 	death_alert_frame:Show()
@@ -272,6 +272,10 @@ local defaults = {
 	["min_lvl"] = 1,
 	["max_lvl"] = 80,
 	["guild_only"] = false,
+	["accent_color_r"] = 1,
+	["accent_color_g"] = 1,
+	["accent_color_b"] = 1,
+	["accent_color_a"] = 1,
 }
 
 local function applyDefaults(_defaults, force)
@@ -285,6 +289,127 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
+local function initializeLFBanner(icon_type, icon_size)
+	if death_alert_frame.textures == nil then
+		death_alert_frame.textures = {}
+	end
+	if death_alert_frame.textures.top == nil then
+		death_alert_frame.textures.top = death_alert_frame:CreateTexture(nil, "OVERLAY")
+	end
+	death_alert_frame.textures.top:SetPoint("CENTER", death_alert_frame, "CENTER", 0, 0)
+	death_alert_frame.textures.top:SetWidth(400)
+	death_alert_frame.textures.top:SetHeight(120)
+	death_alert_frame.textures.top:SetDrawLayer("OVERLAY", 4)
+	death_alert_frame.textures.top:SetVertexColor(1, 1, 1, 1)
+	death_alert_frame.textures.top:SetTexture("Interface\\LootFrame\\LootToastAtlas")
+	death_alert_frame.textures.top:SetTexCoord(0.55, 0.825, 0.39, 0.7)
+	death_alert_frame.textures.top:Show()
+
+	if death_alert_frame.textures.top_emblem == nil then
+		death_alert_frame.textures.top_emblem = death_alert_frame:CreateTexture(nil, "OVERLAY")
+	end
+	death_alert_frame.textures.top_emblem:SetPoint(
+		"LEFT",
+		death_alert_frame.textures.top,
+		"LEFT",
+		death_alert_frame.textures.top:GetWidth() * 0.1,
+		0
+	)
+	death_alert_frame.textures.top_emblem:SetWidth(death_alert_frame.textures.top:GetHeight() * 0.5 * 1.5)
+	death_alert_frame.textures.top_emblem:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.2 * 1.5)
+
+	death_alert_frame.textures.top_emblem:SetDrawLayer("OVERLAY", 5)
+	death_alert_frame.textures.top_emblem:SetVertexColor(1, 1, 1, 1)
+	death_alert_frame.textures.top_emblem:SetTexture("Interface\\LevelUp\\BossBanner")
+	death_alert_frame.textures.top_emblem:SetTexCoord(0.24, 0.59, 0.58, 0.72)
+	death_alert_frame.textures.top_emblem:Show()
+
+	if death_alert_frame.textures.top_emblem_overlay == nil then
+		death_alert_frame.textures.top_emblem_overlay = death_alert_frame:CreateTexture(nil, "OVERLAY")
+	end
+
+	death_alert_frame.textures.top_emblem_overlay:SetPoint(
+		"LEFT",
+		death_alert_frame.textures.top,
+		"LEFT",
+		death_alert_frame:GetWidth() * 0.075,
+		0
+	)
+	death_alert_frame.textures.top_emblem_overlay:SetWidth(death_alert_frame.textures.top:GetHeight() * 0.225 * 2.7)
+	death_alert_frame.textures.top_emblem_overlay:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.225 * 2.7)
+	death_alert_frame.textures.top_emblem_overlay:SetTexture("Interface\\PVPFrame\\SilverIconBorder")
+	death_alert_frame.textures.top_emblem_overlay:SetVertexColor(0.5, 0.2, 0.2, 1)
+	death_alert_frame.textures.top_emblem_overlay:SetDrawLayer("OVERLAY", 7)
+
+	death_alert_frame.textures.top_emblem_overlay:Show()
+
+	if death_alert_frame.textures.top_emblem_background == nil then
+		death_alert_frame.textures.top_emblem_background = death_alert_frame:CreateTexture(nil, "OVERLAY")
+	end
+	death_alert_frame.textures.top_emblem_background:SetPoint(
+		"CENTER",
+		death_alert_frame.textures.top_emblem_overlay,
+		"CENTER",
+		0,
+		0
+	)
+	death_alert_frame.textures.top_emblem_background:SetHeight(
+		death_alert_frame.textures.top_emblem_overlay:GetHeight() * 0.7
+	)
+	death_alert_frame.textures.top_emblem_background:SetWidth(
+		death_alert_frame.textures.top_emblem_overlay:GetWidth() * 0.7
+	)
+
+	death_alert_frame.textures.top_emblem_background:SetDrawLayer("OVERLAY", 6)
+	death_alert_frame.textures.top_emblem_background:SetColorTexture(0, 0, 0, 1)
+
+	if death_alert_frame.textures.enemy_portrait == nil then
+		death_alert_frame.textures.enemy_portrait = death_alert_frame:CreateTexture(nil, "OVERLAY")
+	end
+	death_alert_frame.textures.enemy_portrait:SetPoint(
+		"TOP",
+		death_alert_frame.textures.top,
+		"TOP",
+		2,
+		-death_alert_frame.textures.top:GetHeight() * 0.237
+	)
+	death_alert_frame.textures.enemy_portrait:SetWidth(death_alert_frame.textures.top:GetHeight() * 0.225 * 0.8 * 1.15)
+	death_alert_frame.textures.enemy_portrait:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.225 * 0.8 * 1.15)
+	death_alert_frame.textures.enemy_portrait:SetDrawLayer("OVERLAY", 7)
+	death_alert_frame.textures.enemy_portrait:Show()
+
+	if death_alert_frame.textures.enemy_portrait_mask == nil then
+		death_alert_frame.textures.enemy_portrait_mask = death_alert_frame:CreateMaskTexture()
+	end
+
+	death_alert_frame.textures.enemy_portrait_mask:SetPoint(
+		"CENTER",
+		death_alert_frame.textures.enemy_portrait,
+		"CENTER",
+		0,
+		0
+	)
+	death_alert_frame.textures.enemy_portrait_mask:SetHeight(death_alert_frame.textures.enemy_portrait:GetWidth() * 1)
+	death_alert_frame.textures.enemy_portrait_mask:SetWidth(death_alert_frame.textures.enemy_portrait:GetWidth() * 1)
+	death_alert_frame.textures.enemy_portrait_mask:SetTexture(
+		"Interface\\Addons\\Deathlog\\Media\\blur_mask.blp",
+		"CLAMPTOBLACKADDITIVE",
+		"CLAMPTOBLACKADDITIVE"
+	)
+	death_alert_frame.textures.enemy_portrait:AddMaskTexture(death_alert_frame.textures.enemy_portrait_mask)
+
+	death_alert_frame.text:SetPoint(
+		"CENTER",
+		death_alert_frame.textures.top,
+		"CENTER",
+		death_alert_frame:GetWidth() * 0.05,
+		-death_alert_frame.textures.top:GetHeight() * 0.04
+	)
+
+	death_alert_frame.text:SetWidth(death_alert_frame:GetWidth() * 0.3)
+	death_alert_frame:Hide()
+end
+
 local function initializeBossBanner(icon_type, icon_size)
 	if death_alert_frame.textures == nil then
 		death_alert_frame.textures = {}
@@ -294,7 +419,12 @@ local function initializeBossBanner(icon_type, icon_size)
 	end
 	death_alert_frame.textures.top:SetAllPoints()
 	death_alert_frame.textures.top:SetDrawLayer("OVERLAY", 4)
-	death_alert_frame.textures.top:SetVertexColor(1, 1, 1, 1)
+	death_alert_frame.textures.top:SetVertexColor(
+		deathlog_settings[widget_name]["accent_color_r"],
+		deathlog_settings[widget_name]["accent_color_g"],
+		deathlog_settings[widget_name]["accent_color_b"],
+		deathlog_settings[widget_name]["accent_color_a"]
+	)
 	death_alert_frame.textures.top:SetTexture("Interface\\LevelUp\\BossBanner")
 	death_alert_frame.textures.top:SetTexCoord(0, 0.84, 0, 0.43)
 	death_alert_frame.textures.top:Show()
@@ -312,7 +442,12 @@ local function initializeBossBanner(icon_type, icon_size)
 	death_alert_frame.textures.middle:SetWidth(death_alert_frame.textures.top:GetWidth())
 	death_alert_frame.textures.middle:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.32)
 	death_alert_frame.textures.middle:SetDrawLayer("OVERLAY", 4)
-	death_alert_frame.textures.middle:SetVertexColor(1, 1, 1, 1)
+	death_alert_frame.textures.middle:SetVertexColor(
+		deathlog_settings[widget_name]["accent_color_r"],
+		deathlog_settings[widget_name]["accent_color_g"],
+		deathlog_settings[widget_name]["accent_color_b"],
+		deathlog_settings[widget_name]["accent_color_a"]
+	)
 	death_alert_frame.textures.middle:SetTexture("Interface\\LevelUp\\BossBanner")
 	death_alert_frame.textures.middle:SetTexCoord(0, 0.8, 0.43, 0.58)
 	death_alert_frame.textures.middle:Show()
@@ -342,7 +477,12 @@ local function initializeBossBanner(icon_type, icon_size)
 		death_alert_frame.textures.top_emblem:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.2 * 1.5)
 	end
 	death_alert_frame.textures.top_emblem:SetDrawLayer("OVERLAY", 5)
-	death_alert_frame.textures.top_emblem:SetVertexColor(1, 1, 1, 1)
+	death_alert_frame.textures.top_emblem:SetVertexColor(
+		deathlog_settings[widget_name]["accent_color_r"],
+		deathlog_settings[widget_name]["accent_color_g"],
+		deathlog_settings[widget_name]["accent_color_b"],
+		deathlog_settings[widget_name]["accent_color_a"]
+	)
 	death_alert_frame.textures.top_emblem:SetTexture("Interface\\LevelUp\\BossBanner")
 	death_alert_frame.textures.top_emblem:SetTexCoord(0.24, 0.59, 0.58, 0.72)
 	death_alert_frame.textures.top_emblem:Show()
@@ -364,7 +504,12 @@ local function initializeBossBanner(icon_type, icon_size)
 			death_alert_frame.textures.top_emblem_overlay:SetTexture("Interface\\LevelUp\\BossBanner")
 			death_alert_frame.textures.top_emblem_overlay:SetTexCoord(0.86, 0.962, 0, 0.12)
 			death_alert_frame.textures.top_emblem_overlay:SetDrawLayer("OVERLAY", 6)
-			death_alert_frame.textures.top_emblem_overlay:SetVertexColor(1, 1, 1, 1)
+			death_alert_frame.textures.top_emblem_overlay:SetVertexColor(
+				deathlog_settings[widget_name]["accent_color_r"],
+				deathlog_settings[widget_name]["accent_color_g"],
+				deathlog_settings[widget_name]["accent_color_b"],
+				deathlog_settings[widget_name]["accent_color_a"]
+			)
 		elseif icon_size == "animated" then
 			death_alert_frame.textures.top_emblem_overlay:SetPoint(
 				"TOP",
@@ -380,7 +525,12 @@ local function initializeBossBanner(icon_type, icon_size)
 				death_alert_frame.textures.top:GetHeight() * 0.225 * 1.7
 			)
 			death_alert_frame.textures.top_emblem_overlay:SetTexture("Interface\\PVPFrame\\SilverIconBorder")
-			death_alert_frame.textures.top_emblem_overlay:SetVertexColor(0.5, 0.2, 0.2, 1)
+			death_alert_frame.textures.top_emblem_overlay:SetVertexColor(
+				deathlog_settings[widget_name]["accent_color_r"] * 0.5,
+				deathlog_settings[widget_name]["accent_color_g"] * 0.2,
+				deathlog_settings[widget_name]["accent_color_b"] * 0.2,
+				deathlog_settings[widget_name]["accent_color_a"] * 1
+			)
 			death_alert_frame.textures.top_emblem_overlay:SetDrawLayer("OVERLAY", 7)
 
 			if death_alert_frame.textures.top_emblem_background == nil then
@@ -476,7 +626,12 @@ local function initializeBossBanner(icon_type, icon_size)
 	death_alert_frame.textures.bottom_emblem:SetWidth(death_alert_frame.textures.top:GetHeight() * 0.35)
 	death_alert_frame.textures.bottom_emblem:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.1)
 	death_alert_frame.textures.bottom_emblem:SetDrawLayer("OVERLAY", 5)
-	death_alert_frame.textures.bottom_emblem:SetVertexColor(1, 1, 1, 1)
+	death_alert_frame.textures.bottom_emblem:SetVertexColor(
+		deathlog_settings[widget_name]["accent_color_r"] * 0.5,
+		deathlog_settings[widget_name]["accent_color_g"] * 0.2,
+		deathlog_settings[widget_name]["accent_color_b"] * 0.2,
+		deathlog_settings[widget_name]["accent_color_a"] * 1
+	)
 	death_alert_frame.textures.bottom_emblem:SetTexture("Interface\\LevelUp\\BossBanner")
 	death_alert_frame.textures.bottom_emblem:SetTexCoord(0.85, 1, 0.32, 0.37)
 	death_alert_frame.textures.bottom_emblem:Show()
@@ -517,6 +672,8 @@ function Deathlog_DeathAlertWidget_applySettings()
 		initializeBossBanner("enemy_icon", "medium")
 	elseif deathlog_settings[widget_name]["style"] == "boss_banner_enemy_icon_animated" then
 		initializeBossBanner("enemy_icon", "animated")
+	elseif deathlog_settings[widget_name]["style"] == "lf_animated" then
+		initializeLFBanner("enemy_icon", "animated")
 	end
 
 	death_alert_frame.text:SetFont(
@@ -713,7 +870,7 @@ options = {
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},
-		font_color = {
+		msginput = {
 			type = "input",
 			name = "Message",
 			desc = "Customize the death alert message. \nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<source> = Killer name\n<zone> = Character zone",
@@ -768,6 +925,25 @@ options = {
 			end,
 			set = function()
 				deathlog_settings[widget_name]["guild_only"] = not deathlog_settings[widget_name]["guild_only"]
+				Deathlog_DeathAlertWidget_applySettings()
+			end,
+		},
+		accent_color = {
+			type = "color",
+			name = "Frame accent color",
+			desc = "Frame accent color",
+			get = function()
+				return deathlog_settings[widget_name]["accent_color_r"],
+					deathlog_settings[widget_name]["accent_color_g"],
+					deathlog_settings[widget_name]["accent_color_b"],
+					deathlog_settings[widget_name]["accent_color_a"]
+			end,
+			set = function(self, r, g, b, a)
+				deathlog_settings[widget_name]["accent_color_r"] = r
+				deathlog_settings[widget_name]["accent_color_g"] = g
+				deathlog_settings[widget_name]["accent_color_b"] = b
+				deathlog_settings[widget_name]["accent_color_a"] = a
+
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},

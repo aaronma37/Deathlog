@@ -89,9 +89,20 @@ for _, v in ipairs(average_class_subtitles) do
 	average_class_font_strings["all"][v[1]]:SetTextColor(1, 1, 1, 1)
 end
 
-function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_class_id, stats_tbl, setMapRegion, model)
+function class_stat_comparison_container.updateMenuElement(
+	scroll_frame,
+	inc_class_id,
+	stats_tbl,
+	setMapRegion,
+	model,
+	view
+)
 	if model == nil then
 		model = "Kaplan-Meier"
+	end
+
+	if view == nil then
+		view = "Survival"
 	end
 
 	local kaplan_meier = precomputed_kaplan_meier
@@ -130,11 +141,20 @@ function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_cla
 	if class_stat_comparison_container.milestone_text == nil then
 		class_stat_comparison_container.milestone_text =
 			class_stat_comparison_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		class_stat_comparison_container.milestone_text:SetText("Probability of reaching milestone (P(X > x))")
 		class_stat_comparison_container.milestone_text:SetFont("Fonts\\blei00d.TTF", 12, "")
 		class_stat_comparison_container.milestone_text:SetJustifyV("TOP")
 		class_stat_comparison_container.milestone_text:SetPoint("TOP", class_stat_comparison_container, "TOP", 120, 13)
 		class_stat_comparison_container.milestone_text:Show()
+	end
+
+	if view == "Survival" then
+		class_stat_comparison_container.milestone_text:SetText(
+			"Probability of reaching milestone starting from lvl 1 (P(X > x))"
+		)
+	elseif view == "Hazard" then
+		class_stat_comparison_container.milestone_text:SetText(
+			"Probability of reaching milestone from last milestone (P(X > x | X=x-10))"
+		)
 	end
 
 	if class_stat_comparison_container.left == nil then
@@ -211,7 +231,7 @@ function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_cla
 					)
 				end
 				cdf_values = function(x)
-					return 1 - cdf[x]
+					return 1 - (cdf[x] or 0)
 				end
 			elseif model == "Kaplan-Meier" then
 				if class_id == "all" then
@@ -232,13 +252,27 @@ function class_stat_comparison_container.updateMenuElement(scroll_frame, inc_cla
 				end
 			end
 
+			local viewFunction = nil
+
+			if view == "Survival" then
+				viewFunction = function(cdf_values, x)
+					return cdf_values(x) * 100
+				end
+			elseif view == "Hazard" then
+				viewFunction = function(cdf_values, x)
+					local num = cdf_values(x)
+					local den = cdf_values(x - 10) or 1.0
+					return num / den * 100
+				end
+			end
+
 			entry_data[class_id]["Avg. Lvl."] = string.format("%.1f", v["all"]["avg_lvl"])
-			entry_data[class_id]["10"] = string.format("%.1f", cdf_values(10) * 100) .. "%"
-			entry_data[class_id]["20"] = string.format("%.1f", cdf_values(20) * 100) .. "%"
-			entry_data[class_id]["30"] = string.format("%.1f", cdf_values(30) * 100) .. "%"
-			entry_data[class_id]["40"] = string.format("%.1f", cdf_values(40) * 100) .. "%"
-			entry_data[class_id]["50"] = string.format("%.2f", cdf_values(50) * 100) .. "%"
-			entry_data[class_id]["60"] = string.format("%.2f", cdf_values(60) * 100) .. "%"
+			entry_data[class_id]["10"] = string.format("%.1f", viewFunction(cdf_values, 10)) .. "%"
+			entry_data[class_id]["20"] = string.format("%.1f", viewFunction(cdf_values, 20)) .. "%"
+			entry_data[class_id]["30"] = string.format("%.1f", viewFunction(cdf_values, 30)) .. "%"
+			entry_data[class_id]["40"] = string.format("%.1f", viewFunction(cdf_values, 40)) .. "%"
+			entry_data[class_id]["50"] = string.format("%.2f", viewFunction(cdf_values, 50)) .. "%"
+			entry_data[class_id]["60"] = string.format("%.2f", viewFunction(cdf_values, 60)) .. "%"
 		end
 	end
 

@@ -773,6 +773,9 @@ local function drawLogTab(container)
 
 	deathlog_group.frame:HookScript("OnHide", function()
 		font_container:Hide()
+		deathlog_group.next_button:Hide()
+		deathlog_group.prev_button:Hide()
+		deathlog_group.import_hc_button:Hide()
 	end)
 end
 
@@ -959,7 +962,7 @@ local function drawClassStatisticsTab(container)
 		Deathlog_ClassStatsComparisonContainer(),
 	}
 
-	local function setMapRegion(map_id, name, model)
+	local function setMapRegion(map_id, name, model, view)
 		current_map_id = map_id
 		if name then
 			modifyTitle(name)
@@ -970,11 +973,11 @@ local function drawClassStatisticsTab(container)
 			["log_normal_params"] = _log_normal_params,
 		}
 		for _, v in ipairs(stats_menu_elements) do
-			v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion, model)
+			v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion, model, view)
 		end
 	end
 
-	setMapRegion(1, "Warrior", "LogNormal")
+	setMapRegion(1, "Warrior", "LogNormal", "Survival")
 
 	scroll_frame.frame:HookScript("OnHide", function()
 		for _, v in ipairs(stats_menu_elements) do

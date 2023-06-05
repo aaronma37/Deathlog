@@ -64,10 +64,15 @@ for i = 2, num_classes do
 	)
 end
 
-function class_selector_container.updateMenuElement(scroll_frame, class_id, stats_tbl, updateFun, model)
+function class_selector_container.updateMenuElement(scroll_frame, class_id, stats_tbl, updateFun, model, view)
 	if model == nil then
 		model = "Kaplan-Meier"
 	end
+
+	if view == nil then
+		view = "Survival"
+	end
+
 	class_selector_container:SetParent(scroll_frame.frame)
 	class_selector_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 45, -30)
 	class_selector_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
@@ -165,7 +170,9 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 		class_selector_container.class_buttons[i]:SetScript("OnMouseDown", function()
 			updateFun(
 				class_selector_container.class_buttons[i].class_id,
-				class_selector_container.class_buttons[i].class_name
+				class_selector_container.class_buttons[i].class_name,
+				model,
+				view
 			)
 		end)
 	end
@@ -181,13 +188,13 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 		local info = UIDropDownMenu_CreateInfo()
 		info.text, info.checked, info.func =
 			"Kaplan-Meier", model == "Kaplan-Meier", function()
-				updateFun(class_id, current_class_name, "Kaplan-Meier")
+				updateFun(class_id, current_class_name, "Kaplan-Meier", view)
 			end
 
 		UIDropDownMenu_AddButton(info)
 		info.text, info.checked, info.func =
 			"LogNormal", model == "LogNormal", function()
-				updateFun(class_id, current_class_name, "LogNormal")
+				updateFun(class_id, current_class_name, "LogNormal", view)
 			end
 
 		UIDropDownMenu_AddButton(info)
@@ -209,6 +216,43 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 	class_selector_container.metric_text:SetText("Model")
 	class_selector_container.metric_text:SetJustifyH("LEFT")
 	class_selector_container.metric_text:Show()
+
+	if class_selector_container.view_dd == nil then
+		class_selector_container.view_dd = CreateFrame("Frame", nil, class_selector_container, "UIDropDownMenuTemplate")
+	end
+
+	local function dropdownFunctions(frame, level, menuList)
+		local info = UIDropDownMenu_CreateInfo()
+		info.text, info.checked, info.func =
+			"Survival (P(T>t))", model == "Survival (P(T>t))", function()
+				updateFun(class_id, current_class_name, model, "Survival")
+			end
+
+		UIDropDownMenu_AddButton(info)
+		info.text, info.checked, info.func =
+			"Hazard (P(T>t | T=lvl))", model == "Hazard (P(T>t | T=L))", function()
+				updateFun(class_id, current_class_name, model, "Hazard")
+			end
+
+		UIDropDownMenu_AddButton(info)
+	end
+
+	class_selector_container.view_dd:SetPoint("TOPLEFT", class_selector_container, "TOPLEFT", 650, -10)
+	UIDropDownMenu_SetText(class_selector_container.view_dd, view)
+	UIDropDownMenu_SetWidth(class_selector_container.view_dd, 130)
+	UIDropDownMenu_Initialize(class_selector_container.view_dd, dropdownFunctions)
+	UIDropDownMenu_JustifyText(class_selector_container.view_dd, "LEFT")
+
+	if class_selector_container.view_text == nil then
+		class_selector_container.view_text = class_selector_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+
+	class_selector_container.view_text:SetPoint("TOPLEFT", class_selector_container.view_dd, "TOPLEFT", 20, 12)
+	class_selector_container.view_text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	class_selector_container.view_text:SetTextColor(255 / 255, 215 / 255, 0)
+	class_selector_container.view_text:SetText("View")
+	class_selector_container.view_text:SetJustifyH("LEFT")
+	class_selector_container.view_text:Show()
 end
 
 function Deathlog_ClassSelectorContainer()

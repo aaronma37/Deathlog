@@ -43,8 +43,9 @@ local rmap = {
 }
 
 local presets = {
-	[""] = "",
+	["Hardcore (legacy)"] = "Hardcore (legacy)",
 	["concise"] = "concise",
+	["Yazpad"] = "Yazpad",
 }
 
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
@@ -54,7 +55,23 @@ local widget_name = "minilog"
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
 fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
-local themes = { ["None"] = "None", ["Parchment"] = "Parchment" }
+fonts["BlackChancery"] = "Interface\\AddOns\\Deathlog\\Fonts\\BLKCHCRY.TTF"
+fonts["ArgosGeorge"] = "Interface\\AddOns\\Deathlog\\Fonts\\ArgosGeorge.ttf"
+fonts["GothicaBook"] = "Interface\\AddOns\\Deathlog\\Fonts\\Gothica-Book.ttf"
+fonts["Immortal"] = "Interface\\AddOns\\Deathlog\\Fonts\\IMMORTAL.ttf"
+fonts["BlackwoodCastle"] = "Interface\\AddOns\\Deathlog\\Fonts\\BlackwoodCastle.ttf"
+fonts["Alegreya"] = "Interface\\AddOns\\Deathlog\\Fonts\\alegreya.regular.ttf"
+
+local themes = {
+	["None"] = "None",
+	["Parchment"] = "Parchment",
+	["Warlock"] = "Warlock",
+	["Druid"] = "Druid",
+	["Paladin"] = "Paladin",
+	["Warrior"] = "Warrior",
+	["Hunter"] = "Hunter",
+	["Priest"] = "Priest",
+}
 
 local AceGUI = LibStub("AceGUI-3.0")
 local death_log_icon_frame = CreateFrame("frame")
@@ -591,6 +608,8 @@ end)
 hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
 	death_tomb_frame:Hide()
 end)
+local default_text_color_r, default_text_color_g, default_text_color_b, default_text_color_a =
+	GameFontNormal:GetTextColor()
 
 local defaults = {
 	["enable"] = true,
@@ -609,7 +628,11 @@ local defaults = {
 	["columns"] = { "Name", "Class", "Race", "Lvl" },
 	["theme"] = "None",
 	["hide_subtitle_heading"] = false,
-	["presets"] = "",
+	["presets"] = "Yazpad",
+	["title_color_r"] = default_text_color_r,
+	["title_color_g"] = default_text_color_g,
+	["title_color_b"] = default_text_color_b,
+	["title_color_a"] = default_text_color_a,
 }
 
 local function applyDefaults(_defaults, force)
@@ -636,6 +659,12 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		fonts[deathlog_settings[widget_name]["font"]],
 		deathlog_settings[widget_name]["title_font_size"],
 		"THICK"
+	)
+	death_log_frame.titletext:SetTextColor(
+		deathlog_settings[widget_name]["title_color_r"],
+		deathlog_settings[widget_name]["title_color_g"],
+		deathlog_settings[widget_name]["title_color_b"],
+		deathlog_settings[widget_name]["title_color_a"]
 	)
 	death_log_frame.titletext:SetPoint(
 		"LEFT",
@@ -705,8 +734,21 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		local PaneBackdrop = {
 			bgFile = "Interface\\ACHIEVEMENTFRAME\\UI-Achievement-Parchment-Horizontal",
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
-			tile = false,
-			tileSize = 512,
+			tile = true,
+			tileSize = 170,
+			edgeSize = 24,
+			insets = { left = 3, right = 3, top = 3, bottom = 3 },
+		}
+
+		death_log_frame.frame:SetBackdrop(PaneBackdrop)
+		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
+		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+	elseif deathlog_class_tbl[deathlog_settings[widget_name]["theme"]] then
+		local PaneBackdrop = {
+			bgFile = "Interface\\Artifacts\\ArtifactUI" .. deathlog_settings[widget_name]["theme"],
+			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
+			tile = true,
+			tileSize = 170,
 			edgeSize = 24,
 			insets = { left = 3, right = 3, top = 3, bottom = 3 },
 		}
@@ -1012,6 +1054,53 @@ options = {
 					deathlog_settings[widget_name]["hide_subtitle_heading"] = true
 					deathlog_settings[widget_name]["presets"] = "concise"
 				end
+				if deathlog_settings[widget_name]["presets"] == "Yazpad" then
+					deathlog_settings[widget_name]["enable"] = true
+					deathlog_settings[widget_name]["font"] = "BreatheFire"
+					deathlog_settings[widget_name]["entry_font"] = "blei00d"
+					deathlog_settings[widget_name]["title_font_size"] = 19
+					deathlog_settings[widget_name]["entry_font_size"] = 16
+					deathlog_settings[widget_name]["title_x_offset"] = 13
+					deathlog_settings[widget_name]["title_y_offset"] = -9
+					deathlog_settings[widget_name]["border_alpha"] = 1.0
+					deathlog_settings[widget_name]["size_x"] = 161.8763122558594
+					deathlog_settings[widget_name]["size_y"] = 102.3703765869141
+					deathlog_settings[widget_name]["show_icon"] = false
+					deathlog_settings[widget_name]["columns"] = {
+						"Lvl", -- [1]
+						"Name", -- [2]
+						"RaceLogoSquare", -- [3]
+						"ClassLogo1", -- [4]
+					}
+					deathlog_settings[widget_name]["theme"] = "Warrior"
+					deathlog_settings[widget_name]["hide_subtitle_heading"] = true
+					deathlog_settings[widget_name]["presets"] = "Yazpad"
+
+					deathlog_settings[widget_name]["title_color_r"] = 1
+					deathlog_settings[widget_name]["title_color_g"] = 1
+					deathlog_settings[widget_name]["title_color_b"] = 1
+					deathlog_settings[widget_name]["title_color_a"] = 1
+				end
+				Deathlog_minilog_applySettings()
+			end,
+		},
+
+		titlecolor = {
+			type = "color",
+			name = "Title Text Color",
+			desc = "Title Text Color",
+			get = function()
+				return deathlog_settings[widget_name]["title_color_r"],
+					deathlog_settings[widget_name]["title_color_g"],
+					deathlog_settings[widget_name]["title_color_b"],
+					deathlog_settings[widget_name]["title_color_a"]
+			end,
+			set = function(self, r, g, b, a)
+				deathlog_settings[widget_name]["title_color_r"] = r
+				deathlog_settings[widget_name]["title_color_g"] = g
+				deathlog_settings[widget_name]["title_color_b"] = b
+				deathlog_settings[widget_name]["title_color_a"] = a
+
 				Deathlog_minilog_applySettings()
 			end,
 		},

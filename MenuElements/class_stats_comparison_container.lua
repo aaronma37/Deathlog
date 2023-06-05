@@ -83,9 +83,13 @@ for _, v in ipairs(average_class_subtitles) do
 	average_class_font_strings["all"][v[1]]:SetTextColor(1, 1, 1, 1)
 end
 
-function average_class_container.updateMenuElement(scroll_frame, inc_class_id, stats_tbl, setMapRegion, model)
+function average_class_container.updateMenuElement(scroll_frame, inc_class_id, stats_tbl, setMapRegion, model, view)
 	if model == nil then
 		model = "Kaplan-Meier"
+	end
+
+	if view == nil then
+		view = "Survival"
 	end
 
 	local kaplan_meier = precomputed_kaplan_meier
@@ -130,6 +134,14 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 		average_class_container.milestone_text:Show()
 	end
 
+	if view == "Survival" then
+		average_class_container.milestone_text:SetText("Probability of reaching milestone (P(X > x))")
+	elseif view == "Hazard" then
+		average_class_container.milestone_text:SetText(
+			"Probability of reaching milestone from last milestone (P(X > x | X=x-10))"
+		)
+	end
+
 	if average_class_container.x_hint == nil then
 		average_class_container.x_hint = average_class_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		average_class_container.x_hint:SetText("E.g. 1.7x means 1.7 more likely to reach milestone")
@@ -167,23 +179,41 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 
 	local cdf = nil
 	local cdf_values = nil
+	local viewFunction = nil
+	if view == "Survival" then
+		if model == "LogNormal" then
+			viewFunction = function(cdf, x)
+				return (1 - cdf[x]) * 100
+			end
+		elseif model == "Kaplan-Meier" then
+			viewFunction = function(cdf, x)
+				return cdf[x] * 100
+			end
+		end
+	elseif view == "Hazard" then
+		if model == "LogNormal" then
+			viewFunction = function(cdf, x)
+				return (1 - cdf[x]) / (1 - (cdf[x - 10] or 0.0)) * 100
+			end
+		elseif model == "Kaplan-Meier" then
+			viewFunction = function(cdf, x)
+				return cdf[x] / (cdf[x - 10] or 1.0) * 100
+			end
+		end
+	end
+
 	if model == "LogNormal" then
 		cdf = Deathlog_CalculateCDF2(class_log_normal_params[inc_class_id][1], class_log_normal_params[inc_class_id][2])
-		s_class_info["10"] = (1 - cdf[10]) * 100
-		s_class_info["20"] = (1 - cdf[20]) * 100
-		s_class_info["30"] = (1 - cdf[30]) * 100
-		s_class_info["40"] = (1 - cdf[40]) * 100
-		s_class_info["50"] = (1 - cdf[50]) * 100
-		s_class_info["60"] = (1 - cdf[60]) * 100
 	elseif model == "Kaplan-Meier" then
 		cdf = kaplan_meier[inc_class_id]
-		s_class_info["10"] = cdf[10] * 100
-		s_class_info["20"] = cdf[20] * 100
-		s_class_info["30"] = cdf[30] * 100
-		s_class_info["40"] = cdf[40] * 100
-		s_class_info["50"] = cdf[50] * 100
-		s_class_info["60"] = cdf[60] * 100
 	end
+
+	s_class_info["10"] = viewFunction(cdf, 10)
+	s_class_info["20"] = viewFunction(cdf, 20)
+	s_class_info["30"] = viewFunction(cdf, 30)
+	s_class_info["40"] = viewFunction(cdf, 40)
+	s_class_info["50"] = viewFunction(cdf, 50)
+	s_class_info["60"] = viewFunction(cdf, 60)
 
 	local function createEntryData(class_id)
 		local v = _stats["all"][map_id][class_id]
@@ -287,7 +317,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 					.. "|r"
 			end
 
-			entry_data[class_id]["10"] = s_class_info["10"] / (cdf_values(10) * 100)
+			entry_data[class_id]["10"] = s_class_info["10"] / viewFunction(cdf, 10)
 			if entry_data[class_id]["10"] > 1 then
 				entry_data[class_id]["10"] = "|c"
 					.. green_shade
@@ -297,7 +327,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 				entry_data[class_id]["10"] = "|cffff0000" .. string.format("%.1f", entry_data[class_id]["10"]) .. "x|r"
 			end
 
-			entry_data[class_id]["20"] = s_class_info["20"] / (cdf_values(20) * 100)
+			entry_data[class_id]["20"] = s_class_info["20"] / viewFunction(cdf, 20)
 			if entry_data[class_id]["20"] > 1 then
 				entry_data[class_id]["20"] = "|c"
 					.. green_shade
@@ -307,7 +337,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 				entry_data[class_id]["20"] = "|cffff0000" .. string.format("%.1f", entry_data[class_id]["20"]) .. "x|r"
 			end
 
-			entry_data[class_id]["30"] = s_class_info["30"] / (cdf_values(30) * 100)
+			entry_data[class_id]["30"] = s_class_info["30"] / viewFunction(cdf, 30)
 			if entry_data[class_id]["30"] > 1 then
 				entry_data[class_id]["30"] = "|c"
 					.. green_shade
@@ -317,7 +347,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 				entry_data[class_id]["30"] = "|cffff0000" .. string.format("%.1f", entry_data[class_id]["30"]) .. "x|r"
 			end
 
-			entry_data[class_id]["40"] = s_class_info["40"] / (cdf_values(40) * 100)
+			entry_data[class_id]["40"] = s_class_info["40"] / (viewFunction(cdf, 40))
 			if entry_data[class_id]["40"] > 1 then
 				entry_data[class_id]["40"] = "|c"
 					.. green_shade
@@ -327,7 +357,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 				entry_data[class_id]["40"] = "|cffff0000" .. string.format("%.1f", entry_data[class_id]["40"]) .. "x|r"
 			end
 
-			entry_data[class_id]["50"] = s_class_info["50"] / (cdf_values(50) * 100)
+			entry_data[class_id]["50"] = s_class_info["50"] / (viewFunction(cdf, 50))
 			if entry_data[class_id]["50"] > 1 then
 				entry_data[class_id]["50"] = "|c"
 					.. green_shade
@@ -337,7 +367,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 				entry_data[class_id]["50"] = "|cffff0000" .. string.format("%.1f", entry_data[class_id]["50"]) .. "x|r"
 			end
 
-			entry_data[class_id]["60"] = s_class_info["60"] / (cdf_values(60) * 100)
+			entry_data[class_id]["60"] = s_class_info["60"] / (viewFunction(cdf, 60))
 			if entry_data[class_id]["60"] > 1 then
 				entry_data[class_id]["60"] = "|c"
 					.. green_shade
