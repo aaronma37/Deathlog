@@ -786,12 +786,33 @@ overlay_highlight:SetDrawLayer("OVERLAY", 6)
 overlay_highlight:SetBlendMode("ADD")
 overlay_highlight:Hide()
 
+local this_map_id = nil
 function Deathlog_MapContainer_showSkullSet(source_id)
-	for _, v in ipairs(map_container.tomb_tex) do
-		if v.source_id == source_id then
-			v:SetVertexColor(1, 1, 1, 1)
-		else
-			v:SetVertexColor(1, 1, 1, 0)
+	Deathlog_MapContainer_resetSkullSet()
+	if _skull_locs[this_map_id] == nil then
+		return
+	end
+	local _skull_locs = precomputed_skull_locs
+	local idx = 1
+
+	local modified_width = map_container:GetWidth() * 0.98
+	local modified_height = map_container:GetHeight() * 0.87
+	for _, v in ipairs(_skull_locs[this_map_id]) do
+		if idx > 100 then
+			break
+		end
+		if v[3] == source_id then
+			map_container.tomb_tex[idx]:SetVertexColor(1, 1, 1, 1)
+			map_container.tomb_tex[idx]:SetPoint(
+				"CENTER",
+				map_container,
+				"TOPLEFT",
+				modified_width * v[1] / 1000.0,
+				-modified_height * v[2] / 1000.0
+			)
+			map_container.tomb_tex[idx]:Show()
+			map_container.tomb_tex[idx]:SetVertexColor(1, 1, 1, 1)
+			idx = idx + 1
 		end
 	end
 end
@@ -804,6 +825,7 @@ end
 
 function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
 	local _skull_locs = stats_tbl["skull_locs"]
+	this_map_id = current_map_id
 	if scroll_frame.frame then
 		map_container:SetParent(scroll_frame.frame)
 		map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -65)
@@ -988,7 +1010,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		map_container.tomb_tex = {}
 	end
 	if _skull_locs[current_map_id] then
-		for idx, v in ipairs(_skull_locs[current_map_id]) do
+		for idx = 1, 100 do
 			if map_container.tomb_tex[idx] == nil then
 				map_container.tomb_tex[idx] = map_container:CreateTexture(nil, "OVERLAY")
 				map_container.tomb_tex[idx]:SetTexture("Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull")
@@ -999,25 +1021,6 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 			end
 
 			map_container.tomb_tex[idx].map_id = current_map_id
-			map_container.tomb_tex[idx].coordinates = { v[1] / 1000.0, v[2] / 1000.0 }
-			map_container.tomb_tex[idx].source_id = v[3]
-		end
-	end
-	for k, v in ipairs(map_container.tomb_tex) do
-		if v.map_id == current_map_id then
-			v:SetPoint(
-				"CENTER",
-				map_container,
-				"TOPLEFT",
-				modified_width * v.coordinates[1],
-				-modified_height * v.coordinates[2]
-			)
-			-- if map_container.skulls_checkbox:GetChecked() then
-			v:Show()
-			v:SetVertexColor(1, 1, 1, 0)
-			-- else
-			-- v:Hide()
-			-- end
 		end
 	end
 

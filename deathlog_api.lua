@@ -488,11 +488,6 @@ end
 function DEATHLOG_deathlogJoinChannel()
 	JoinChannelByName(death_alerts_channel, death_alerts_channel_pw)
 	local channel_num = GetChannelName(death_alerts_channel)
-	if channel_num == 0 then
-		print("Failed to join death alerts channel")
-	else
-		print("Successfully joined deathlog channel.")
-	end
 
 	for i = 1, 10 do
 		if _G["ChatFrame" .. i] then
