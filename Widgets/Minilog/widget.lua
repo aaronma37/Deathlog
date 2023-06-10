@@ -61,6 +61,8 @@ fonts["GothicaBook"] = "Interface\\AddOns\\Deathlog\\Fonts\\Gothica-Book.ttf"
 fonts["Immortal"] = "Interface\\AddOns\\Deathlog\\Fonts\\IMMORTAL.ttf"
 fonts["BlackwoodCastle"] = "Interface\\AddOns\\Deathlog\\Fonts\\BlackwoodCastle.ttf"
 fonts["Alegreya"] = "Interface\\AddOns\\Deathlog\\Fonts\\alegreya.regular.ttf"
+fonts["Cathedral"] = "Interface\\AddOns\\Deathlog\\Fonts\\Cathedral.ttf"
+fonts["FletcherGothic"] = "Interface\\AddOns\\Deathlog\\Fonts\\FletcherGothic-pwy.ttf"
 
 local themes = {
 	["None"] = "None",
@@ -742,7 +744,7 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
 		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
-		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, deathlog_settings[widget_name]["border_alpha"])
 	elseif deathlog_class_tbl[deathlog_settings[widget_name]["theme"]] then
 		local PaneBackdrop = {
 			bgFile = "Interface\\Artifacts\\ArtifactUI" .. deathlog_settings[widget_name]["theme"],
@@ -755,7 +757,7 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
 		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
-		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, deathlog_settings[widget_name]["border_alpha"])
 	else
 		local PaneBackdrop = {
 			bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
@@ -1082,6 +1084,73 @@ options = {
 					deathlog_settings[widget_name]["title_color_a"] = 1
 				end
 				Deathlog_minilog_applySettings()
+			end,
+		},
+		add_fake = {
+			type = "execute",
+			name = "Add fake entry",
+			desc = "Add fake entry",
+			func = function()
+				local idx = math.random(1, 100)
+				local some_name = UnitName("player")
+				local some_guild = ""
+				if deathlog_data then
+					for servername, v in pairs(deathlog_data) do
+						for checksum, entry in pairs(v) do
+							some_name = entry["name"]
+							some_guild = entry["guild"]
+							idx = idx - 1
+							if idx < 1 then
+								break
+							end
+						end
+					end
+				end
+				idx = math.random(1, 100)
+				local some_source_id = -2
+				for k, v in pairs(id_to_npc) do
+					idx = idx - 1
+					some_source_id = k
+					if idx < 1 then
+						break
+					end
+				end
+
+				idx = math.random(1, 2)
+				local map_id = nil
+				local instance_id = nil
+				if idx == 1 then
+					idx = math.random(1, 10)
+					for k, v in pairs(deathlog_id_to_instance_tbl) do
+						idx = idx - 1
+						instance_id = k
+						if idx < 1 then
+							break
+						end
+					end
+				else
+					idx = math.random(1, 10)
+					for k, v in pairs(deathlog_zone_tbl) do
+						idx = idx - 1
+						map_id = v
+						if idx < 1 then
+							break
+						end
+					end
+				end
+
+				fake_player_data = {
+					["name"] = some_name,
+					["level"] = math.random(1, 60),
+					["class_id"] = math.random(1, 12),
+					["race_id"] = math.random(1, 8),
+					["source_id"] = some_source_id,
+					["map_id"] = map_id,
+					["instance_id"] = instance_id,
+					["guild"] = some_guild,
+				}
+
+				deathlog_widget_minilog_createEntry(fake_player_data)
 			end,
 		},
 

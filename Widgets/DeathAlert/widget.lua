@@ -19,6 +19,8 @@ fonts["GothicaBook"] = "Interface\\AddOns\\Deathlog\\Fonts\\Gothica-Book.ttf"
 fonts["Immortal"] = "Interface\\AddOns\\Deathlog\\Fonts\\IMMORTAL.ttf"
 fonts["BlackwoodCastle"] = "Interface\\AddOns\\Deathlog\\Fonts\\BlackwoodCastle.ttf"
 fonts["Alegreya"] = "Interface\\AddOns\\Deathlog\\Fonts\\alegreya.regular.ttf"
+fonts["Cathedral"] = "Interface\\AddOns\\Deathlog\\Fonts\\Cathedral.ttf"
+fonts["FletcherGothic"] = "Interface\\AddOns\\Deathlog\\Fonts\\FletcherGothic-pwy.ttf"
 
 death_alert_frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 death_alert_frame:SetWidth(25)
