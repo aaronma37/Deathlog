@@ -2,6 +2,8 @@
 
 A WoW Era Hardcore addon which provides a ui for exploring the deathlog and death statistics. __NOTE__ I am currently looking for more deathlog data! Please consider reaching out (discord lakai.#2409) to share your deathlog data.  Current 50k entries, goal 500k.
 
+**[SEE WIKI FOR OFFLINE STATS](https://github.com/aaronma37/Deathlog/wiki)** 
+
 ## Compatibility
 
 This addon is completely safe to run alongside the `Hardcore` addon.  Alternatively, this addon can be run without the Hardcore addon running, however, it does not provide verification for the solo self-found challenge.
