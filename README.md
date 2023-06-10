@@ -2,7 +2,9 @@
 
 A WoW Era Hardcore addon which provides a ui for exploring the deathlog and death statistics. __NOTE__ I am currently looking for more deathlog data! Please consider reaching out (discord lakai.#2409) to share your deathlog data.  Current 50k entries, goal 500k.
 
-**[SEE WIKI FOR OFFLINE STATS](https://github.com/aaronma37/Deathlog/wiki)** 
+**[SEE WIKI FOR OFFLINE STATS](https://github.com/aaronma37/Deathlog/wiki)**  The wiki will be updated as the database grows
+
+*Feel free to use the database for any purpose!* [Database](https://github.com/aaronma37/Deathlog/tree/master/db/db.json)
 
 ## Compatibility
 
