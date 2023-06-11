@@ -10,6 +10,8 @@ local death_alert_styles = {
 	-- ["lf_animated"] = "lf_animated",
 }
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
+local sounds = LSM30:HashTable("sound")
+sounds["default_hardcore"] = 8959
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
 fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
@@ -21,6 +23,7 @@ fonts["BlackwoodCastle"] = "Interface\\AddOns\\Deathlog\\Fonts\\BlackwoodCastle.
 fonts["Alegreya"] = "Interface\\AddOns\\Deathlog\\Fonts\\alegreya.regular.ttf"
 fonts["Cathedral"] = "Interface\\AddOns\\Deathlog\\Fonts\\Cathedral.ttf"
 fonts["FletcherGothic"] = "Interface\\AddOns\\Deathlog\\Fonts\\FletcherGothic-pwy.ttf"
+fonts["GothamNarrowUltra"] = "Interface\\AddOns\\Deathlog\\Fonts\\GothamNarrowUltra.ttf"
 
 death_alert_frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 death_alert_frame:SetWidth(25)
@@ -91,7 +94,11 @@ function Deathlog_DeathAlertPlay(entry)
 		end
 	end
 
-	PlaySound(8959)
+	if deathlog_settings[widget_name]["alert_sound"] == "default_hardcore" then
+		PlaySound(8959)
+	else
+		PlaySoundFile(sounds[deathlog_settings[widget_name]["alert_sound"]])
+	end
 	death_alert_frame.text:SetText("Some text")
 
 	local class = GetClassInfo(entry["class_id"]) or ""
@@ -278,6 +285,7 @@ local defaults = {
 	["accent_color_g"] = 1,
 	["accent_color_b"] = 1,
 	["accent_color_a"] = 1,
+	["alert_sound"] = "default_hardcore",
 }
 
 local function applyDefaults(_defaults, force)
@@ -946,6 +954,20 @@ options = {
 				deathlog_settings[widget_name]["accent_color_b"] = b
 				deathlog_settings[widget_name]["accent_color_a"] = a
 
+				Deathlog_DeathAlertWidget_applySettings()
+			end,
+		},
+		da_sound = {
+			type = "select",
+			dialogControl = "LSM30_Sound", --Select your widget here
+			name = "Death Alert Sound",
+			desc = "Sound to use for death alerts.",
+			values = LSM30:HashTable("sound"), -- pull in your font list from LSM
+			get = function()
+				return deathlog_settings[widget_name]["alert_sound"]
+			end,
+			set = function(self, key)
+				deathlog_settings[widget_name]["alert_sound"] = key
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},
