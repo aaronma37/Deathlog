@@ -187,8 +187,10 @@ local subtitle_metadata = {
 		60,
 		function(_entry)
 			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
-			if RAID_CLASS_COLORS[class_str:upper()] then
-				return "|c" .. RAID_CLASS_COLORS[class_str:upper()].colorStr .. class_str .. "|r"
+			if class_str then
+				if RAID_CLASS_COLORS[class_str:upper()] then
+					return "|c" .. RAID_CLASS_COLORS[class_str:upper()].colorStr .. class_str .. "|r"
+				end
 			end
 			return class_str or ""
 		end,
