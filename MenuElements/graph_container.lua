@@ -143,8 +143,11 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 	end
 	local max_y = 0
 	local function logNormal(x, mean, sigma)
-		return (1 / (x * sigma * sqrt(2 * 3.14)))
-			* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
+		local d1 = (x * sigma * sqrt(2 * 3.14))
+		if d1 > 0 then
+			return (1 / d1) * exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
+		end
+		return 0.0
 	end
 	for k, v in pairs(class_tbl) do
 		if
@@ -164,7 +167,11 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 			end
 		end
 	end
-	graph_container.zoomy = 1 / max_y
+	if max_y > 0 then
+		graph_container.zoomy = 1 / max_y
+	else
+		graph_container.zoomy = 1
+	end
 
 	for i = 1, 5 do
 		createLine(
