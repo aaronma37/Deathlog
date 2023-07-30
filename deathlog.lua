@@ -106,48 +106,8 @@ function Deathlog_LoadFromHardcore()
 end
 
 local function handleEvent(self, event, ...)
-	if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-		-- local time, token, hidding, source_serial, source_name, caster_flags, caster_flags2, target_serial, target_name, target_flags, target_flags2, ability_id, ability_name, ability_type, extraSpellID, extraSpellName, extraSchool = CombatLogGetCurrentEventInfo()
-		local _, ev, _, _, source_name, _, _, target_guid, _, _, _, environmental_type, _, _, _, _, _ =
-			CombatLogGetCurrentEventInfo()
-
-		if not (source_name == PLAYER_NAME) then
-			if not (source_name == nil) then
-				if string.find(ev, "DAMAGE") ~= nil then
-					last_attack_source = source_name
-				end
-			end
-		end
-		if ev == "ENVIRONMENTAL_DAMAGE" then
-			if target_guid == UnitGUID("player") then
-				if environmental_type == "Drowning" then
-					last_attack_source = -2
-				elseif environmental_type == "Falling" then
-					last_attack_source = -3
-				elseif environmental_type == "Fatigue" then
-					last_attack_source = -4
-				elseif environmental_type == "Fire" then
-					last_attack_source = -5
-				elseif environmental_type == "Lava" then
-					last_attack_source = -6
-				elseif environmental_type == "Slime" then
-					last_attack_source = -7
-				end
-			end
-		end
-	elseif event == "PLAYER_DEAD" then
-		DEATHLOG_selfDeathAlert(last_attack_source)
-		DEATHLOG_selfDeathAlertLastWords(recent_msg)
-	elseif event == "CHAT_MSG_SAY" or event == "CHAT_MSG_GUILD" or event == "CHAT_MSG_PARTY" then
-		local text, sn, LN, CN, p2, sF, zcI, cI, cB, unu, lI, senderGUID = ...
-		if senderGUID == UnitGUID("player") then
-			recent_msg = text
-		end
-	elseif event == "PLAYER_ENTERING_WORLD" then
+	if event == "PLAYER_ENTERING_WORLD" then
 		initMinimapButton()
-		C_Timer.After(5.0, function()
-			DEATHLOG_deathlogJoinChannel()
-		end)
 		if use_precomputed then
 			general_stats = precomputed_general_stats
 			log_normal_params = precomputed_log_normal_params
@@ -194,11 +154,6 @@ SlashCmdList["DEATHLOG"] = SlashHandler
 
 local deathlog_event_handler = CreateFrame("Frame", "deathlog", nil, "BackdropTemplate")
 deathlog_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
-deathlog_event_handler:RegisterEvent("PLAYER_DEAD")
-deathlog_event_handler:RegisterEvent("CHAT_MSG_SAY")
-deathlog_event_handler:RegisterEvent("CHAT_MSG_GUILD")
-deathlog_event_handler:RegisterEvent("CHAT_MSG_PARTY")
-deathlog_event_handler:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
 deathlog_event_handler:SetScript("OnEvent", handleEvent)
 
@@ -237,3 +192,42 @@ local options = {
 
 LibStub("AceConfig-3.0"):RegisterOptionsTable("Deathlog", options)
 optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("Deathlog", "Deathlog", nil)
+
+-- Hook to DeathNotificationLib
+DeathNotificationLib_HookOnNewEntry(function(_player_data, _checksum, num_peer_checks, in_guild)
+	local realmName = GetRealmName()
+	if deathlog_data == nil then
+		deathlog_data = {}
+	end
+	if deathlog_data[realmName] == nil then
+		deathlog_data[realmName] = {}
+	end
+
+	local function deathlog_modified_fletcher16(_player_data)
+		local function deathlog_fletcher16(name, guild, level, source)
+			local data = name .. (guild or "") .. level .. source
+			local sum1 = 0
+			local sum2 = 0
+			for index = 1, #data do
+				sum1 = (sum1 + string.byte(string.sub(data, index, index))) % 255
+				sum2 = (sum2 + sum1) % 255
+			end
+			return name .. "-" .. bit.bor(bit.lshift(sum2, 8), sum1)
+		end
+		return deathlog_fletcher16(
+			_player_data["name"],
+			_player_data["guild"],
+			_player_data["level"],
+			_player_data["source_id"]
+		)
+	end
+
+	local modified_checksum = deathlog_modified_fletcher16(_player_data)
+	deathlog_data[realmName][modified_checksum] = _player_data
+	deathlog_widget_minilog_createEntry(_player_data)
+	Deathlog_DeathAlertPlay(_player_data)
+end)
+
+-- DeathNotificationLib_HookOnNewEntrySecure(function()
+-- 	print("secure!")
+-- end)

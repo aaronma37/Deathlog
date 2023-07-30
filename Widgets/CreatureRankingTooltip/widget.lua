@@ -36,7 +36,7 @@ function Deathlog_activateCreatureRankingTooltip()
 end
 
 local function handleEvent(self, event, ...)
-	if loaded_crt == false and deathlog_settings[widget_name]["enable_crt"] then
+	if loaded_crt == false and deathlog_settings[widget_name] and deathlog_settings[widget_name]["enable_crt"] then
 		Deathlog_activateCreatureRankingTooltip()
 	end
 end

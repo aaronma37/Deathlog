@@ -15,8 +15,6 @@ embeds.xml
 
 
 utils.lua
-id_to_npc_classic.lua
-npc_to_id_classic.lua
 id_to_display_id.lua
 id_to_quote.lua
 
@@ -40,6 +38,9 @@ Widgets/CreatureRankingTooltip/widget.lua
 Widgets/DeathAlert/widget.lua
 
 menu.lua
-deathlog_api.lua
+
+Libs/DeathNotificationLib/id_to_npc_classic.lua
+Libs/DeathNotificationLib/npc_to_id_classic.lua
+Libs/DeathNotificationLib/DeathNotificationLib.lua
 precomputed_stats.lua
 deathlog.lua
