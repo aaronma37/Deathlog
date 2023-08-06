@@ -199,8 +199,14 @@ local subtitle_metadata = {
 		"Race",
 		60,
 		function(_entry)
+			if _entry.player_data["race_id"] == nil then
+				return ""
+			end
 			local race_info = C_CreatureInfo.GetRaceInfo(_entry.player_data["race_id"])
-			return race_info.raceName or ""
+			if race_info then
+				return race_info.raceName or ""
+			end
+			return ""
 		end,
 	},
 	["Lvl"] = {
@@ -258,8 +264,11 @@ local subtitle_metadata = {
 		"RaceLogoSquare",
 		20,
 		function(_entry)
+			if _entry.player_data["race_id"] == nil then
+				return ""
+			end
 			local race_info = C_CreatureInfo.GetRaceInfo(_entry.player_data["race_id"])
-			if race_info.raceName and rmap[race_info.raceName] and _entry.player_data["level"] then
+			if race_info and race_info.raceName and rmap[race_info.raceName] and _entry.player_data["level"] then
 				local msg = "|TInterface\\Glues\\CHARACTERCREATE\\UI-CHARACTERCREATE-RACES.PNG:16:16:0:0:64:64:"
 					.. rmap[race_info.raceName][1] * 64
 					.. ":"
@@ -461,10 +470,11 @@ local function setupRowEntries()
 			end
 			GameTooltip:AddLine("Name: " .. _entry.player_data["name"], 1, 1, 1)
 			GameTooltip:AddLine("Guild: " .. _entry.player_data["guild"], 1, 1, 1)
-
-			local race_info = C_CreatureInfo.GetRaceInfo(_entry.player_data["race_id"])
-			if race_info then
-				GameTooltip:AddLine("Race: " .. race_info.raceName, 1, 1, 1)
+			if _entry.player_data["race_id"] ~= nil then
+				local race_info = C_CreatureInfo.GetRaceInfo(_entry.player_data["race_id"])
+				if race_info then
+					GameTooltip:AddLine("Race: " .. race_info.raceName, 1, 1, 1)
+				end
 			end
 
 			if _entry.player_data["class_id"] then

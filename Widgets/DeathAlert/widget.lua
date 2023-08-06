@@ -105,11 +105,14 @@ function Deathlog_DeathAlertPlay(entry)
 	if deathlog_class_colors[class] then
 		class = "|c" .. deathlog_class_colors[class]:GenerateHexColor() .. class .. "|r"
 	end
-	local race = C_CreatureInfo.GetRaceInfo(entry["race_id"])
-	if race then
-		race = race.raceName
-	else
-		race = ""
+	local race = ""
+	if entry["race_id"] then
+		race = C_CreatureInfo.GetRaceInfo(entry["race_id"])
+		if race then
+			race = race.raceName
+		else
+			race = ""
+		end
 	end
 	local zone = ""
 	if entry["map_id"] then

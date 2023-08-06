@@ -71,7 +71,10 @@ local subtitle_data = {
 		60,
 		function(_entry, _server_name)
 			local race_info = C_CreatureInfo.GetRaceInfo(_entry["race_id"])
-			return race_info.raceName or ""
+			if race_info then
+				return race_info.raceName or ""
+			end
+			return ""
 		end,
 	},
 	{
