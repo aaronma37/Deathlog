@@ -1,0 +1,18 @@
+## Interface: 11404
+## Title: Global Death Chat Notifications
+## Notes: Only for Hardcore and Vanilla servers.
+## Author: Yazpad
+## X-License: GNU GPL3
+## X-Category: Leveling,Guild
+## Version: 0.1.0
+
+## DefaultState: enabled
+## SavedVariables: global_death_chat_notifications_settings
+## SavedVariablesPerCharacter:
+
+embeds.xml
+
+Libs/DeathNotificationLib/id_to_npc_classic.lua
+Libs/DeathNotificationLib/npc_to_id_classic.lua
+Libs/DeathNotificationLib/DeathNotificationLib.lua
+global_death_chat_notifications.lua
