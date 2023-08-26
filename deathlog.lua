@@ -56,6 +56,9 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject("Deat
 })
 local function initMinimapButton()
 	deathlog_minimap_button_stub = LibStub("LibDBIcon-1.0", true)
+	if deathlog_minimap_button_stub:IsRegistered("Deathlog") then
+		return
+	end
 	deathlog_minimap_button_stub:Register("Deathlog", deathlog_minimap_button, deathlog_minimap_button_info)
 end
 

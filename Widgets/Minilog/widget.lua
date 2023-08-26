@@ -555,6 +555,7 @@ function deathlog_widget_minilog_createEntry(player_data)
 end
 death_log_icon_frame:RegisterForDrag("LeftButton")
 death_log_icon_frame:SetScript("OnDragStart", function(self, button)
+	death_log_frame.frame:ClearAllPoints()
 	self:StartMoving()
 	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
 end)

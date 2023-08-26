@@ -246,7 +246,7 @@ local function Constructor()
 	frame:SetSize(250, 150)
 
 	if frame.SetResizeBounds then -- WoW 10.0
-		frame:SetResizeBounds(400, 200)
+		frame:SetResizeBounds(100, 50)
 	else
 		frame:SetMinResize(150, 100)
 	end

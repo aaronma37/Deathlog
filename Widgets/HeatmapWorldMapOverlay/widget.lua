@@ -132,6 +132,7 @@ end
 
 local defaults = {
 	["enable"] = true,
+	["show_checkbox_on_map"] = true,
 }
 
 local function applyDefaults(_defaults, force)
@@ -206,6 +207,12 @@ function Deathlog_HWMWidget_applySettings()
 		heatmap_wm_overlay_frame:Show()
 	end
 
+	if deathlog_settings[widget_name]["show_checkbox_on_map"] then
+		heatmap_wm_overlay_checkbox_frame:Show()
+	else
+		heatmap_wm_overlay_checkbox_frame:Hide()
+	end
+
 	if optionsframe == nil then
 		LibStub("AceConfig-3.0"):RegisterOptionsTable(widget_name, options)
 		optionsframe = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(widget_name, widget_name, "Deathlog")
@@ -231,6 +238,19 @@ options = {
 			end,
 			set = function()
 				deathlog_settings[widget_name]["enable"] = not deathlog_settings[widget_name]["enable"]
+				Deathlog_HWMWidget_applySettings()
+			end,
+		},
+		show_checkbox = {
+			type = "toggle",
+			name = "Show checkbox on Worldmap Overlay",
+			desc = "Show checkbox on Worldmap Overlay",
+			get = function()
+				return deathlog_settings[widget_name]["show_checkbox_on_map"]
+			end,
+			set = function()
+				deathlog_settings[widget_name]["show_checkbox_on_map"] =
+					not deathlog_settings[widget_name]["show_checkbox_on_map"]
 				Deathlog_HWMWidget_applySettings()
 			end,
 		},
