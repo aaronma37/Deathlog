@@ -12,6 +12,7 @@ local death_alert_styles = {
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
 local sounds = LSM30:HashTable("sound")
 sounds["default_hardcore"] = 8959
+sounds["golfclap"] = "Interface\\AddOns\\Deathlog\\Sounds\\golfclap.ogg"
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
 fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
@@ -69,6 +70,7 @@ function Deathlog_DeathAlertFakeDeath()
 		["instance_id"] = 34, --34,
 		["class_id"] = 9,
 		["source_id"] = s,
+		["last_words"] = "Sample last words, help!",
 	}
 	Deathlog_DeathAlertPlay(fake_entry)
 end
@@ -143,6 +145,7 @@ function Deathlog_DeathAlertPlay(entry)
 	msg = msg:gsub("%<source>", source_name)
 	msg = msg:gsub("%<level>", entry["level"])
 	msg = msg:gsub("%<zone>", zone)
+	msg = msg:gsub("%<last_words>", entry["last_words"] or "")
 
 	death_alert_frame.text:SetText(
 		entry["name"]
@@ -886,7 +889,7 @@ options = {
 		msginput = {
 			type = "input",
 			name = "Message",
-			desc = "Customize the death alert message. \nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<source> = Killer name\n<zone> = Character zone",
+			desc = "Customize the death alert message. \nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<source> = Killer name\n<zone> = Character zone\n<last_words> = Last words",
 			width = 2.5,
 			multiline = true,
 			get = function()
