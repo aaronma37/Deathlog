@@ -152,17 +152,17 @@ function Deathlog_DeathAlertPlay(entry)
 
 	death_alert_frame.text:SetText(
 		entry["name"]
-		.. " the "
-		.. race
-		.. " "
-		.. class
-		.. " has been slain\nby "
-		.. source_name
-		.. ", at level "
-		.. entry["level"]
-		.. " in "
-		.. zone
-		.. "."
+			.. " the "
+			.. race
+			.. " "
+			.. class
+			.. " has been slain\nby "
+			.. source_name
+			.. ", at level "
+			.. entry["level"]
+			.. " in "
+			.. zone
+			.. "."
 	)
 
 	death_alert_frame.text:SetText(msg)
