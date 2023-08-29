@@ -79,10 +79,13 @@ function Deathlog_DeathAlertPlay(entry)
 	if deathlog_settings[widget_name]["enable"] == false then
 		return
 	end
+	local min_lvl = deathlog_settings[widget_name]["min_lvl_player"]
+		and UnitLevel("player")
+		or deathlog_settings[widget_name]["min_lvl"]
 	if
 		entry["level"]
 		and (
-			entry["level"] < deathlog_settings[widget_name]["min_lvl"]
+			entry["level"] < min_lvl
 			or entry["level"] > deathlog_settings[widget_name]["max_lvl"]
 		)
 	then
@@ -285,6 +288,7 @@ local defaults = {
 	["fall_message"] = "<name> the <race> <class> fell to\ndeath at lvl <level> in <zone>.",
 	["drown_message"] = "<name> the <race> <class> drowned\n at lvl <level> in <zone>.",
 	["min_lvl"] = 1,
+	["min_lvl_player"] = false,
 	["max_lvl"] = 80,
 	["guild_only"] = false,
 	["accent_color_r"] = 1,
@@ -900,6 +904,19 @@ options = {
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},
+		min_lvl_player = {
+			type = "toggle",
+			name = "Use my level as Min. Lvl.",
+			desc = "Only show alerts for characters your level or higher",
+			order = 24,
+			get = function ()
+				return deathlog_settings[widget_name]["min_lvl_player"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["min_lvl_player"] = value
+				Deathlog_DeathAlertWidget_applySettings()
+			end,
+		},
 		min_lvl = {
 			type = "range",
 			name = "Min. Lvl. to Display",
@@ -908,7 +925,13 @@ options = {
 			max = 80,
 			step = 1,
 			order = 20,
+			disabled = function()
+				return deathlog_settings[widget_name]["min_lvl_player"]
+			end,
 			get = function()
+				if deathlog_settings[widget_name]["min_lvl_player"] then
+					return UnitLevel("player")
+				end
 				return deathlog_settings[widget_name]["min_lvl"]
 			end,
 			set = function(self, value)
