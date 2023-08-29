@@ -38,6 +38,7 @@
         "InterfaceOptionsFrame_OpenToCategory",
         "ToggleDropDownMenu",
         "GameTooltip_SetDefaultAnchor",
-        "UISpecialFrames"
+        "UISpecialFrames",
+        "MAX_PLAYER_LEVEL"
     ]
 }
