@@ -21,7 +21,7 @@ local _menu_width = 1100
 local _inner_menu_width = 800
 local _menu_height = 600
 local current_map_id = nil
-local max_rows = 26
+local max_rows = 25
 local page_number = 1
 
 local deathlog_tabcontainer = nil
@@ -32,6 +32,81 @@ local zone_tbl = deathlog_zone_tbl
 local instance_tbl = deathlog_instance_tbl
 
 local deathlog_menu = nil
+
+local WorldMapButton = WorldMapFrame:GetCanvas()
+local death_tomb_frame = CreateFrame("frame", nil, WorldMapButton)
+death_tomb_frame:SetAllPoints()
+death_tomb_frame:SetFrameLevel(15000)
+
+local death_tomb_frame_tex = death_tomb_frame:CreateTexture(nil, "OVERLAY")
+death_tomb_frame_tex:SetTexture("Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull")
+death_tomb_frame_tex:SetDrawLayer("OVERLAY", 4)
+death_tomb_frame_tex:SetHeight(25)
+death_tomb_frame_tex:SetWidth(25)
+death_tomb_frame_tex:Hide()
+
+local death_tomb_frame_tex_glow = death_tomb_frame:CreateTexture(nil, "OVERLAY")
+death_tomb_frame_tex_glow:SetTexture("Interface\\Glues/Models/UI_HUMAN/GenericGlow64")
+death_tomb_frame_tex_glow:SetDrawLayer("OVERLAY", 3)
+death_tomb_frame_tex_glow:SetHeight(55)
+death_tomb_frame_tex_glow:SetWidth(55)
+death_tomb_frame_tex_glow:Hide()
+
+local function WPDropDownDemo_Menu(frame, level, menuList)
+	local info = UIDropDownMenu_CreateInfo()
+
+	if death_tomb_frame.map_id and death_tomb_frame.coordinates then
+	end
+
+	local function openWorldMap()
+		if not (death_tomb_frame.map_id and death_tomb_frame.coordinates) then
+			return
+		end
+		if C_Map.GetMapInfo(death_tomb_frame["map_id"]) == nil then
+			return
+		end
+		if tonumber(death_tomb_frame.coordinates[1]) == nil or tonumber(death_tomb_frame.coordinates[2]) == nil then
+			return
+		end
+
+		WorldMapFrame:SetShown(not WorldMapFrame:IsShown())
+		WorldMapFrame:SetMapID(death_tomb_frame.map_id)
+		WorldMapFrame:GetCanvas()
+		local mWidth, mHeight = WorldMapFrame:GetCanvas():GetSize()
+		death_tomb_frame_tex:SetPoint(
+			"CENTER",
+			WorldMapButton,
+			"TOPLEFT",
+			mWidth * death_tomb_frame.coordinates[1],
+			-mHeight * death_tomb_frame.coordinates[2]
+		)
+		death_tomb_frame_tex:Show()
+
+		death_tomb_frame_tex_glow:SetPoint(
+			"CENTER",
+			WorldMapButton,
+			"TOPLEFT",
+			mWidth * death_tomb_frame.coordinates[1],
+			-mHeight * death_tomb_frame.coordinates[2]
+		)
+		death_tomb_frame_tex_glow:Show()
+		death_tomb_frame:Show()
+		deathlog_menu:Hide()
+	end
+
+	if level == 1 then
+		info.text, info.hasArrow, info.func, info.disabled = "Show death location", false, openWorldMap, false
+		UIDropDownMenu_AddButton(info)
+		info.text, info.hasArrow, info.func, info.disabled = "Block user", false, openWorldMap, true
+		UIDropDownMenu_AddButton(info)
+		info.text, info.hasArrow, info.func, info.disabled = "Block user's guild", false, openWorldMap, true
+		UIDropDownMenu_AddButton(info)
+	end
+end
+
+hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
+	death_tomb_frame:Hide()
+end)
 
 local subtitle_data = {
 	{
@@ -196,6 +271,14 @@ local function setDeathlogMenuLogData(data)
 		for _, col in ipairs(subtitle_data) do
 			font_strings[i][col[1]]:SetText(col[3](ordered[idx], ""))
 		end
+		if ordered[idx] and ordered[idx].map_id then
+			font_strings[i].map_id = ordered[idx].map_id
+		end
+		if ordered[idx] and ordered[idx].map_pos then
+			local x, y = strsplit(",", ordered[idx].map_pos, 2)
+			font_strings[i].map_id_coords_x = x
+			font_strings[i].map_id_coords_y = y
+		end
 	end
 	if #ordered == 1 then
 		deathlog_menu:SetStatusText(
@@ -239,6 +322,7 @@ local function drawLogTab(container)
 	local min_level_filter = nil
 	local max_level_filter = nil
 	local death_source_filter = nil
+	local last_words_filter = nil
 	local filter = function(server_name, _entry)
 		if name_filter ~= nil then
 			if name_filter(server_name, _entry) == false then
@@ -280,6 +364,11 @@ local function drawLogTab(container)
 				return false
 			end
 		end
+		if last_words_filter ~= nil then
+			if last_words_filter(server_name, _entry) == false then
+				return false
+			end
+		end
 		return true
 	end
 
@@ -317,7 +406,7 @@ local function drawLogTab(container)
 
 	font_container.server_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", -5, -20)
 	UIDropDownMenu_SetText(font_container.server_dd, font_container.server_dd.val)
-	UIDropDownMenu_SetWidth(font_container.server_dd, 120)
+	UIDropDownMenu_SetWidth(font_container.server_dd, 80)
 	UIDropDownMenu_Initialize(font_container.server_dd, serverDD)
 	UIDropDownMenu_JustifyText(font_container.server_dd, "LEFT")
 
@@ -378,9 +467,9 @@ local function drawLogTab(container)
 		end
 	end
 
-	font_container.race_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 140, -20)
+	font_container.race_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 90, -20)
 	UIDropDownMenu_SetText(font_container.race_dd, font_container.race_dd.val)
-	UIDropDownMenu_SetWidth(font_container.race_dd, 120)
+	UIDropDownMenu_SetWidth(font_container.race_dd, 80)
 	UIDropDownMenu_Initialize(font_container.race_dd, raceDD)
 	UIDropDownMenu_JustifyText(font_container.race_dd, "LEFT")
 
@@ -454,9 +543,9 @@ local function drawLogTab(container)
 		-- end
 	end
 
-	font_container.zone_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 285, -20)
+	font_container.zone_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 185, -20)
 	UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
-	UIDropDownMenu_SetWidth(font_container.zone_dd, 120)
+	UIDropDownMenu_SetWidth(font_container.zone_dd, 80)
 	UIDropDownMenu_Initialize(font_container.zone_dd, zoneDD)
 	UIDropDownMenu_JustifyText(font_container.zone_dd, "LEFT")
 
@@ -520,9 +609,9 @@ local function drawLogTab(container)
 		end
 	end
 
-	font_container.instance_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 430, -20)
+	font_container.instance_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 280, -20)
 	UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
-	UIDropDownMenu_SetWidth(font_container.instance_dd, 120)
+	UIDropDownMenu_SetWidth(font_container.instance_dd, 80)
 	UIDropDownMenu_Initialize(font_container.instance_dd, zoneDD)
 	UIDropDownMenu_JustifyText(font_container.instance_dd, "LEFT")
 
@@ -742,6 +831,40 @@ local function drawLogTab(container)
 	font_container.death_source_box.text:SetText("Death Source")
 	font_container.death_source_box.text:Show()
 
+	if font_container.last_words_check_box == nil then
+		font_container.last_words_check_box =
+			CreateFrame("CheckButton", "deathlog_last_words_check_box", font_container, "ChatConfigCheckButtonTemplate")
+	end
+	if font_container.last_words_check_box.text == nil then
+		font_container.last_words_check_box.text = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+
+	font_container.last_words_check_box:SetPoint("TOPLEFT", font_container.death_source_box, "TOPLEFT", 110, -5)
+	font_container.last_words_check_box:SetChecked(false)
+	font_container.last_words_check_box:SetScript("OnClick", function()
+		if font_container.last_words_check_box:GetChecked() == true then
+			last_words_filter = function(_, _entry)
+				if _entry and _entry["last_words"] and _entry["last_words"] ~= "" then
+					return true
+				end
+				return false
+			end
+
+			clearDeathlogMenuLogData()
+			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+		else
+			last_words_filter = nil
+			clearDeathlogMenuLogData()
+			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+		end
+	end)
+
+	font_container.last_words_check_box.text:SetPoint("LEFT", font_container.last_words_check_box, "LEFT", 25, 0)
+	font_container.last_words_check_box.text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	font_container.last_words_check_box.text:SetTextColor(255 / 255, 215 / 255, 0)
+	font_container.last_words_check_box.text:SetText("Last Words Only")
+	font_container.last_words_check_box.text:Show()
+
 	local header_label = AceGUI:Create("InteractiveLabel")
 	header_label:SetFullWidth(true)
 	header_label:SetHeight(60)
@@ -801,117 +924,80 @@ local function drawLogTab(container)
 		end
 
 		_entry:SetCallback("OnLeave", function(widget)
-			if _entry.player_data == nil then
-				return
-			end
 			GameTooltip:Hide()
 		end)
 
 		_entry:SetCallback("OnClick", function()
-			if _entry.player_data == nil then
-				return
-			end
 			local click_type = GetMouseButtonClicked()
 
 			if click_type == "LeftButton" then
-				if selected then
-					row_entry[selected]:deselect()
-				end
-				_entry:select()
 			elseif click_type == "RightButton" then
 				local dropDown = CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
 				-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
 				UIDropDownMenu_Initialize(dropDown, WPDropDownDemo_Menu, "MENU")
 				ToggleDropDownMenu(1, nil, dropDown, "cursor", 3, -3)
-				if _entry["player_data"]["map_id"] and _entry["player_data"]["map_pos"] then
-					death_tomb_frame.map_id = _entry["player_data"]["map_id"]
-					local x, y = strsplit(",", _entry["player_data"]["map_pos"], 2)
-					death_tomb_frame.coordinates = { x, y }
+				if font_strings[i] and font_strings[i].map_id and font_strings[i].map_id_coords_x then
+					death_tomb_frame.map_id = font_strings[i].map_id
+					death_tomb_frame.coordinates = { font_strings[i].map_id_coords_x, font_strings[i].map_id_coords_y }
 				end
 			end
 		end)
 
 		_entry:SetCallback("OnEnter", function(widget)
-			if _entry.player_data == nil then
-				return
-			end
 			GameTooltip_SetDefaultAnchor(GameTooltip, WorldFrame)
+			local _name = ""
+			local _level = ""
+			local _guild = ""
+			local _race = ""
+			local _class = ""
+			local _source = ""
+			local _zone = ""
+			local _date = ""
+			local _last_words = ""
+			if font_strings[i] and font_strings[i]["Name"] then
+				_name = font_strings[i]["Name"]:GetText() or ""
+			end
+			if font_strings[i] and font_strings[i]["Lvl"] then
+				_level = font_strings[i]["Lvl"]:GetText() or ""
+			end
+			if font_strings[i] and font_strings[i]["Guild"] then
+				_guild = font_strings[i]["Guild"]:GetText() or ""
+			end
+			if font_strings[i] and font_strings[i]["Race"] then
+				_race = font_strings[i]["Race"]:GetText() or ""
+			end
+			if font_strings[i] and font_strings[i]["Class"] then
+				_class = font_strings[i]["Class"]:GetText() or ""
+			end
+			if font_strings[i] and font_strings[i]["Death Source"] then
+				_source = font_strings[i]["Death Source"]:GetText() or ""
+			end
+			if font_strings[i] and font_strings[i]["Zone/Instance"] then
+				_zone = font_strings[i]["Zone/Instance"]:GetText() or ""
+			end
+			if font_strings[i] and font_strings[i]["Date"] then
+				_date = font_strings[i]["Date"]:GetText() or ""
+			end
+			if font_strings[i] and font_strings[i]["Last Words"] then
+				_last_words = font_strings[i]["Last Words"]:GetText() or ""
+			end
 
-			if string.sub(_entry.player_data["name"], #_entry.player_data["name"]) == "s" then
-				GameTooltip:AddDoubleLine(
-					_entry.player_data["name"] .. "' Death",
-					"Lvl. " .. _entry.player_data["level"],
-					1,
-					1,
-					1,
-					0.5,
-					0.5,
-					0.5
-				)
+			if string.sub(_name, #_name) == "s" then
+				GameTooltip:AddDoubleLine(_name .. "' Death", "Lvl. " .. _level, 1, 1, 1, 0.5, 0.5, 0.5)
 			else
-				GameTooltip:AddDoubleLine(
-					_entry.player_data["name"] .. "'s Death",
-					"Lvl. " .. _entry.player_data["level"],
-					1,
-					1,
-					1,
-					0.5,
-					0.5,
-					0.5
-				)
+				GameTooltip:AddDoubleLine(_name .. "'s Death", "Lvl. " .. _level, 1, 1, 1, 0.5, 0.5, 0.5)
 			end
-			GameTooltip:AddLine("Name: " .. _entry.player_data["name"], 1, 1, 1)
-			GameTooltip:AddLine("Guild: " .. _entry.player_data["guild"], 1, 1, 1)
-
-			local race_info = C_CreatureInfo.GetRaceInfo(_entry.player_data["race_id"])
-			if race_info then
-				GameTooltip:AddLine("Race: " .. race_info.raceName, 1, 1, 1)
+			GameTooltip:AddLine("Name: " .. _name, 1, 1, 1)
+			GameTooltip:AddLine("Guild: " .. _guild, 1, 1, 1)
+			GameTooltip:AddLine("Race: " .. _race, 1, 1, 1)
+			GameTooltip:AddLine("Class: " .. _class, 1, 1, 1)
+			GameTooltip:AddLine("Killed by: " .. _source, 1, 1, 1)
+			GameTooltip:AddLine("Zone/Instance: " .. _zone, 1, 1, 1)
+			GameTooltip:AddLine("Date: " .. _date, 1, 1, 1)
+			if _last_words and _last_words ~= "" then
+				GameTooltip:AddLine("Last words: " .. _last_words, 1, 1, 0, true)
 			end
 
-			if _entry.player_data["class_id"] then
-				local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
-				if class_str then
-					GameTooltip:AddLine("Class: " .. class_str, 1, 1, 1)
-				end
-			end
-
-			if _entry.player_data["source_id"] then
-				local source_id = id_to_npc[_entry.player_data["source_id"]]
-				if source_id then
-					GameTooltip:AddLine("Killed by: " .. source_id, 1, 1, 1, true)
-				elseif environment_damage[_entry.player_data["source_id"]] then
-					GameTooltip:AddLine(
-						"Died from: " .. environment_damage[_entry.player_data["source_id"]],
-						1,
-						1,
-						1,
-						true
-					)
-				end
-			end
-
-			if race_name then
-				GameTooltip:AddLine("Race: " .. race_name, 1, 1, 1)
-			end
-
-			if _entry.player_data["map_id"] then
-				local map_info = C_Map.GetMapInfo(_entry.player_data["map_id"])
-				if map_info then
-					GameTooltip:AddLine("Zone: " .. map_info.name, 1, 1, 1, true)
-				end
-			end
-
-			if _entry.player_data["map_pos"] then
-				GameTooltip:AddLine("Loc: " .. _entry.player_data["map_pos"], 1, 1, 1, true)
-			end
-
-			if _entry.player_data["date"] then
-				GameTooltip:AddLine("Date: " .. _entry.player_data["date"], 1, 1, 1, true)
-			end
-
-			if _entry.player_data["last_words"] then
-				GameTooltip:AddLine("Last words: " .. _entry.player_data["last_words"], 1, 1, 0, true)
-			end
 			GameTooltip:Show()
 		end)
 
@@ -921,81 +1007,81 @@ local function drawLogTab(container)
 	end
 	scroll_frame.scrollbar:Hide()
 
-	if deathlog_group.page_str == nil then
-		deathlog_group.page_str = deathlog_group.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		deathlog_group.page_str:SetText("Page " .. page_number)
-		deathlog_group.page_str:SetFont("Fonts\\blei00d.TTF", 14, "")
-		deathlog_group.page_str:SetJustifyV("BOTTOM")
-		deathlog_group.page_str:SetJustifyH("CENTER")
-		deathlog_group.page_str:SetTextColor(0.7, 0.7, 0.7)
-		deathlog_group.page_str:SetPoint("TOP", deathlog_group.frame, "TOP", 0, -505)
-		deathlog_group.page_str:Show()
+	if font_container.page_str == nil then
+		font_container.page_str = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		font_container.page_str:SetText("Page " .. page_number)
+		font_container.page_str:SetFont("Fonts\\blei00d.TTF", 14, "")
+		font_container.page_str:SetJustifyV("BOTTOM")
+		font_container.page_str:SetJustifyH("CENTER")
+		font_container.page_str:SetTextColor(0.7, 0.7, 0.7)
+		font_container.page_str:SetPoint("TOP", font_container, "TOP", 0, -444)
+		font_container.page_str:Show()
 	end
 
-	if deathlog_group.prev_button == nil then
-		deathlog_group.prev_button = CreateFrame("Button", nil, deathlog_group.frame)
-		deathlog_group.prev_button:SetPoint("CENTER", deathlog_group.page_str, "CENTER", -50, 0)
-		deathlog_group.prev_button:SetWidth(25)
-		deathlog_group.prev_button:SetHeight(25)
-		deathlog_group.prev_button:SetNormalTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
-		deathlog_group.prev_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
-		deathlog_group.prev_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Down.PNG")
+	if font_container.prev_button == nil then
+		font_container.prev_button = CreateFrame("Button", nil, font_container)
+		font_container.prev_button:SetPoint("CENTER", font_container.page_str, "CENTER", -50, 0)
+		font_container.prev_button:SetWidth(25)
+		font_container.prev_button:SetHeight(25)
+		font_container.prev_button:SetNormalTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
+		font_container.prev_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
+		font_container.prev_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Down.PNG")
 	end
 
-	deathlog_group.prev_button:SetScript("OnClick", function()
+	font_container.prev_button:SetScript("OnClick", function()
 		page_number = page_number - 1
 		if page_number < 1 then
 			page_number = 1
 		end
 		clearDeathlogMenuLogData()
-		deathlog_group.page_str:SetText("Page " .. page_number)
+		font_container.page_str:SetText("Page " .. page_number)
 		setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
 	end)
 
-	if deathlog_group.next_button == nil then
-		deathlog_group.next_button = CreateFrame("Button", nil, deathlog_group.frame)
-		deathlog_group.next_button:SetPoint("CENTER", deathlog_group.page_str, "CENTER", 50, 0)
-		deathlog_group.next_button:SetWidth(25)
-		deathlog_group.next_button:SetHeight(25)
-		deathlog_group.next_button:SetNormalTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Up.PNG")
-		deathlog_group.next_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Up.PNG")
-		deathlog_group.next_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Down.PNG")
+	if font_container.next_button == nil then
+		font_container.next_button = CreateFrame("Button", nil, font_container)
+		font_container.next_button:SetPoint("CENTER", font_container.page_str, "CENTER", 50, 0)
+		font_container.next_button:SetWidth(25)
+		font_container.next_button:SetHeight(25)
+		font_container.next_button:SetNormalTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Up.PNG")
+		font_container.next_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Up.PNG")
+		font_container.next_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Down.PNG")
 	end
 
-	deathlog_group.next_button:SetScript("OnClick", function()
+	font_container.next_button:SetScript("OnClick", function()
 		page_number = page_number + 1
 		clearDeathlogMenuLogData()
-		deathlog_group.page_str:SetText("Page " .. page_number)
+		font_container.page_str:SetText("Page " .. page_number)
 		setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
 	end)
 
-	if deathlog_group.import_hc_button == nil then
-		deathlog_group.import_hc_button = CreateFrame("Button", nil, deathlog_group.frame)
-		deathlog_group.import_hc_button:SetPoint("CENTER", deathlog_group.page_str, "CENTER", -395, -4)
-		deathlog_group.import_hc_button:SetWidth(275)
-		deathlog_group.import_hc_button:SetHeight(25)
-		deathlog_group.import_hc_button:SetNormalTexture("Interface/Buttons/UI-SILVER-BUTTON-UP")
-		deathlog_group.import_hc_button:GetNormalTexture():SetVertexColor(1, 1, 1, 0.5)
-		deathlog_group.import_hc_button:SetHighlightTexture("Interface/Buttons/UI-Panel-Button-Highlight")
-		deathlog_group.import_hc_button:SetPushedTexture("Interface/Buttons/UI-SILVER-BUTTON-Down")
+	-- if font_container.import_hc_button == nil then
+	-- 	font_container.import_hc_button = CreateFrame("Button", nil, font_container)
+	-- 	font_container.import_hc_button:SetPoint("CENTER", font_container.page_str, "CENTER", -395, -4)
+	-- 	font_container.import_hc_button:SetWidth(275)
+	-- 	font_container.import_hc_button:SetHeight(25)
+	-- 	font_container.import_hc_button:SetNormalTexture("Interface/Buttons/UI-SILVER-BUTTON-UP")
+	-- 	font_container.import_hc_button:GetNormalTexture():SetVertexColor(1, 1, 1, 0.5)
+	-- 	font_container.import_hc_button:SetHighlightTexture("Interface/Buttons/UI-Panel-Button-Highlight")
+	-- 	font_container.import_hc_button:SetPushedTexture("Interface/Buttons/UI-SILVER-BUTTON-Down")
 
-		deathlog_group.import_hc_button:SetText("Import from Hardcore")
-		deathlog_group.import_hc_button:SetNormalFontObject("GameFontNormalSmall")
+	-- 	font_container.import_hc_button:SetText("Import from Hardcore")
+	-- 	font_container.import_hc_button:SetNormalFontObject("GameFontNormalSmall")
 
-		local font_str = deathlog_group.import_hc_button:GetFontString()
-		font_str:SetPoint("TOPLEFT", 12, -1)
-		font_str:SetFont("Fonts\\blei00d.TTF", 16, "")
-	end
+	-- 	local font_str = font_container.import_hc_button:GetFontString()
+	-- 	font_str:SetPoint("TOPLEFT", 12, -1)
+	-- 	font_str:SetFont("Fonts\\blei00d.TTF", 16, "")
+	-- end
 
-	deathlog_group.import_hc_button:SetScript("OnClick", function()
-		Deathlog_LoadFromHardcore()
-	end)
+	-- font_container.import_hc_button:SetScript("OnClick", function()
+	-- 	Deathlog_LoadFromHardcore()
+	-- end)
 
 	deathlog_group.frame:HookScript("OnHide", function()
 		font_container:Hide()
-		deathlog_group.next_button:Hide()
-		deathlog_group.prev_button:Hide()
-		deathlog_group.import_hc_button:Hide()
+		-- deathlog_group.next_button:Hide()
+		-- deathlog_group.prev_button:Hide()
+		-- deathlog_group.import_hc_button:Hide()
 	end)
 end
 
