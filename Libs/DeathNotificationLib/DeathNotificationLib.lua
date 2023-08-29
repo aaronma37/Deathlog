@@ -966,7 +966,8 @@ local function handleEvent(self, event, ...)
 	elseif event == "CHAT_MSG_SAY" or event == "CHAT_MSG_GUILD" or event == "CHAT_MSG_PARTY" then
 		local text, sn, LN, CN, p2, sF, zcI, cI, cB, unu, lI, senderGUID = ...
 		local automated_text_found = string.find(text, "Our brave")
-		if senderGUID == UnitGUID("player") and automated_text_found == nil then
+		local questie_text_found = string.find(text, "Questie")
+		if senderGUID == UnitGUID("player") and automated_text_found == nil and questie_text_found == nil then
 			recent_msg = text
 		end
 	elseif event == "CHAT_MSG_GUILD_DEATHS" then
