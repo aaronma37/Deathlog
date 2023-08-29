@@ -1,3 +1,4 @@
+local ace_refresh_timer_handle = nil
 local deathlog_instance_tbl = {
 	{ 33, "SHADOWFANGKEEP", "Shadowfang Keep" },
 	{ 36, "DEADMINES", "Deadmines" },
@@ -295,6 +296,12 @@ local function setSubtitleData()
 		subtitle_data[#subtitle_data + 1] = subtitle_metadata[k]
 	end
 	death_log_frame:SetSubTitle(subtitle_data)
+
+	local _x_offset = deathlog_settings[widget_name]["entry_x_offset"]
+	local _y_offset = deathlog_settings[widget_name]["entry_y_offset"]
+	death_log_frame.content:SetPoint("TOPLEFT", 3 + _x_offset, -33 + _y_offset)
+	death_log_frame.content:SetPoint("BOTTOMRIGHT", 15, 6)
+	death_log_frame:SetSubTitleOffset(_x_offset, _y_offset, subtitle_data)
 end
 
 death_log_frame:SetLayout("Fill")
@@ -635,12 +642,15 @@ local defaults = {
 	["entry_font_size"] = 14,
 	["title_x_offset"] = 0,
 	["title_y_offset"] = 0,
+	["entry_x_offset"] = 0,
+	["entry_y_offset"] = 0,
 	["border_alpha"] = 1.0,
 	["pos_x"] = 470,
 	["pos_y"] = -100,
 	["size_x"] = 255,
 	["size_y"] = 125,
 	["show_icon"] = true,
+	["show_title"] = true,
 	["columns"] = { "Name", "Class", "Race", "Lvl" },
 	["theme"] = "None",
 	["hide_subtitle_heading"] = false,
@@ -713,6 +723,15 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 			hc_fire_tex:Hide()
 			gold_ring_tex:Hide()
 			black_round_tex:Hide()
+		end
+
+		if
+			deathlog_settings[widget_name]["show_title"] == nil
+			or deathlog_settings[widget_name]["show_title"] == true
+		then
+			death_log_frame.titletext:Show()
+		else
+			death_log_frame.titletext:Hide()
 		end
 	else
 		death_log_frame.frame:Hide()
@@ -857,9 +876,32 @@ options = {
 			end,
 			order = 1,
 		},
-		show_icon = {
+		show_title_text = {
 			type = "toggle",
-			name = "Show Icon (Required to move the frame)",
+			name = "Show Title Text",
+			desc = "Show the 'Deathlog' title text.",
+			get = function()
+				if
+					deathlog_settings[widget_name]["show_title"] == nil
+					or deathlog_settings[widget_name]["show_title"] == true
+				then
+					return true
+				else
+					return false
+				end
+			end,
+			set = function()
+				if deathlog_settings[widget_name]["show_title"] == nil then
+					deathlog_settings[widget_name]["show_title"] = true
+				end
+				deathlog_settings[widget_name]["show_title"] = not deathlog_settings[widget_name]["show_title"]
+				Deathlog_minilog_applySettings()
+			end,
+			order = 2,
+		},
+		show_skull_icon = {
+			type = "toggle",
+			name = "Show Skull Icon (Requires reload)",
 			desc = "Show the deathlog icon.",
 			get = function()
 				if
@@ -1012,6 +1054,51 @@ options = {
 			end,
 			disabled = hidenametextoptions,
 		},
+		entryxoffset = {
+			type = "range",
+			name = "Entry x-offset (requires reload)",
+			desc = "Entry x-offset",
+			min = -50,
+			max = 250,
+			step = 1,
+			get = function()
+				return deathlog_settings[widget_name]["entry_x_offset"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["entry_x_offset"] = value
+
+				if ace_refresh_timer_handle then
+					ace_refresh_timer_handle:Cancel()
+				end
+				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function()
+					Deathlog_minilog_applySettings(true)
+					ace_refresh_timer_handle:Cancel()
+				end)
+			end,
+			disabled = hidenametextoptions,
+		},
+		entryyoffset = {
+			type = "range",
+			name = "Entry y-offset",
+			desc = "Entry y-offset",
+			min = -50,
+			max = 250,
+			step = 1,
+			get = function()
+				return deathlog_settings[widget_name]["entry_y_offset"]
+			end,
+			set = function(self, value)
+				deathlog_settings[widget_name]["entry_y_offset"] = value
+				if ace_refresh_timer_handle then
+					ace_refresh_timer_handle:Cancel()
+				end
+				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function()
+					Deathlog_minilog_applySettings(true)
+					ace_refresh_timer_handle:Cancel()
+				end)
+			end,
+			disabled = hidenametextoptions,
+		},
 		reset_size_and_pos = {
 			type = "execute",
 			name = "Reset to default",
@@ -1060,6 +1147,9 @@ options = {
 					deathlog_settings[widget_name]["size_x"] = 181.8763122558594
 					deathlog_settings[widget_name]["size_y"] = 102.3703765869141
 					deathlog_settings[widget_name]["show_icon"] = false
+					deathlog_settings[widget_name]["show_title"] = true
+					deathlog_settings[widget_name]["entry_x_offset"] = 0
+					deathlog_settings[widget_name]["entry_y_offset"] = 0
 					deathlog_settings[widget_name]["columns"] = {
 						"Lvl", -- [1]
 						"Name", -- [2]
@@ -1082,6 +1172,9 @@ options = {
 					deathlog_settings[widget_name]["size_x"] = 161.8763122558594
 					deathlog_settings[widget_name]["size_y"] = 102.3703765869141
 					deathlog_settings[widget_name]["show_icon"] = false
+					deathlog_settings[widget_name]["show_title"] = true
+					deathlog_settings[widget_name]["entry_x_offset"] = 0
+					deathlog_settings[widget_name]["entry_y_offset"] = 0
 					deathlog_settings[widget_name]["columns"] = {
 						"Lvl", -- [1]
 						"Name", -- [2]

@@ -154,6 +154,13 @@ local methods = {
 			column_offset = column_offset + v[2]
 		end
 	end,
+	["SetSubTitleOffset"] = function(self, _x, _y, subtitle_data)
+		local column_offset = 17
+		for _, v in ipairs(subtitle_data) do
+			self.subtitletext_tbl[v[1]]:SetPoint("LEFT", self.frame, "TOPLEFT", column_offset + _x, -26 + _y)
+			column_offset = column_offset + v[2]
+		end
+	end,
 
 	["SetStatusText"] = function(self, text)
 		self.statustext:SetText(text)
