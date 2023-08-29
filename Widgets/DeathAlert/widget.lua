@@ -37,13 +37,13 @@ death_alert_frame:Show()
 death_alert_frame.text = death_alert_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 death_alert_frame.text:SetText(
 	UnitName("player")
-	.. " the "
-	.. UnitClass("player")
-	.. " "
-	.. UnitRace("player")
-	.. " has\ndied at level "
-	.. UnitLevel("player")
-	.. " in Elywynn Forest."
+		.. " the "
+		.. UnitClass("player")
+		.. " "
+		.. UnitRace("player")
+		.. " has\ndied at level "
+		.. UnitLevel("player")
+		.. " in Elywynn Forest."
 )
 
 death_alert_frame.text:SetFont("Fonts\\blei00d.TTF", 22, "")
