@@ -475,23 +475,27 @@ local function setupRowEntries()
 					0.5
 				)
 			end
-			GameTooltip:AddLine("Name: " .. _entry.player_data["name"], 1, 1, 1)
-			GameTooltip:AddLine("Guild: " .. _entry.player_data["guild"], 1, 1, 1)
+			if deathlog_settings[widget_name]["tooltip_name"] then
+				GameTooltip:AddLine("Name: " .. _entry.player_data["name"], 1, 1, 1)
+			end
+			if deathlog_settings[widget_name]["tooltip_guild"] then
+				GameTooltip:AddLine("Guild: " .. _entry.player_data["guild"], 1, 1, 1)
+			end
 			if _entry.player_data["race_id"] ~= nil then
 				local race_info = C_CreatureInfo.GetRaceInfo(_entry.player_data["race_id"])
-				if race_info then
+				if deathlog_settings[widget_name]["tooltip_race"] and race_info then
 					GameTooltip:AddLine("Race: " .. race_info.raceName, 1, 1, 1)
 				end
 			end
 
-			if _entry.player_data["class_id"] then
+			if deathlog_settings[widget_name]["tooltip_class"] and _entry.player_data["class_id"] then
 				local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
 				if class_str then
 					GameTooltip:AddLine("Class: " .. class_str, 1, 1, 1)
 				end
 			end
 
-			if _entry.player_data["source_id"] then
+			if deathlog_settings[widget_name]["tooltip_killedby"] and _entry.player_data["source_id"] then
 				local source_id = id_to_npc[_entry.player_data["source_id"]]
 				if source_id then
 					GameTooltip:AddLine("Killed by: " .. source_id, 1, 1, 1, true)
@@ -506,26 +510,26 @@ local function setupRowEntries()
 				end
 			end
 
-			if race_name then
+			if deathlog_settings[widget_name]["tooltip_race"] and race_name then
 				GameTooltip:AddLine("Race: " .. race_name, 1, 1, 1)
 			end
 
-			if _entry.player_data["map_id"] then
+			if deathlog_settings[widget_name]["tooltip_zone"] and _entry.player_data["map_id"] then
 				local map_info = C_Map.GetMapInfo(_entry.player_data["map_id"])
 				if map_info then
 					GameTooltip:AddLine("Zone: " .. map_info.name, 1, 1, 1, true)
 				end
 			end
 
-			if _entry.player_data["map_pos"] then
+			if deathlog_settings[widget_name]["tooltip_loc"] and _entry.player_data["map_pos"] then
 				GameTooltip:AddLine("Loc: " .. _entry.player_data["map_pos"], 1, 1, 1, true)
 			end
 
-			if _entry.player_data["date"] then
+			if deathlog_settings[widget_name]["tooltip_date"] and _entry.player_data["date"] then
 				GameTooltip:AddLine("Date: " .. _entry.player_data["date"], 1, 1, 1, true)
 			end
 
-			if _entry.player_data["last_words"] then
+			if deathlog_settings[widget_name]["tooltip_lastwords"] and _entry.player_data["last_words"] then
 				GameTooltip:AddLine("Last words: " .. _entry.player_data["last_words"], 1, 1, 0, true)
 			end
 			GameTooltip:Show()
@@ -659,6 +663,15 @@ local defaults = {
 	["title_color_g"] = default_text_color_g,
 	["title_color_b"] = default_text_color_b,
 	["title_color_a"] = default_text_color_a,
+	["tooltip_name"] = true,
+	["tooltip_guild"] = true,
+	["tooltip_race"] = true,
+	["tooltip_class"] = true,
+	["tooltip_killedby"] = true,
+	["tooltip_zone"] = true,
+	["tooltip_loc"] = true,
+	["tooltip_date"] = true,
+	["tooltip_lastwords"] = true,
 }
 
 local function applyDefaults(_defaults, force)
@@ -1363,6 +1376,213 @@ options = {
 					end,
 					set = function(self, key)
 						columnFunc(6, key)
+					end,
+				},
+			},
+		},
+
+		minilog_tooltip = {
+			type = "group",
+			name = "Tooltip Options",
+			order = 11,
+			inline = true,
+			args = {
+				name = {
+					type = "toggle",
+					name = "Name",
+					desc = "Show the 'Name' row in the minilog tooltip",
+					order = 1,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_name"] == nil
+							or deathlog_settings[widget_name]["tooltip_name"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_name"] == nil then
+							deathlog_settings[widget_name]["tooltip_name"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_name"] = not deathlog_settings[widget_name]["tooltip_name"]
+					end,
+				},
+				guild = {
+					type = "toggle",
+					name = "Guild",
+					desc = "Show the 'Guild' row in the minilog tooltip",
+					order = 2,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_guild"] == nil
+							or deathlog_settings[widget_name]["tooltip_guild"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_guild"] == nil then
+							deathlog_settings[widget_name]["tooltip_guild"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_guild"] = not deathlog_settings[widget_name]["tooltip_guild"]
+					end,
+				},
+				race = {
+					type = "toggle",
+					name = "Race",
+					desc = "Show the 'Race' row in the minilog tooltip",
+					order = 3,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_race"] == nil
+							or deathlog_settings[widget_name]["tooltip_race"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_race"] == nil then
+							deathlog_settings[widget_name]["tooltip_race"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_race"] = not deathlog_settings[widget_name]["tooltip_race"]
+					end,
+				},
+				class = {
+					type = "toggle",
+					name = "Class",
+					desc = "Show the 'Class' row in the minilog tooltip",
+					order = 4,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_class"] == nil
+							or deathlog_settings[widget_name]["tooltip_class"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_class"] == nil then
+							deathlog_settings[widget_name]["tooltip_class"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_class"] = not deathlog_settings[widget_name]["tooltip_class"]
+					end,
+				},
+				killed_by = {
+					type = "toggle",
+					name = "Killed By",
+					desc = "Show the 'Killed by' row in the minilog tooltip",
+					order = 5,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_killedby"] == nil
+							or deathlog_settings[widget_name]["tooltip_killedby"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_killedby"] == nil then
+							deathlog_settings[widget_name]["tooltip_killedby"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_killedby"] = not deathlog_settings[widget_name]["tooltip_killedby"]
+					end,
+				},
+				zone = {
+					type = "toggle",
+					name = "Zone",
+					desc = "Show the 'Zone' row in the minilog tooltip",
+					order = 6,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_zone"] == nil
+							or deathlog_settings[widget_name]["tooltip_zone"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_zone"] == nil then
+							deathlog_settings[widget_name]["tooltip_zone"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_zone"] = not deathlog_settings[widget_name]["tooltip_zone"]
+					end,
+				},
+				location = {
+					type = "toggle",
+					name = "Location",
+					desc = "Show the 'Loc' row in the minilog tooltip",
+					order = 7,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_loc"] == nil
+							or deathlog_settings[widget_name]["tooltip_loc"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_loc"] == nil then
+							deathlog_settings[widget_name]["tooltip_loc"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_loc"] = not deathlog_settings[widget_name]["tooltip_loc"]
+					end,
+				},
+				timestamp = {
+					type = "toggle",
+					name = "Date",
+					desc = "Show the 'Date' row in the minilog tooltip",
+					order = 8,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_date"] == nil
+							or deathlog_settings[widget_name]["tooltip_date"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_date"] == nil then
+							deathlog_settings[widget_name]["tooltip_date"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_date"] = not deathlog_settings[widget_name]["tooltip_date"]
+					end,
+				},
+				last_words = {
+					type = "toggle",
+					name = "Last Words",
+					desc = "Show the 'Last words' row in the minilog tooltip",
+					order = 8,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_lastwords"] == nil
+							or deathlog_settings[widget_name]["tooltip_lastwords"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_lastwords"] == nil then
+							deathlog_settings[widget_name]["tooltip_lastwords"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_lastwords"] = not deathlog_settings[widget_name]["tooltip_lastwords"]
 					end,
 				},
 			},
