@@ -529,7 +529,7 @@ local function setupRowEntries()
 				GameTooltip:AddLine("Date: " .. _entry.player_data["date"], 1, 1, 1, true)
 			end
 
-			if deathlog_settings[widget_name]["tooltip_lastwords"] and _entry.player_data["last_words"] then
+			if deathlog_settings[widget_name]["tooltip_lastwords"] and _entry.player_data["last_words"] and not _entry.player_data["last_words"]:match("^%s*$") then
 				GameTooltip:AddLine("Last words: " .. _entry.player_data["last_words"], 1, 1, 0, true)
 			end
 			GameTooltip:Show()
