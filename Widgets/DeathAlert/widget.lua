@@ -79,10 +79,13 @@ function Deathlog_DeathAlertPlay(entry)
 	if deathlog_settings[widget_name]["enable"] == false then
 		return
 	end
+	local min_lvl = deathlog_settings[widget_name]["min_lvl_player"]
+		and UnitLevel("player")
+		or deathlog_settings[widget_name]["min_lvl"]
 	if
 		entry["level"]
 		and (
-			entry["level"] < deathlog_settings[widget_name]["min_lvl"]
+			entry["level"] < min_lvl
 			or entry["level"] > deathlog_settings[widget_name]["max_lvl"]
 		)
 	then
@@ -285,7 +288,8 @@ local defaults = {
 	["fall_message"] = "<name> the <race> <class> fell to\ndeath at lvl <level> in <zone>.",
 	["drown_message"] = "<name> the <race> <class> drowned\n at lvl <level> in <zone>.",
 	["min_lvl"] = 1,
-	["max_lvl"] = 80,
+	["min_lvl_player"] = false,
+	["max_lvl"] = MAX_PLAYER_LEVEL,
 	["guild_only"] = false,
 	["accent_color_r"] = 1,
 	["accent_color_g"] = 1,
@@ -724,6 +728,7 @@ options = {
 			type = "toggle",
 			name = "Show Death Alert",
 			desc = "Show Death Alert",
+			order = 0,
 			get = function()
 				return deathlog_settings[widget_name]["enable"]
 			end,
@@ -732,79 +737,16 @@ options = {
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},
-		reset_size_and_pos = {
-			type = "execute",
-			name = "Reset to default",
-			desc = "Reset to default",
-			func = function()
-				forceReset()
-			end,
-		},
-		test = {
-			type = "execute",
-			name = "Test",
-			desc = "Test the death alert.  Clicking this button fakes a death alert.",
-			func = function()
-				Deathlog_DeathAlertFakeDeath()
-			end,
-		},
-		x_size = {
-			type = "range",
-			name = "X-Scale",
-			desc = "X-Scale",
-			min = 200,
-			max = 1000,
-			step = 1,
+		guild_only_toggle = {
+			type = "toggle",
+			name = "Guild only alerts",
+			desc = "Only show alerts for deaths within the player's guild.",
+			order = 1,
 			get = function()
-				return deathlog_settings[widget_name]["size_x"]
+				return deathlog_settings[widget_name]["guild_only"]
 			end,
-			set = function(self, value)
-				deathlog_settings[widget_name]["size_x"] = value
-				Deathlog_DeathAlertWidget_applySettings()
-			end,
-		},
-		y_size = {
-			type = "range",
-			name = "Y-Scale",
-			desc = "Y-Scale",
-			min = 50,
-			max = 600,
-			step = 1,
-			get = function()
-				return deathlog_settings[widget_name]["size_y"]
-			end,
-			set = function(self, value)
-				deathlog_settings[widget_name]["size_y"] = value
-				Deathlog_DeathAlertWidget_applySettings()
-			end,
-		},
-		pos_x = {
-			type = "range",
-			name = "X-Position",
-			desc = "X-Position",
-			min = -1000,
-			max = 1000,
-			step = 1,
-			get = function()
-				return deathlog_settings[widget_name]["pos_x"]
-			end,
-			set = function(self, value)
-				deathlog_settings[widget_name]["pos_x"] = value
-				Deathlog_DeathAlertWidget_applySettings()
-			end,
-		},
-		pos_y = {
-			type = "range",
-			name = "Y-Position",
-			desc = "Y-Position",
-			min = -1000,
-			max = 1000,
-			step = 1,
-			get = function()
-				return deathlog_settings[widget_name]["pos_y"]
-			end,
-			set = function(self, value)
-				deathlog_settings[widget_name]["pos_y"] = value
+			set = function()
+				deathlog_settings[widget_name]["guild_only"] = not deathlog_settings[widget_name]["guild_only"]
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},
@@ -815,6 +757,7 @@ options = {
 			min = 1,
 			max = 10,
 			step = 0.5,
+			order = 2,
 			get = function()
 				return deathlog_settings[widget_name]["display_time"]
 			end,
@@ -822,6 +765,71 @@ options = {
 				deathlog_settings[widget_name]["display_time"] = value
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
+		},
+		test = {
+			type = "execute",
+			name = "Test",
+			desc = "Test the death alert.  Clicking this button fakes a death alert.",
+			func = function()
+				Deathlog_DeathAlertFakeDeath()
+			end,
+		},
+		lvl_opts = {
+			type = "group",
+			name = "Level Settings",
+			inline = true,
+			order = 5,
+			args = {
+				min_lvl = {
+					type = "range",
+					name = "Min. Lvl. to Display",
+					desc = "Minimum level to display",
+					min = 1,
+					max = MAX_PLAYER_LEVEL,
+					step = 1,
+					order = 1,
+					disabled = function()
+						return deathlog_settings[widget_name]["min_lvl_player"]
+					end,
+					get = function()
+						if deathlog_settings[widget_name]["min_lvl_player"] then
+							return UnitLevel("player")
+						end
+						return deathlog_settings[widget_name]["min_lvl"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["min_lvl"] = value
+						Deathlog_DeathAlertWidget_applySettings()
+					end,
+				},
+				max_lvl = {
+					type = "range",
+					name = "Max. Lvl. to Display",
+					desc = "Maximum level to display",
+					min = 1,
+					max = MAX_PLAYER_LEVEL,
+					step = 1,
+					get = function()
+						return deathlog_settings[widget_name]["max_lvl"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["max_lvl"] = value
+						Deathlog_DeathAlertWidget_applySettings()
+					end,
+				},
+				min_lvl_player = {
+					type = "toggle",
+					name = "Use my level as Min. Lvl.",
+					desc = "Only show alerts for characters your level or higher",
+					get = function()
+						return deathlog_settings[widget_name]["min_lvl_player"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["min_lvl_player"] = value
+						Deathlog_DeathAlertWidget_applySettings()
+					end,
+				},
+			},
 		},
 		dl_styles = {
 			type = "select",
@@ -889,7 +897,8 @@ options = {
 		msginput = {
 			type = "input",
 			name = "Message",
-			desc = "Customize the death alert message. \nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<source> = Killer name\n<zone> = Character zone\n<last_words> = Last words",
+			desc =
+			"Customize the death alert message. \nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<source> = Killer name\n<zone> = Character zone\n<last_words> = Last words",
 			width = 2.5,
 			multiline = true,
 			get = function()
@@ -900,48 +909,12 @@ options = {
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},
-		min_lvl = {
-			type = "range",
-			name = "Min. Lvl. to Display",
-			desc = "Minimum level to display",
-			min = 1,
-			max = 80,
-			step = 1,
-			order = 20,
-			get = function()
-				return deathlog_settings[widget_name]["min_lvl"]
-			end,
-			set = function(self, value)
-				deathlog_settings[widget_name]["min_lvl"] = value
-				Deathlog_DeathAlertWidget_applySettings()
-			end,
-		},
-		max_lvl = {
-			type = "range",
-			name = "Max. Lvl. to Display",
-			desc = "Maximum level to display",
-			min = 1,
-			max = 80,
-			step = 1,
-			order = 21,
-			get = function()
-				return deathlog_settings[widget_name]["max_lvl"]
-			end,
-			set = function(self, value)
-				deathlog_settings[widget_name]["max_lvl"] = value
-				Deathlog_DeathAlertWidget_applySettings()
-			end,
-		},
-		guild_only_toggle = {
-			type = "toggle",
-			name = "Guild only alerts",
-			desc = "Only show alerts for deaths within the player's guild.",
-			get = function()
-				return deathlog_settings[widget_name]["guild_only"]
-			end,
-			set = function()
-				deathlog_settings[widget_name]["guild_only"] = not deathlog_settings[widget_name]["guild_only"]
-				Deathlog_DeathAlertWidget_applySettings()
+		reset_size_and_pos = {
+			type = "execute",
+			name = "Reset to default",
+			desc = "Reset to default",
+			func = function()
+				forceReset()
 			end,
 		},
 		accent_color = {
@@ -976,6 +949,74 @@ options = {
 				deathlog_settings[widget_name]["alert_sound"] = key
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
+		},
+		position = {
+			type = "group",
+			name = "Position",
+			inline = true,
+			order = -1,
+			args = {
+				x_size = {
+					type = "range",
+					name = "X-Scale",
+					desc = "X-Scale",
+					min = 200,
+					max = 1000,
+					step = 1,
+					get = function()
+						return deathlog_settings[widget_name]["size_x"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["size_x"] = value
+						Deathlog_DeathAlertWidget_applySettings()
+					end,
+				},
+				y_size = {
+					type = "range",
+					name = "Y-Scale",
+					desc = "Y-Scale",
+					min = 50,
+					max = 600,
+					step = 1,
+					get = function()
+						return deathlog_settings[widget_name]["size_y"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["size_y"] = value
+						Deathlog_DeathAlertWidget_applySettings()
+					end,
+				},
+				pos_x = {
+					type = "range",
+					name = "X-Position",
+					desc = "X-Position",
+					min = -1000,
+					max = 1000,
+					step = 1,
+					get = function()
+						return deathlog_settings[widget_name]["pos_x"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["pos_x"] = value
+						Deathlog_DeathAlertWidget_applySettings()
+					end,
+				},
+				pos_y = {
+					type = "range",
+					name = "Y-Position",
+					desc = "Y-Position",
+					min = -1000,
+					max = 1000,
+					step = 1,
+					get = function()
+						return deathlog_settings[widget_name]["pos_y"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["pos_y"] = value
+						Deathlog_DeathAlertWidget_applySettings()
+					end,
+				},
+			},
 		},
 	},
 }
