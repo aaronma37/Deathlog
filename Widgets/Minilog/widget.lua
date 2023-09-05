@@ -1,4 +1,5 @@
 local ace_refresh_timer_handle = nil
+local entry_cache = {}
 local deathlog_instance_tbl = {
 	{ 33, "SHADOWFANGKEEP", "Shadowfang Keep" },
 	{ 36, "DEADMINES", "Deadmines" },
@@ -564,6 +565,10 @@ local function shiftEntry(_entry_from, _entry_to)
 end
 
 function deathlog_widget_minilog_createEntry(player_data)
+	if entry_cache[player_data["name"]] then
+		return
+	end
+	entry_cache[player_data["name"]] = 1
 	for i = 1, 19 do
 		if row_entry[i + 1].player_data ~= nil then
 			shiftEntry(row_entry[i + 1], row_entry[i])
@@ -1227,6 +1232,7 @@ options = {
 				local idx = math.random(1, 100)
 				local some_name = UnitName("player")
 				local some_guild = ""
+				local found_random_name = false
 				if deathlog_data then
 					for servername, v in pairs(deathlog_data) do
 						for checksum, entry in pairs(v) do
@@ -1234,8 +1240,12 @@ options = {
 							some_guild = entry["guild"]
 							idx = idx - 1
 							if idx < 1 then
+								found_random_name = true
 								break
 							end
+						end
+						if found_random_name then
+							break
 						end
 					end
 				end
