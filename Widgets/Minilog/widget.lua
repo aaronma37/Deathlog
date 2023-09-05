@@ -314,7 +314,9 @@ death_log_frame:AddChild(scroll_frame)
 
 local selected = nil
 local row_entry = {}
+local loaded = false
 local function setupRowEntries()
+	loaded = true
 	row_entry = {}
 	local function WPDropDownDemo_Menu(frame, level, menuList)
 		local info = UIDropDownMenu_CreateInfo()
@@ -526,10 +528,14 @@ local function setupRowEntries()
 			end
 
 			if deathlog_settings[widget_name]["tooltip_date"] and _entry.player_data["date"] then
-				GameTooltip:AddLine("Date: " .. _entry.player_data["date"], 1, 1, 1, true)
+				GameTooltip:AddLine("Date: " .. date("%m/%d/%y", _entry.player_data["date"]) or "", 1, 1, 1, true)
 			end
 
-			if deathlog_settings[widget_name]["tooltip_lastwords"] and _entry.player_data["last_words"] and not _entry.player_data["last_words"]:match("^%s*$") then
+			if
+				deathlog_settings[widget_name]["tooltip_lastwords"]
+				and _entry.player_data["last_words"]
+				and not _entry.player_data["last_words"]:match("^%s*$")
+			then
 				GameTooltip:AddLine("Last words: " .. _entry.player_data["last_words"], 1, 1, 0, true)
 			end
 			GameTooltip:Show()
@@ -691,7 +697,9 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 	applyDefaults(defaults)
 	if rebuild_ace then
 		setSubtitleData()
-		setupRowEntries()
+		if loaded == false then
+			setupRowEntries()
+		end
 	end
 
 	death_log_frame.titletext:SetFont(
@@ -1406,7 +1414,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_name"] == nil then
 							deathlog_settings[widget_name]["tooltip_name"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_name"] = not deathlog_settings[widget_name]["tooltip_name"]
+						deathlog_settings[widget_name]["tooltip_name"] =
+							not deathlog_settings[widget_name]["tooltip_name"]
 					end,
 				},
 				guild = {
@@ -1428,7 +1437,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_guild"] == nil then
 							deathlog_settings[widget_name]["tooltip_guild"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_guild"] = not deathlog_settings[widget_name]["tooltip_guild"]
+						deathlog_settings[widget_name]["tooltip_guild"] =
+							not deathlog_settings[widget_name]["tooltip_guild"]
 					end,
 				},
 				race = {
@@ -1450,7 +1460,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_race"] == nil then
 							deathlog_settings[widget_name]["tooltip_race"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_race"] = not deathlog_settings[widget_name]["tooltip_race"]
+						deathlog_settings[widget_name]["tooltip_race"] =
+							not deathlog_settings[widget_name]["tooltip_race"]
 					end,
 				},
 				class = {
@@ -1472,7 +1483,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_class"] == nil then
 							deathlog_settings[widget_name]["tooltip_class"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_class"] = not deathlog_settings[widget_name]["tooltip_class"]
+						deathlog_settings[widget_name]["tooltip_class"] =
+							not deathlog_settings[widget_name]["tooltip_class"]
 					end,
 				},
 				killed_by = {
@@ -1494,7 +1506,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_killedby"] == nil then
 							deathlog_settings[widget_name]["tooltip_killedby"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_killedby"] = not deathlog_settings[widget_name]["tooltip_killedby"]
+						deathlog_settings[widget_name]["tooltip_killedby"] =
+							not deathlog_settings[widget_name]["tooltip_killedby"]
 					end,
 				},
 				zone = {
@@ -1516,7 +1529,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_zone"] == nil then
 							deathlog_settings[widget_name]["tooltip_zone"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_zone"] = not deathlog_settings[widget_name]["tooltip_zone"]
+						deathlog_settings[widget_name]["tooltip_zone"] =
+							not deathlog_settings[widget_name]["tooltip_zone"]
 					end,
 				},
 				location = {
@@ -1538,7 +1552,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_loc"] == nil then
 							deathlog_settings[widget_name]["tooltip_loc"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_loc"] = not deathlog_settings[widget_name]["tooltip_loc"]
+						deathlog_settings[widget_name]["tooltip_loc"] =
+							not deathlog_settings[widget_name]["tooltip_loc"]
 					end,
 				},
 				timestamp = {
@@ -1560,7 +1575,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_date"] == nil then
 							deathlog_settings[widget_name]["tooltip_date"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_date"] = not deathlog_settings[widget_name]["tooltip_date"]
+						deathlog_settings[widget_name]["tooltip_date"] =
+							not deathlog_settings[widget_name]["tooltip_date"]
 					end,
 				},
 				last_words = {
@@ -1582,7 +1598,8 @@ options = {
 						if deathlog_settings[widget_name]["tooltip_lastwords"] == nil then
 							deathlog_settings[widget_name]["tooltip_lastwords"] = true
 						end
-						deathlog_settings[widget_name]["tooltip_lastwords"] = not deathlog_settings[widget_name]["tooltip_lastwords"]
+						deathlog_settings[widget_name]["tooltip_lastwords"] =
+							not deathlog_settings[widget_name]["tooltip_lastwords"]
 					end,
 				},
 			},
