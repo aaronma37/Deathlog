@@ -13,6 +13,7 @@ local LSM30 = LibStub("LibSharedMedia-3.0", true)
 local sounds = LSM30:HashTable("sound")
 sounds["default_hardcore"] = 8959
 sounds["golfclap"] = "Interface\\AddOns\\Deathlog\\Sounds\\golfclap.ogg"
+sounds["hunger_games"] = "Interface\\AddOns\\Deathlog\\Sounds\\hunger_games.ogg"
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
 fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
@@ -79,16 +80,9 @@ function Deathlog_DeathAlertPlay(entry)
 	if deathlog_settings[widget_name]["enable"] == false then
 		return
 	end
-	local min_lvl = deathlog_settings[widget_name]["min_lvl_player"]
-		and UnitLevel("player")
+	local min_lvl = deathlog_settings[widget_name]["min_lvl_player"] and UnitLevel("player")
 		or deathlog_settings[widget_name]["min_lvl"]
-	if
-		entry["level"]
-		and (
-			entry["level"] < min_lvl
-			or entry["level"] > deathlog_settings[widget_name]["max_lvl"]
-		)
-	then
+	if entry["level"] and (entry["level"] < min_lvl or entry["level"] > deathlog_settings[widget_name]["max_lvl"]) then
 		return
 	end
 
@@ -897,8 +891,7 @@ options = {
 		msginput = {
 			type = "input",
 			name = "Message",
-			desc =
-			"Customize the death alert message. \nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<source> = Killer name\n<zone> = Character zone\n<last_words> = Last words",
+			desc = "Customize the death alert message. \nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<source> = Killer name\n<zone> = Character zone\n<last_words> = Last words",
 			width = 2.5,
 			multiline = true,
 			get = function()
