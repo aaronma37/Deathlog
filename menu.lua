@@ -94,12 +94,16 @@ local function WPDropDownDemo_Menu(frame, level, menuList)
 		deathlog_menu:Hide()
 	end
 
+	local function blockUser()
+		if death_tomb_frame.clicked_name then
+			local added = C_FriendList.AddIgnore(death_tomb_frame.clicked_name)
+		end
+	end
+
 	if level == 1 then
 		info.text, info.hasArrow, info.func, info.disabled = "Show death location", false, openWorldMap, false
 		UIDropDownMenu_AddButton(info)
-		info.text, info.hasArrow, info.func, info.disabled = "Block user", false, openWorldMap, true
-		UIDropDownMenu_AddButton(info)
-		info.text, info.hasArrow, info.func, info.disabled = "Block user's guild", false, openWorldMap, true
+		info.text, info.hasArrow, info.func, info.disabled = "Block user", false, blockUser, false
 		UIDropDownMenu_AddButton(info)
 	end
 end
@@ -939,6 +943,7 @@ local function drawLogTab(container)
 				if font_strings[i] and font_strings[i].map_id and font_strings[i].map_id_coords_x then
 					death_tomb_frame.map_id = font_strings[i].map_id
 					death_tomb_frame.coordinates = { font_strings[i].map_id_coords_x, font_strings[i].map_id_coords_y }
+					death_tomb_frame.clicked_name = font_strings[i].Name:GetText()
 				end
 			end
 		end)
