@@ -1,5 +1,6 @@
 local AceGUI = LibStub("AceGUI-3.0")
 local widget_name = "DeathAlert"
+local alert_cache = {}
 local death_alert_frame = CreateFrame("frame")
 local death_alert_styles = {
 	["boss_banner_basic_small"] = "boss_banner_basic_small",
@@ -73,6 +74,7 @@ function Deathlog_DeathAlertFakeDeath()
 		["source_id"] = s,
 		["last_words"] = "Sample last words, help!",
 	}
+	alert_cache[UnitName("player")] = nil
 	Deathlog_DeathAlertPlay(fake_entry)
 end
 
@@ -92,6 +94,10 @@ function Deathlog_DeathAlertPlay(entry)
 			return
 		end
 	end
+	if alert_cache[entry["name"]] then
+		return
+	end
+	alert_cache[entry["name"]] = 1
 
 	if deathlog_settings[widget_name]["alert_sound"] == "default_hardcore" then
 		PlaySound(8959)
