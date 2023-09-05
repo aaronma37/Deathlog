@@ -18,6 +18,7 @@ along with the DeathNotificationLib. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 local debug = false
+local enable_guild_death_notifications = false
 local CTL = _G.ChatThrottleLib
 local COMM_NAME = "HCDeathAlerts"
 local COMM_COMMANDS = {
@@ -911,7 +912,7 @@ local function handleEvent(self, event, ...)
 			return
 		end
 
-		if command == COMM_COMMANDS["GUILD_DEATH_NOTIFICATION"] then
+		if command == COMM_COMMANDS["GUILD_DEATH_NOTIFICATION"] and enable_guild_death_notifications then -- Note: disabled until further debugging
 			local player_name_short, _ = string.split("-", arg[2])
 			if shadowbanned[player_name_short] then
 				return

@@ -359,12 +359,16 @@ local function setupRowEntries()
 			death_tomb_frame:Show()
 		end
 
+		local function blockUser()
+			if death_tomb_frame.clicked_name then
+				local added = C_FriendList.AddIgnore(death_tomb_frame.clicked_name)
+			end
+		end
+
 		if level == 1 then
 			info.text, info.hasArrow, info.func, info.disabled = "Show death location", false, openWorldMap, false
 			UIDropDownMenu_AddButton(info)
-			info.text, info.hasArrow, info.func, info.disabled = "Block user", false, openWorldMap, true
-			UIDropDownMenu_AddButton(info)
-			info.text, info.hasArrow, info.func, info.disabled = "Block user's guild", false, openWorldMap, true
+			info.text, info.hasArrow, info.func, info.disabled = "Block user", false, blockUser, false
 			UIDropDownMenu_AddButton(info)
 		end
 	end
@@ -444,6 +448,7 @@ local function setupRowEntries()
 					death_tomb_frame.map_id = _entry["player_data"]["map_id"]
 					local x, y = strsplit(",", _entry["player_data"]["map_pos"], 2)
 					death_tomb_frame.coordinates = { x, y }
+					death_tomb_frame.clicked_name = _entry["player_data"]["name"]
 				end
 			end
 		end)
