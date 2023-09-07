@@ -27,6 +27,7 @@ local column_types = {
 	"ClassLogo1",
 	"ClassLogo2",
 	"RaceLogoSquare",
+	"LastWords"
 }
 
 --[[-----------------------------------------------------------------------------
