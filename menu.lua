@@ -1363,6 +1363,30 @@ local function createDeathlogMenu()
 	ace_deathlog_menu:SetHeight(_menu_height)
 	ace_deathlog_menu:SetWidth(_menu_width)
 
+	if ace_deathlog_menu.exit_button == nil then
+		ace_deathlog_menu.exit_button = CreateFrame("Button", nil, ace_deathlog_menu.frame)
+		ace_deathlog_menu.exit_button:SetPoint("TOPRIGHT", ace_deathlog_menu.frame, "TOPRIGHT", -8, -8)
+		ace_deathlog_menu.exit_button:SetWidth(25)
+		ace_deathlog_menu.exit_button:SetHeight(25)
+		ace_deathlog_menu.exit_button:SetNormalTexture("Interface/Buttons/UI-SquareButton-Disabled.PNG")
+		ace_deathlog_menu.exit_button:SetHighlightTexture("Interface/Buttons/UI-SquareButton-Up.PNG")
+		ace_deathlog_menu.exit_button:SetPushedTexture("Interface/Buttons/UI-SquareButton-Down.PNG")
+	end
+
+	ace_deathlog_menu.exit_button:SetScript("OnClick", function()
+		deathlog_menu:Hide()
+	end)
+
+	if ace_deathlog_menu.exit_button_x == nil then
+		ace_deathlog_menu.exit_button_x = death_tomb_frame:CreateTexture(nil, "OVERLAY")
+		ace_deathlog_menu.exit_button_x:SetParent(ace_deathlog_menu.exit_button)
+		ace_deathlog_menu.exit_button_x:SetPoint("CENTER", ace_deathlog_menu.exit_button, "CENTER", 0, 0)
+		ace_deathlog_menu.exit_button_x:SetWidth(10)
+		ace_deathlog_menu.exit_button_x:SetHeight(10)
+		ace_deathlog_menu.exit_button_x:SetTexture("Interface/Buttons/UI-StopButton.PNG")
+		ace_deathlog_menu.exit_button_x:SetVertexColor(1, 1, 1, 0.8)
+	end
+
 	deathlog_tabcontainer = AceGUI:Create("DeathlogTabGroup") -- "InlineGroup" is also good
 	local tab_table = {
 		{ value = "ClassStatisticsTab", text = "Class Statistics" },
