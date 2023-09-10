@@ -522,10 +522,26 @@ local function setupRowEntries()
 				GameTooltip:AddLine("Race: " .. race_name, 1, 1, 1)
 			end
 
-			if deathlog_settings[widget_name]["tooltip_zone"] and _entry.player_data["map_id"] then
-				local map_info = C_Map.GetMapInfo(_entry.player_data["map_id"])
-				if map_info then
-					GameTooltip:AddLine("Zone: " .. map_info.name, 1, 1, 1, true)
+			if deathlog_settings[widget_name]["tooltip_zone"] then
+				if _entry.player_data["map_id"] then
+					local map_info = C_Map.GetMapInfo(_entry.player_data["map_id"])
+					if map_info then
+						GameTooltip:AddLine("Zone/Instance: " .. map_info.name, 1, 1, 1, true)
+					end
+				elseif _entry.player_data["instance_id"] then
+					GameTooltip:AddLine(
+						"Zone/Instance: "
+							.. (
+								deathlog_id_to_instance_tbl[_entry.player_data["instance_id"]]
+								or _entry.player_data["instance_id"]
+							),
+						1,
+						1,
+						1,
+						true
+					)
+				else
+					GameTooltip:AddLine("Zone/Instance: ------", 1, 1, 1, true)
 				end
 			end
 
