@@ -237,7 +237,7 @@ end
 local function calculateCDF(ln_mean, ln_std_dev)
 	local function logNormal(x, mean, sigma)
 		return (1 / (x * sigma * sqrt(2 * 3.14)))
-			* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
+			* exp((-1 / 2) * ((math.log(x) - mean) / sigma) * ((math.log(x) - mean) / sigma))
 	end
 	cdf = {}
 	cdf[1] = logNormal(1, ln_mean, sqrt(ln_std_dev))
@@ -271,7 +271,7 @@ function Deathlog_CalculateCDF2(ln_mean, ln_sig)
 	local cdf = {}
 
 	for i = 1, 60 do
-		local err_term = erf((log(i) - ln_mean) / (sqrt(2) * ln_sig))
+		local err_term = erf((math.log(i) - ln_mean) / (sqrt(2) * ln_sig))
 		cdf[i] = (1 / 2) * (1 + err_term)
 	end
 	return cdf
@@ -284,7 +284,7 @@ function deathlogGetOrderedNormalized(stats, parameters, ln_mean, ln_std_dev)
 	end
 	local function logNormal(x, mean, sigma)
 		return (1 / (x * sigma * sqrt(2 * 3.14)))
-			* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
+			* exp((-1 / 2) * ((math.log(x) - mean) / sigma) * ((math.log(x) - mean) / sigma))
 	end
 	local function calculateNormalizedValue(kills, avg_lvl, cdf)
 		if kills < 10 then
@@ -567,7 +567,7 @@ local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
 			log_normal_params_for_map_id["total"][v["class_id"]] = log_normal_params_for_map_id["total"][v["class_id"]]
 				+ 1
 			log_normal_params_for_map_id["ln_mean"][v["class_id"]] = log_normal_params_for_map_id["ln_mean"][v["class_id"]]
-				+ log(v["level"])
+				+ math.log(v["level"])
 		end
 	end
 
@@ -579,8 +579,8 @@ local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
 	for servername, entry_tbl in pairs(filtered_by_map) do
 		for _, v in pairs(entry_tbl) do
 			log_normal_params_for_map_id["ln_std_dev"][v["class_id"]] = log_normal_params_for_map_id["ln_std_dev"][v["class_id"]]
-				+ (log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]])
-					* (log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]])
+				+ (math.log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]])
+					* (math.log(v["level"]) - log_normal_params_for_map_id["ln_mean"][v["class_id"]])
 		end
 	end
 

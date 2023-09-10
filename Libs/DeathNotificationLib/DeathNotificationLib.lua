@@ -18,6 +18,7 @@ along with the DeathNotificationLib. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 local debug = false
+local beautify_prefix = "8"
 local enable_guild_death_notifications = false
 local CTL = _G.ChatThrottleLib
 local COMM_NAME = "HCDeathAlerts"
@@ -823,6 +824,17 @@ end
 WorldFrame:HookScript("OnMouseDown", function(self, button)
 	sendNextInQueue()
 end)
+
+-- hooksecurefunc("ChatEdit_ParseText", function(a, b, c)
+-- 	print("A", tonumber(ChatEdit_GetChannelTarget(DEFAULT_CHAT_FRAME.editBox)))
+-- 	if b == 1 and beautify then
+-- 		local id = tonumber(ChatEdit_GetChannelTarget(DEFAULT_CHAT_FRAME.editBox))
+-- 		local id, name = GetChannelName(id)
+-- 		if name == death_alerts_channel then
+-- 			a:SetText(beautify_prefix .. a:GetText())
+-- 		end
+-- 	end
+-- end)
 
 -- This binds any key press to send, including hitting enter to type or esc to exit game
 local f = Test or CreateFrame("Frame", "Test", UIParent)
