@@ -138,6 +138,7 @@ local function handleEvent(self, event, ...)
 		end
 		most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
 		loadWidgets()
+		C_Timer.After(5, loadWidgets)
 	end
 end
 
