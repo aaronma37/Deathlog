@@ -1,5 +1,6 @@
 local ace_refresh_timer_handle = nil
 local entry_cache = {}
+local font_handle = nil
 local deathlog_instance_tbl = {
 	{ 33, "SHADOWFANGKEEP", "Shadowfang Keep" },
 	{ 36, "DEADMINES", "Deadmines" },
@@ -727,20 +728,17 @@ end
 
 local options = nil
 local optionsframe = nil
-function Deathlog_minilog_applySettings(rebuild_ace)
-	applyDefaults(defaults)
-	if rebuild_ace then
-		setSubtitleData()
-		if loaded == false then
-			setupRowEntries()
-		end
-	end
-
+local function applyFont()
+	local success = true
 	death_log_frame.titletext:SetFont(
 		fonts[deathlog_settings[widget_name]["font"]],
 		deathlog_settings[widget_name]["title_font_size"],
 		"THICK"
 	)
+
+	if fonts[deathlog_settings[widget_name]["font"]] ~= death_log_frame.titletext:GetFont() then
+		success = false
+	end
 	death_log_frame.titletext:SetTextColor(
 		deathlog_settings[widget_name]["title_color_r"],
 		deathlog_settings[widget_name]["title_color_g"],
@@ -762,8 +760,29 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 				deathlog_settings[widget_name]["entry_font_size"],
 				""
 			)
+
+			if fonts[deathlog_settings[widget_name]["entry_font"]] ~= row_entry[i].font_strings[v[1]]:GetFont() then
+				success = false
+			end
 		end
 	end
+
+	if success == true then
+		if font_handle then
+			font_handle:Cancel()
+		end
+	end
+end
+function Deathlog_minilog_applySettings(rebuild_ace)
+	applyDefaults(defaults)
+	if rebuild_ace then
+		setSubtitleData()
+		if loaded == false then
+			setupRowEntries()
+		end
+	end
+	applyFont()
+	font_handle = C_Timer.NewTicker(1, applyFont)
 
 	if deathlog_settings[widget_name]["enable"] == nil or deathlog_settings[widget_name]["enable"] == true then
 		death_log_frame.frame:Show()
