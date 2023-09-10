@@ -38,6 +38,7 @@ deathlog_instance_tbl = {
 	["Scholomance"] = 289,
 	["Stratholme"] = 329,
 	["Maraudon"] = 349,
+	["Ragefire Chasm"] = 389,
 	["Dire Maul"] = 429,
 }
 
