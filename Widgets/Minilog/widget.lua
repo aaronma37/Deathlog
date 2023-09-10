@@ -48,6 +48,7 @@ local presets = {
 	["Hardcore (legacy)"] = "Hardcore (legacy)",
 	["concise"] = "concise",
 	["Yazpad"] = "Yazpad",
+	["ChefCarlos"] = "ChefCarlos",
 }
 
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
@@ -213,9 +214,16 @@ local subtitle_metadata = {
 	},
 	["Lvl"] = {
 		"Lvl",
-		20,
+		40,
 		function(_entry)
 			return _entry.player_data["level"] or ""
+		end,
+	},
+	["LastWords"] = {
+		"LastWords",
+		100,
+		function(_entry)
+			return _entry.player_data["last_words"] or ""
 		end,
 	},
 	["ClassLogo1"] = {
@@ -401,7 +409,7 @@ local function setupRowEntries()
 		_entry.background:SetDrawLayer("OVERLAY", 2)
 		_entry.background:SetVertexColor(0.5, 0.5, 0.5, (i % 2) / 10)
 		_entry.background:SetHeight(16)
-		_entry.background:SetWidth(500)
+		_entry.background:SetWidth(1000)
 		_entry.background:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
 
 		_entry:SetHeight(40)
@@ -1232,6 +1240,36 @@ options = {
 					deathlog_settings[widget_name]["hide_subtitle_heading"] = true
 					deathlog_settings[widget_name]["presets"] = "Yazpad"
 
+					deathlog_settings[widget_name]["title_color_r"] = 1
+					deathlog_settings[widget_name]["title_color_g"] = 1
+					deathlog_settings[widget_name]["title_color_b"] = 1
+					deathlog_settings[widget_name]["title_color_a"] = 1
+				end
+				if deathlog_settings[widget_name]["presets"] == "ChefCarlos" then
+					deathlog_settings[widget_name]["enable"] = true
+					deathlog_settings[widget_name]["font"] = "2002 Bold"
+					deathlog_settings[widget_name]["entry_font"] = "2002 Bold"
+					deathlog_settings[widget_name]["title_font_size"] = 14
+					deathlog_settings[widget_name]["entry_font_size"] = 11
+					deathlog_settings[widget_name]["title_x_offset"] = -20
+					deathlog_settings[widget_name]["title_y_offset"] = 0
+					deathlog_settings[widget_name]["border_alpha"] = 1.0
+					deathlog_settings[widget_name]["size_x"] = 500
+					deathlog_settings[widget_name]["size_y"] = 150
+					deathlog_settings[widget_name]["show_icon"] = false
+					deathlog_settings[widget_name]["show_title"] = true
+					deathlog_settings[widget_name]["entry_x_offset"] = 0
+					deathlog_settings[widget_name]["entry_y_offset"] = 0
+					deathlog_settings[widget_name]["columns"] = {
+						"Name", -- [1]
+						"ClassLogo1", -- [2]
+						"Lvl", -- [3]
+						"Source", -- [4]
+						"LastWords", -- [5]
+					}
+					deathlog_settings[widget_name]["theme"] = "None"
+					deathlog_settings[widget_name]["hide_subtitle_heading"] = false
+					deathlog_settings[widget_name]["presets"] = "ChefCarlos"
 					deathlog_settings[widget_name]["title_color_r"] = 1
 					deathlog_settings[widget_name]["title_color_g"] = 1
 					deathlog_settings[widget_name]["title_color_b"] = 1
