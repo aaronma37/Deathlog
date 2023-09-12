@@ -487,6 +487,69 @@ local function drawLogTab(container)
 	font_container.race_dd.text:SetText("Race")
 	font_container.race_dd.text:Show()
 
+	--- Race dropdown
+	if font_container.class_dd == nil then
+		font_container.class_dd = CreateFrame("Frame", nil, font_container, "UIDropDownMenuTemplate")
+		font_container.class_dd.val = ""
+	end
+
+	local function classDD(frame, level, menuList)
+		local info = UIDropDownMenu_CreateInfo()
+
+		local function setFilter()
+			local key = font_container.class_dd.val
+			if key ~= "" then
+				class_filter = function(_, _entry)
+					if class_tbl[key] == tonumber(_entry["class_id"]) then
+						return true
+					else
+						return false
+					end
+				end
+				clearDeathlogMenuLogData()
+				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			else
+				class_filter = nil
+				clearDeathlogMenuLogData()
+				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			end
+		end
+
+		info.text, info.checked, info.func =
+			"", font_container.class_dd.val == "", function()
+				font_container.class_dd.val = ""
+				UIDropDownMenu_SetText(font_container.class_dd, font_container.class_dd.val)
+				setFilter()
+			end
+		UIDropDownMenu_AddButton(info)
+
+		for class_name, _ in pairs(class_tbl) do
+			info.text, info.checked, info.func =
+				class_name, font_container.class_dd.val == class_name, function()
+					font_container.class_dd.val = class_name
+					UIDropDownMenu_SetText(font_container.class_dd, font_container.class_dd.val)
+					setFilter()
+				end
+			UIDropDownMenu_AddButton(info)
+		end
+	end
+
+	font_container.class_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 185, -20)
+	UIDropDownMenu_SetText(font_container.class_dd, font_container.class_dd.val)
+	UIDropDownMenu_SetWidth(font_container.class_dd, 80)
+	UIDropDownMenu_Initialize(font_container.class_dd, classDD)
+	UIDropDownMenu_JustifyText(font_container.class_dd, "LEFT")
+
+	if font_container.class_dd.text == nil then
+		font_container.class_dd.text = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+
+	font_container.class_dd.text:SetPoint("LEFT", font_container.class_dd, "LEFT", 20, 20)
+	font_container.class_dd.text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	font_container.class_dd.text:SetTextColor(255 / 255, 215 / 255, 0)
+	font_container.class_dd.text:SetText("Class")
+	font_container.class_dd.text:Show()
+
 	--- Zone dropdown
 	if font_container.zone_dd == nil then
 		font_container.zone_dd = CreateFrame("Frame", nil, font_container, "UIDropDownMenuTemplate")
@@ -547,7 +610,7 @@ local function drawLogTab(container)
 		-- end
 	end
 
-	font_container.zone_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 185, -20)
+	font_container.zone_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 280, -20)
 	UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
 	UIDropDownMenu_SetWidth(font_container.zone_dd, 80)
 	UIDropDownMenu_Initialize(font_container.zone_dd, zoneDD)
@@ -613,7 +676,7 @@ local function drawLogTab(container)
 		end
 	end
 
-	font_container.instance_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 280, -20)
+	font_container.instance_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 375, -20)
 	UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
 	UIDropDownMenu_SetWidth(font_container.instance_dd, 80)
 	UIDropDownMenu_Initialize(font_container.instance_dd, zoneDD)
@@ -843,7 +906,7 @@ local function drawLogTab(container)
 		font_container.last_words_check_box.text = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	end
 
-	font_container.last_words_check_box:SetPoint("TOPLEFT", font_container.death_source_box, "TOPLEFT", 110, -5)
+	font_container.last_words_check_box:SetPoint("TOPLEFT", font_container.death_source_box, "TOPLEFT", 98, -5)
 	font_container.last_words_check_box:SetChecked(false)
 	font_container.last_words_check_box:SetScript("OnClick", function()
 		if font_container.last_words_check_box:GetChecked() == true then
@@ -863,7 +926,7 @@ local function drawLogTab(container)
 		end
 	end)
 
-	font_container.last_words_check_box.text:SetPoint("LEFT", font_container.last_words_check_box, "LEFT", 25, 0)
+	font_container.last_words_check_box.text:SetPoint("LEFT", font_container.last_words_check_box, "LEFT", 21, 0)
 	font_container.last_words_check_box.text:SetFont("Fonts\\blei00d.TTF", 12, "")
 	font_container.last_words_check_box.text:SetTextColor(255 / 255, 215 / 255, 0)
 	font_container.last_words_check_box.text:SetText("Last Words Only")
