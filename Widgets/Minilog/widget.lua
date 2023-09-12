@@ -594,6 +594,15 @@ function deathlog_widget_minilog_createEntry(player_data)
 		return
 	end
 	entry_cache[player_data["name"]] = 1
+	if
+		player_data["level"]
+		and (
+			player_data["level"] < deathlog_settings[widget_name]["min_lvl"]
+			or player_data["level"] > deathlog_settings[widget_name]["max_lvl"]
+		)
+	then
+		return
+	end
 	for i = 1, 19 do
 		if row_entry[i + 1].player_data ~= nil then
 			shiftEntry(row_entry[i + 1], row_entry[i])
@@ -690,6 +699,8 @@ local defaults = {
 	["entry_x_offset"] = 0,
 	["entry_y_offset"] = 0,
 	["border_alpha"] = 1.0,
+	["min_lvl"] = 1,
+	["max_lvl"] = MAX_PLAYER_LEVEL,
 	["pos_x"] = 470,
 	["pos_y"] = -100,
 	["size_x"] = 255,
@@ -1472,6 +1483,51 @@ options = {
 					end,
 					set = function(self, key)
 						columnFunc(6, key)
+					end,
+				},
+			},
+		},
+		minilog_lvl_filter = {
+			type = "group",
+			name = "Filter Options",
+			order = 11,
+			inline = true,
+			args = {
+				min_lvl = {
+					type = "range",
+					name = "Min. Lvl. to Display",
+					desc = "Minimum level to display",
+					min = 1,
+					max = MAX_PLAYER_LEVEL,
+					step = 1,
+					order = 1,
+					disabled = function()
+						return deathlog_settings[widget_name]["min_lvl_player"]
+					end,
+					get = function()
+						if deathlog_settings[widget_name]["min_lvl_player"] then
+							return UnitLevel("player")
+						end
+						return deathlog_settings[widget_name]["min_lvl"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["min_lvl"] = value
+						Deathlog_DeathAlertWidget_applySettings()
+					end,
+				},
+				max_lvl = {
+					type = "range",
+					name = "Max. Lvl. to Display",
+					desc = "Maximum level to display",
+					min = 1,
+					max = MAX_PLAYER_LEVEL,
+					step = 1,
+					get = function()
+						return deathlog_settings[widget_name]["max_lvl"]
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["max_lvl"] = value
+						Deathlog_minilog_applySettings()
 					end,
 				},
 			},
