@@ -60,6 +60,10 @@ local function initMinimapButton()
 		return
 	end
 	deathlog_minimap_button_stub:Register("Deathlog", deathlog_minimap_button, deathlog_minimap_button_info)
+
+	if deathlog_settings["show_minimap"] ~= nil and deathlog_settings["show_minimap"] == false then
+		deathlog_minimap_button_stub:Hide("Deathlog")
+	end
 end
 
 local function loadWidgets()
@@ -188,6 +192,27 @@ local options = {
 			end,
 			set = function()
 				deathlog_settings["deathless_logging"] = not deathlog_settings["deathless_logging"]
+			end,
+		},
+		show_minimap_button = {
+			type = "toggle",
+			name = "Show minimap button",
+			desc = "Toggles whether the minimap is visible.",
+			width = 1.3,
+			get = function()
+				if deathlog_settings["show_minimap"] == nil then
+					deathlog_settings["show_minimap"] = true
+				end
+				return deathlog_settings["show_minimap"]
+			end,
+			set = function()
+				deathlog_settings["show_minimap"] = not deathlog_settings["show_minimap"]
+
+				if deathlog_settings["show_minimap"] then
+					deathlog_minimap_button_stub:Show("Deathlog")
+				else
+					deathlog_minimap_button_stub:Hide("Deathlog")
+				end
 			end,
 		},
 	},
