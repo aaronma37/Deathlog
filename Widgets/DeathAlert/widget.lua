@@ -15,6 +15,7 @@ local sounds = LSM30:HashTable("sound")
 sounds["default_hardcore"] = 8959
 sounds["golfclap"] = "Interface\\AddOns\\Deathlog\\Sounds\\golfclap.ogg"
 sounds["hunger_games"] = "Interface\\AddOns\\Deathlog\\Sounds\\hunger_games.ogg"
+sounds["HeroFallen"] = "Interface\\AddOns\\Deathlog\\Sounds\\HeroFallen.ogg"
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
 fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
