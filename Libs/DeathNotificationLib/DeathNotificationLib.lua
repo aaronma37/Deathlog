@@ -753,7 +753,10 @@ local function deathlogReceiveGuildDeathNotification(sender, data, doublechecksu
 end
 
 local function deathlogJoinChannel()
-	JoinChannelByName(death_alerts_channel, death_alerts_channel_pw)
+	LeaveChannelByName(death_alerts_channel)
+    	C_Timer.After(1, function()
+        	JoinChannelByName(death_alerts_channel, death_alerts_channel_pw)
+    	end)
 	local channel_num = GetChannelName(death_alerts_channel)
 
 	for i = 1, 10 do
