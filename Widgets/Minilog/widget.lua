@@ -887,7 +887,7 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		}
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
 		death_log_frame.frame:SetBackdropColor(0, 0, 0, 0.6)
-		death_log_frame.frame:SetBackdropBorderColor(1, 1, 1, 1)
+		death_log_frame.frame:SetBackdropBorderColor(1, 1, 1, deathlog_settings[widget_name]["border_alpha"])
 	end
 
 	if optionsframe == nil then
