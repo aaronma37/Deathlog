@@ -178,10 +178,6 @@ function Deathlog_DeathAlertPlay(entry)
 			.. "."
 	)
 
-	death_alert_frame.text:SetFont(
-		fonts[deathlog_settings[widget_name]["font"]],
-		deathlog_settings[widget_name]["font_size"]
-	)
 	death_alert_frame.text:SetText(msg)
 
 	if
@@ -289,6 +285,10 @@ function Deathlog_DeathAlertPlay(entry)
 	end
 
 	death_alert_frame:Show()
+	death_alert_frame.text:SetFont(
+		fonts[deathlog_settings[widget_name]["font"]],
+		deathlog_settings[widget_name]["font_size"]
+	)
 
 	if death_alert_frame.timer then
 		death_alert_frame.timer:Cancel()
