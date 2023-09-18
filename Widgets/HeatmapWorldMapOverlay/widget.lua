@@ -36,7 +36,7 @@ if heatmap_wm_overlay_checkbox_frame.heatmap_checkbox == nil then
 		0,
 		0
 	)
-	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetFont("Fonts\\blei00d.TTF", 14, "OUTLINE")
+	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetFont(normalFont, 14, "OUTLINE")
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetTextColor(0.9, 0.9, 0.9)
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetJustifyH("RIGHT")
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetText("Show heatmap")

@@ -139,7 +139,7 @@ local death_log_frame = AceGUI:Create("Deathlog_MiniLog")
 death_log_frame.frame:SetMovable(false)
 death_log_frame.frame:EnableMouse(false)
 death_log_frame:SetTitle("Deathlog")
-death_log_frame.titletext:SetFont("Fonts\\blei00d.TTF", 19, "THICK")
+death_log_frame.titletext:SetFont(normalFont, 19, "THICK")
 local subtitle_metadata = {
 	["ColoredName"] = {
 		"Name",
@@ -410,7 +410,7 @@ local function setupRowEntries()
 				_entry.font_strings[v[1]]:SetWidth(v[2])
 			end
 			_entry.font_strings[v[1]]:SetTextColor(1, 1, 1)
-			_entry.font_strings[v[1]]:SetFont("Fonts\\blei00d.TTF", 14, "")
+			_entry.font_strings[v[1]]:SetFont(normalFont, 14, "")
 		end
 
 		_entry.background = _entry.frame:CreateTexture(nil, "OVERLAY")

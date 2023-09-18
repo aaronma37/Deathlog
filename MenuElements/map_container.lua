@@ -841,7 +841,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	if map_container.map_hint == nil then
 		map_container.map_hint = map_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		map_container.map_hint:SetPoint("BOTTOM", map_container, "BOTTOM", 0, 60)
-		map_container.map_hint:SetFont("Fonts\\blei00d.TTF", 14, "")
+		map_container.map_hint:SetFont(normalFont, 14, "")
 		map_container.map_hint:SetTextColor(0.8, 0.8, 0.8, 0.8)
 		map_container.map_hint:SetJustifyH("CENTER")
 		map_container.map_hint:SetText("Click to explore statistics for a region.")
@@ -857,7 +857,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 
 		map_container.heatmap_checkbox.label = map_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		map_container.heatmap_checkbox.label:SetPoint("LEFT", map_container.heatmap_checkbox, "RIGHT", 0, 0)
-		map_container.heatmap_checkbox.label:SetFont("Fonts\\blei00d.TTF", 14, "OUTLINE")
+		map_container.heatmap_checkbox.label:SetFont(normalFont, 14, "OUTLINE")
 		map_container.heatmap_checkbox.label:SetTextColor(0.9, 0.9, 0.9)
 		map_container.heatmap_checkbox.label:SetJustifyH("RIGHT")
 		map_container.heatmap_checkbox.label:SetText("Show heatmap")
@@ -879,7 +879,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 
 		map_container.darken_checkbox.label = map_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		map_container.darken_checkbox.label:SetPoint("LEFT", map_container.darken_checkbox, "RIGHT", 0, 0)
-		map_container.darken_checkbox.label:SetFont("Fonts\\blei00d.TTF", 14, "OUTLINE")
+		map_container.darken_checkbox.label:SetFont(normalFont, 14, "OUTLINE")
 		map_container.darken_checkbox.label:SetTextColor(0.9, 0.9, 0.9)
 		map_container.darken_checkbox.label:SetJustifyH("RIGHT")
 		map_container.darken_checkbox.label:SetText("Darken")

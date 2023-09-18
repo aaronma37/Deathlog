@@ -49,7 +49,7 @@ death_alert_frame.text:SetText(
 		.. " in Elywynn Forest."
 )
 
-death_alert_frame.text:SetFont("Fonts\\blei00d.TTF", 22, "")
+death_alert_frame.text:SetFont(normalFont, 22, "")
 death_alert_frame.text:SetTextColor(1, 1, 1, 1)
 death_alert_frame.text:SetJustifyH("CENTER")
 death_alert_frame.text:SetParent(death_alert_frame)

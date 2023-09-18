@@ -61,7 +61,7 @@ local function createInstanceButton(path_postfix, title_text)
 
 	frame.instance_str = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	frame.instance_str:SetPoint("CENTER", frame.instance_texture, "CENTER", 0, -20)
-	frame.instance_str:SetFont("Fonts\\blei00d.TTF", 15, "OUTLINE")
+	frame.instance_str:SetFont(normalFont, 15, "OUTLINE")
 	frame.instance_str:SetTextColor(1, 1, 1, 1)
 	frame.instance_str:SetJustifyH("CENTER")
 	frame.instance_str:SetText(title_text)

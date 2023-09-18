@@ -211,7 +211,7 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 	end
 
 	class_selector_container.metric_text:SetPoint("TOPLEFT", class_selector_container.metric_dd, "TOPLEFT", 20, 12)
-	class_selector_container.metric_text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	class_selector_container.metric_text:SetFont(normalFont, 12, "")
 	class_selector_container.metric_text:SetTextColor(255 / 255, 215 / 255, 0)
 	class_selector_container.metric_text:SetText("Model")
 	class_selector_container.metric_text:SetJustifyH("LEFT")
@@ -248,7 +248,7 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 	end
 
 	class_selector_container.view_text:SetPoint("TOPLEFT", class_selector_container.view_dd, "TOPLEFT", 20, 12)
-	class_selector_container.view_text:SetFont("Fonts\\blei00d.TTF", 12, "")
+	class_selector_container.view_text:SetFont(normalFont, 12, "")
 	class_selector_container.view_text:SetTextColor(255 / 255, 215 / 255, 0)
 	class_selector_container.view_text:SetText("View")
 	class_selector_container.view_text:SetJustifyH("LEFT")

@@ -19,7 +19,7 @@ heatmap_indicator_frame.tex:Show()
 
 heatmap_indicator_frame.numeric_text = heatmap_indicator_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 heatmap_indicator_frame.numeric_text:SetText("")
-heatmap_indicator_frame.numeric_text:SetFont("Fonts\\blei00d.TTF", 10, "")
+heatmap_indicator_frame.numeric_text:SetFont(normalFont, 10, "")
 heatmap_indicator_frame.numeric_text:SetJustifyH("CENTER")
 heatmap_indicator_frame.numeric_text:SetParent(heatmap_indicator_frame)
 heatmap_indicator_frame.numeric_text:SetPoint("BOTTOM", heatmap_indicator_frame, "BOTTOM", 0, 0)
