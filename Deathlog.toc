@@ -13,7 +13,10 @@
 
 embeds.xml
 
+Libs/DeathNotificationLib/id_to_npc_classic.lua
+Libs/DeathNotificationLib/npc_to_id_classic.lua
 localization.lua
+Libs/DeathNotificationLib/DeathNotificationLib.lua
 
 utils.lua
 id_to_display_id.lua
@@ -40,8 +43,5 @@ Widgets/DeathAlert/widget.lua
 
 menu.lua
 
-Libs/DeathNotificationLib/id_to_npc_classic.lua
-Libs/DeathNotificationLib/npc_to_id_classic.lua
-Libs/DeathNotificationLib/DeathNotificationLib.lua
 precomputed_stats.lua
 deathlog.lua

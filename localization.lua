@@ -54,6 +54,25 @@ function getTitleFontPathByLocale(localeCode)
     end
 end
 
+function getIdToNPCTableByLocale(localeCode)
+    if localeCode == "koKR" then
+        return id_to_npc_ko
+    else
+        return id_to_npc -- set default to English table
+    end
+end
+
+function getNPCToIdTableByLocale(localeCode)
+    if localeCode == "koKR" then
+        return npc_to_id_ko
+    else
+        return id_to_npc -- set default to English table
+    end
+end
+
 _localeCode = GetLocale()
 normalFont = getNormalFontPathByLocale(_localeCode)
 titleFont = getTitleFontPathByLocale(_localeCode)
+
+id_to_npc = getIdToNPCTableByLocale(_localeCode)
+npc_to_id = getNPCToIdTableByLocale(_localeCode)
