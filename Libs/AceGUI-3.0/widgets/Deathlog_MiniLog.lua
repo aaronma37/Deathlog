@@ -305,14 +305,14 @@ local function Constructor()
 	title:SetAllPoints(titlebg)
 
 	local titletext = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	titletext:SetFont("Fonts\\FRIZQT__.TTF", 13, "")
+	titletext:SetFont(titleFont, 13, "")
 	titletext:SetPoint("LEFT", frame, "TOPLEFT", 32, -10)
 
 	local subtitletext_tbl = {}
 	for _, v in ipairs(column_types) do
 		subtitletext_tbl[v] = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		subtitletext_tbl[v]:SetPoint("LEFT", frame, "TOPLEFT", 20, -26)
-		subtitletext_tbl[v]:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
+		subtitletext_tbl[v]:SetFont(titleFont, 12, "")
 		subtitletext_tbl[v]:SetTextColor(0.5, 0.5, 0.5)
 		subtitletext_tbl[v]:SetWordWrap(false)
 	end

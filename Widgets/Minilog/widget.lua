@@ -422,7 +422,7 @@ local function setupRowEntries()
 		_entry.background:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
 
 		_entry:SetHeight(40)
-		_entry:SetFont("Fonts\\FRIZQT__.TTF", 16, "")
+		_entry:SetFont(titleFont, 16, "")
 		_entry:SetColor(1, 1, 1)
 		_entry:SetText(" ")
 

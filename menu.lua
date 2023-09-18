@@ -223,7 +223,7 @@ for idx, v in ipairs(subtitle_data) do
 		header_strings[v[1]]:SetWidth(v[2])
 	end
 	header_strings[v[1]]:SetTextColor(0.7, 0.7, 0.7)
-	header_strings[v[1]]:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
+	header_strings[v[1]]:SetFont(titleFont, 12, "")
 end
 
 for i = 1, max_rows do
@@ -244,7 +244,7 @@ for i = 1, max_rows do
 			font_strings[i][v[1]]:SetWidth(v[2])
 		end
 		font_strings[i][v[1]]:SetTextColor(1, 1, 1)
-		font_strings[i][v[1]]:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
+		font_strings[i][v[1]]:SetFont(titleFont, 10, "")
 	end
 
 	row_backgrounds[i] = font_container:CreateTexture(nil, "OVERLAY")
@@ -944,7 +944,7 @@ local function drawLogTab(container)
 		header_strings[v[1]]:SetText(v[1])
 	end
 
-	header_label:SetFont("Fonts\\FRIZQT__.TTF", 16, "")
+	header_label:SetFont(titleFont, 16, "")
 	header_label:SetColor(1, 1, 1)
 	header_label:SetText(" ")
 	scroll_frame:AddChild(header_label)
@@ -973,7 +973,7 @@ local function drawLogTab(container)
 
 		_entry:SetHeight(40)
 		_entry:SetFullWidth(true)
-		_entry:SetFont("Fonts\\FRIZQT__.TTF", 16, "")
+		_entry:SetFont(titleFont, 16, "")
 		_entry:SetColor(1, 1, 1)
 		_entry:SetText(" ")
 
