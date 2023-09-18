@@ -13,6 +13,7 @@
 
 embeds.xml
 
+localization.lua
 
 utils.lua
 id_to_display_id.lua
