@@ -66,7 +66,7 @@ function getNPCToIdTableByLocale(localeCode)
     if localeCode == "koKR" then
         return npc_to_id_ko
     else
-        return id_to_npc -- set default to English table
+        return npc_to_id -- set default to English table
     end
 end
 
