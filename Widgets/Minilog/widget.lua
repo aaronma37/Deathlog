@@ -375,10 +375,18 @@ local function setupRowEntries()
 			end
 		end
 
+		local function checkSpoof()
+			if death_tomb_frame.clicked_name then
+				C_FriendList.SendWho(death_tomb_frame.clicked_name)
+			end
+		end
+
 		if level == 1 then
 			info.text, info.hasArrow, info.func, info.disabled = "Show death location", false, openWorldMap, false
 			UIDropDownMenu_AddButton(info)
 			info.text, info.hasArrow, info.func, info.disabled = "Block user", false, blockUser, false
+			UIDropDownMenu_AddButton(info)
+			info.text, info.hasArrow, info.func, info.disabled = "Inspect user", false, checkSpoof, false
 			UIDropDownMenu_AddButton(info)
 		end
 	end
@@ -449,6 +457,9 @@ local function setupRowEntries()
 					row_entry[selected]:deselect()
 				end
 				_entry:select()
+				if IsShiftKeyDown() then
+					C_FriendList.SendWho(_entry["player_data"]["name"])
+				end
 			elseif click_type == "RightButton" then
 				local dropDown = CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
 				-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
