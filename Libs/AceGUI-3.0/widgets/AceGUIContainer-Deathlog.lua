@@ -3,7 +3,14 @@ Deathlog Container
 -------------------------------------------------------------------------------]]
 local Type, Version = "Deathlog", 30
 local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
-if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then return end
+if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then
+	return
+end
+
+local main_font = "Fonts\\FRIZQT__.TTF"
+if GetLocale() == "ruRU" then
+	main_font = "Fonts\\ARIALN.TTF"
+end
 
 -- Lua APIs
 local pairs, assert, type = pairs, assert, type
@@ -84,7 +91,7 @@ local methods = {
 		self:SetStatusText()
 		self:ApplyStatus()
 		self:Show()
-        self:EnableResize(true)
+		self:EnableResize(true)
 	end,
 
 	["OnRelease"] = function(self)
@@ -118,10 +125,12 @@ local methods = {
 		-- self.titlebg:SetWidth(contentwidth)
 	end,
 
-	["SetSubTitle"] = function (self, subtitle_data)
+	["SetSubTitle"] = function(self, subtitle_data)
 		local column_offset = 17
-		if subtitle_data == nil then return end
-		for _,v in ipairs(subtitle_data) do
+		if subtitle_data == nil then
+			return
+		end
+		for _, v in ipairs(subtitle_data) do
 			self.subtitletext_tbl[v[1]]:SetText(v[1])
 			self.subtitletext_tbl[v[1]]:SetPoint("LEFT", self.frame, "TOPLEFT", column_offset, -26)
 			column_offset = column_offset + v[2]
@@ -142,7 +151,7 @@ local methods = {
 	end,
 
 	["IsMinimized"] = function(self)
-	  return is_minimized
+		return is_minimized
 	end,
 
 	["Maximize"] = function(self)
@@ -180,7 +189,7 @@ local methods = {
 		else
 			frame:SetPoint("CENTER")
 		end
-	end
+	end,
 }
 
 --[[-----------------------------------------------------------------------------
@@ -189,15 +198,19 @@ Constructor
 local FrameBackdrop = {
 	bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
 	edgeFile = "Interface\\CHATFRAME\\ChatFrameBorder",
-	tile = false, tileSize = 32, edgeSize = 32,
-	insets = { left = 8, right = 8, top = 8, bottom = 8 }
+	tile = false,
+	tileSize = 32,
+	edgeSize = 32,
+	insets = { left = 8, right = 8, top = 8, bottom = 8 },
 }
 
-local PaneBackdrop  = {
+local PaneBackdrop = {
 	bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
 	edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
-	tile = true, tileSize = 16, edgeSize = 16,
-	insets = { left = 3, right = 3, top = 5, bottom = 3 }
+	tile = true,
+	tileSize = 16,
+	edgeSize = 16,
+	insets = { left = 3, right = 3, top = 5, bottom = 3 },
 }
 
 local function Constructor()
@@ -210,9 +223,9 @@ local function Constructor()
 	frame:SetFrameStrata("FULLSCREEN_DIALOG")
 	frame:SetFrameLevel(100) -- Lots of room to draw under it
 	frame:SetBackdrop(PaneBackdrop)
-	frame:SetBackdropColor(0, 0, 0, .6)
-	frame:SetBackdropBorderColor(1,1,1,1)
-	frame:SetSize(250,150)
+	frame:SetBackdropColor(0, 0, 0, 0.6)
+	frame:SetBackdropBorderColor(1, 1, 1, 1)
+	frame:SetSize(250, 150)
 
 	if frame.SetResizeBounds then -- WoW 10.0
 		frame:SetResizeBounds(400, 200)
@@ -232,14 +245,13 @@ local function Constructor()
 	closebutton:SetText(CLOSE)
 	closebutton:Hide()
 
-
 	local statusbg = CreateFrame("Button", nil, frame, "BackdropTemplate")
 	statusbg:SetPoint("BOTTOMLEFT", 15, 15)
 	statusbg:SetPoint("BOTTOMRIGHT", -132, 15)
 	statusbg:SetHeight(0)
 	statusbg:SetBackdrop(PaneBackdrop)
-	statusbg:SetBackdropColor(0.1,0.1,0.1)
-	statusbg:SetBackdropBorderColor(0.4,0.4,0.4)
+	statusbg:SetBackdropColor(0.1, 0.1, 0.1)
+	statusbg:SetBackdropBorderColor(0.4, 0.4, 0.4)
 	statusbg:SetScript("OnEnter", StatusBar_OnEnter)
 	statusbg:SetScript("OnLeave", StatusBar_OnLeave)
 	statusbg:Hide()
@@ -253,7 +265,7 @@ local function Constructor()
 	statustext:Hide()
 
 	local titlebg = frame:CreateTexture(nil, "OVERLAY")
-	titlebg:SetTexture("Interface\\ClassTrainerFrame\\UI-ClassTrainer-DetailHeaderLeft") 
+	titlebg:SetTexture("Interface\\ClassTrainerFrame\\UI-ClassTrainer-DetailHeaderLeft")
 	titlebg:SetTexCoord(0, 1, 0, 1)
 	titlebg:SetPoint("TOP", 0, 12)
 	titlebg:SetWidth(100)
@@ -267,16 +279,16 @@ local function Constructor()
 	title:SetAllPoints(titlebg)
 
 	local titletext = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	titletext:SetFont("Fonts\\FRIZQT__.TTF", 13, "")
+	titletext:SetFont(main_font, 13, "")
 	titletext:SetPoint("LEFT", frame, "TOPLEFT", 25, -10)
 
-	local column_types = {"Name", "Guild", "Lvl", "F's", "Race", "Class"}
-	local subtitletext_tbl = {} 
-	for _,v in ipairs(column_types) do
+	local column_types = { "Name", "Guild", "Lvl", "F's", "Race", "Class" }
+	local subtitletext_tbl = {}
+	for _, v in ipairs(column_types) do
 		subtitletext_tbl[v] = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		subtitletext_tbl[v]:SetPoint("LEFT", frame, "TOPLEFT", 17, -26)
-		subtitletext_tbl[v]:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
-		subtitletext_tbl[v]:SetTextColor(.5,.5,.5);
+		subtitletext_tbl[v]:SetFont(main_font, 12, "")
+		subtitletext_tbl[v]:SetTextColor(0.5, 0.5, 0.5)
 	end
 
 	local titlebg_l = frame:CreateTexture(nil, "OVERLAY")
@@ -300,7 +312,7 @@ local function Constructor()
 	sizer_se:SetWidth(25)
 	sizer_se:SetHeight(25)
 	sizer_se:EnableMouse()
-	sizer_se:SetScript("OnMouseDown",SizerSE_OnMouseDown)
+	sizer_se:SetScript("OnMouseDown", SizerSE_OnMouseDown)
 	sizer_se:SetScript("OnMouseUp", MoverSizer_OnMouseUp)
 
 	local line1 = sizer_se:CreateTexture(nil, "BACKGROUND")
@@ -308,7 +320,7 @@ local function Constructor()
 	line1:SetHeight(14)
 	line1:SetPoint("BOTTOMRIGHT", -8, 8)
 	line1:SetTexture(137057) -- Interface\\Tooltips\\UI-Tooltip-Border
-	local x = 0.1 * 14/17
+	local x = 0.1 * 14 / 17
 	line1:SetTexCoord(0.05 - x, 0.5, 0.05, 0.5 + x, 0.05, 0.5 - x, 0.5 + x, 0.5)
 
 	local line2 = sizer_se:CreateTexture(nil, "BACKGROUND")
@@ -316,7 +328,7 @@ local function Constructor()
 	line2:SetHeight(8)
 	line2:SetPoint("BOTTOMRIGHT", -8, 8)
 	line2:SetTexture(137057) -- Interface\\Tooltips\\UI-Tooltip-Border
-	x = 0.1 * 8/17
+	x = 0.1 * 8 / 17
 	line2:SetTexCoord(0.05 - x, 0.5, 0.05, 0.5 + x, 0.05, 0.5 - x, 0.5 + x, 0.5)
 
 	local sizer_s = CreateFrame("Frame", nil, frame)
@@ -342,16 +354,16 @@ local function Constructor()
 
 	local widget = {
 		localstatus = {},
-		titletext   = titletext,
-		subtitletext_tbl   = subtitletext_tbl,
-		statustext  = statustext,
-		titlebg     = titlebg,
-		sizer_se    = sizer_se,
-		sizer_s     = sizer_s,
-		sizer_e     = sizer_e,
-		content     = content,
-		frame       = frame,
-		type        = Type
+		titletext = titletext,
+		subtitletext_tbl = subtitletext_tbl,
+		statustext = statustext,
+		titlebg = titlebg,
+		sizer_se = sizer_se,
+		sizer_s = sizer_s,
+		sizer_e = sizer_e,
+		content = content,
+		frame = frame,
+		type = Type,
 	}
 	for method, func in pairs(methods) do
 		widget[method] = func

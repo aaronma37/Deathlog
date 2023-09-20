@@ -21,6 +21,11 @@ local average_class_container = CreateFrame("Frame")
 average_class_container:SetSize(100, 100)
 average_class_container:Show()
 
+local class_font = "Fonts\\blei00d.TTF"
+if GetLocale() == "ruRU" then
+	class_font = "Fonts\\ARIALN.TTF"
+end
+
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl
 local zone_tbl = deathlog_zone_tbl
@@ -44,7 +49,7 @@ local average_class_header_font_strings = {}
 for _, v in ipairs(average_class_subtitles) do
 	average_class_header_font_strings[v[1]] = average_class_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	average_class_header_font_strings[v[1]]:SetPoint("TOPLEFT", average_class_container, "TOPLEFT", v[2], 2)
-	average_class_header_font_strings[v[1]]:SetFont("Fonts\\blei00d.TTF", 15, "")
+	average_class_header_font_strings[v[1]]:SetFont(class_font, 15, "")
 	average_class_header_font_strings[v[1]]:SetJustifyH(v[3])
 	average_class_header_font_strings[v[1]]:SetWordWrap(false)
 	average_class_header_font_strings[v[1]]:SetWidth(100)
@@ -65,7 +70,7 @@ for k, class_id in pairs(class_tbl) do
 			v[2],
 			sep + 5
 		)
-		average_class_font_strings[class_id][v[1]]:SetFont("Fonts\\blei00d.TTF", 14, "")
+		average_class_font_strings[class_id][v[1]]:SetFont(class_font, 14, "")
 		average_class_font_strings[class_id][v[1]]:SetJustifyH(v[3])
 		average_class_font_strings[class_id][v[1]]:SetWidth(50)
 		average_class_font_strings[class_id][v[1]]:SetTextColor(1, 1, 1, 1)
@@ -77,7 +82,7 @@ average_class_font_strings["all"] = {}
 for _, v in ipairs(average_class_subtitles) do
 	average_class_font_strings["all"][v[1]] = average_class_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	average_class_font_strings["all"][v[1]]:SetPoint("TOPLEFT", average_class_container, "TOPLEFT", v[2], sep + 5)
-	average_class_font_strings["all"][v[1]]:SetFont("Fonts\\blei00d.TTF", 14, "")
+	average_class_font_strings["all"][v[1]]:SetFont(class_font, 14, "")
 	average_class_font_strings["all"][v[1]]:SetJustifyH(v[3])
 	average_class_font_strings["all"][v[1]]:SetWidth(100)
 	average_class_font_strings["all"][v[1]]:SetTextColor(1, 1, 1, 1)
@@ -117,7 +122,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 	if average_class_container.heading == nil then
 		average_class_container.heading = average_class_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		average_class_container.heading:SetText("Compare")
-		average_class_container.heading:SetFont("Fonts\\blei00d.TTF", 18, "")
+		average_class_container.heading:SetFont(class_font, 18, "")
 		average_class_container.heading:SetJustifyV("TOP")
 		average_class_container.heading:SetTextColor(0.9, 0.9, 0.9)
 		average_class_container.heading:SetPoint("TOP", average_class_container, "TOP", -10, 30)
@@ -128,7 +133,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 		average_class_container.milestone_text =
 			average_class_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		average_class_container.milestone_text:SetText("Probability of reaching milestone (P(X > x))")
-		average_class_container.milestone_text:SetFont("Fonts\\blei00d.TTF", 12, "")
+		average_class_container.milestone_text:SetFont(class_font, 12, "")
 		average_class_container.milestone_text:SetJustifyV("TOP")
 		average_class_container.milestone_text:SetPoint("TOP", average_class_container, "TOP", 120, 13)
 		average_class_container.milestone_text:Show()
@@ -145,7 +150,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 	if average_class_container.x_hint == nil then
 		average_class_container.x_hint = average_class_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		average_class_container.x_hint:SetText("E.g. 1.7x means 1.7 more likely to reach milestone")
-		average_class_container.x_hint:SetFont("Fonts\\blei00d.TTF", 12, "")
+		average_class_container.x_hint:SetFont(class_font, 12, "")
 		average_class_container.x_hint:SetTextColor(0.7 .. 7, 0.7, 0.7)
 		average_class_container.x_hint:SetJustifyV("TOP")
 		average_class_container.x_hint:SetPoint("TOP", average_class_container, "TOP", 120, -170)

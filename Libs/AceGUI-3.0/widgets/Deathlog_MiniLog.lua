@@ -7,6 +7,11 @@ if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then
 	return
 end
 
+local main_font = "Fonts\\FRIZQT__.TTF"
+if GetLocale() == "ruRU" then
+	main_font = "Fonts\\ARIALN.TTF"
+end
+
 -- Lua APIs
 local pairs, assert, type = pairs, assert, type
 local wipe = table.wipe
@@ -27,7 +32,7 @@ local column_types = {
 	"ClassLogo1",
 	"ClassLogo2",
 	"RaceLogoSquare",
-	"LastWords"
+	"LastWords",
 }
 
 --[[-----------------------------------------------------------------------------
@@ -305,14 +310,14 @@ local function Constructor()
 	title:SetAllPoints(titlebg)
 
 	local titletext = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	titletext:SetFont("Fonts\\FRIZQT__.TTF", 13, "")
+	titletext:SetFont(main_font, 13, "")
 	titletext:SetPoint("LEFT", frame, "TOPLEFT", 32, -10)
 
 	local subtitletext_tbl = {}
 	for _, v in ipairs(column_types) do
 		subtitletext_tbl[v] = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		subtitletext_tbl[v]:SetPoint("LEFT", frame, "TOPLEFT", 20, -26)
-		subtitletext_tbl[v]:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
+		subtitletext_tbl[v]:SetFont(main_font, 12, "")
 		subtitletext_tbl[v]:SetTextColor(0.5, 0.5, 0.5)
 		subtitletext_tbl[v]:SetWordWrap(false)
 	end

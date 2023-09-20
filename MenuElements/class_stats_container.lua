@@ -21,6 +21,11 @@ local class_stat_comparison_container = CreateFrame("Frame")
 class_stat_comparison_container:SetSize(100, 100)
 class_stat_comparison_container:Show()
 
+local class_font = "Fonts\\blei00d.TTF"
+if GetLocale() == "ruRU" then
+	class_font = "Fonts\\ARIALN.TTF"
+end
+
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl
 local zone_tbl = deathlog_zone_tbl
@@ -43,7 +48,7 @@ for _, v in ipairs(average_class_subtitles) do
 	average_class_header_font_strings[v[1]] =
 		class_stat_comparison_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	average_class_header_font_strings[v[1]]:SetPoint("TOPLEFT", class_stat_comparison_container, "TOPLEFT", v[2], 2)
-	average_class_header_font_strings[v[1]]:SetFont("Fonts\\blei00d.TTF", 15, "")
+	average_class_header_font_strings[v[1]]:SetFont(class_font, 15, "")
 	average_class_header_font_strings[v[1]]:SetJustifyH(v[3])
 	average_class_header_font_strings[v[1]]:SetWordWrap(false)
 	average_class_header_font_strings[v[1]]:SetWidth(100)
@@ -64,7 +69,7 @@ for k, class_id in pairs(class_tbl) do
 			v[2],
 			sep + 5
 		)
-		average_class_font_strings[class_id][v[1]]:SetFont("Fonts\\blei00d.TTF", 14, "")
+		average_class_font_strings[class_id][v[1]]:SetFont(class_font, 14, "")
 		average_class_font_strings[class_id][v[1]]:SetJustifyH(v[3])
 		average_class_font_strings[class_id][v[1]]:SetWidth(50)
 		average_class_font_strings[class_id][v[1]]:SetTextColor(1, 1, 1, 1)
@@ -83,7 +88,7 @@ for _, v in ipairs(average_class_subtitles) do
 		v[2],
 		sep + 5
 	)
-	average_class_font_strings["all"][v[1]]:SetFont("Fonts\\blei00d.TTF", 14, "")
+	average_class_font_strings["all"][v[1]]:SetFont(class_font, 14, "")
 	average_class_font_strings["all"][v[1]]:SetJustifyH(v[3])
 	average_class_font_strings["all"][v[1]]:SetWidth(100)
 	average_class_font_strings["all"][v[1]]:SetTextColor(1, 1, 1, 1)
@@ -131,7 +136,7 @@ function class_stat_comparison_container.updateMenuElement(
 		class_stat_comparison_container.heading =
 			class_stat_comparison_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		class_stat_comparison_container.heading:SetText("Class Stats")
-		class_stat_comparison_container.heading:SetFont("Fonts\\blei00d.TTF", 18, "")
+		class_stat_comparison_container.heading:SetFont(class_font, 18, "")
 		class_stat_comparison_container.heading:SetJustifyV("TOP")
 		class_stat_comparison_container.heading:SetTextColor(0.9, 0.9, 0.9)
 		class_stat_comparison_container.heading:SetPoint("TOP", class_stat_comparison_container, "TOP", -10, 30)
@@ -141,7 +146,7 @@ function class_stat_comparison_container.updateMenuElement(
 	if class_stat_comparison_container.milestone_text == nil then
 		class_stat_comparison_container.milestone_text =
 			class_stat_comparison_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		class_stat_comparison_container.milestone_text:SetFont("Fonts\\blei00d.TTF", 12, "")
+		class_stat_comparison_container.milestone_text:SetFont(class_font, 12, "")
 		class_stat_comparison_container.milestone_text:SetJustifyV("TOP")
 		class_stat_comparison_container.milestone_text:SetPoint("TOP", class_stat_comparison_container, "TOP", 120, 13)
 		class_stat_comparison_container.milestone_text:Show()
