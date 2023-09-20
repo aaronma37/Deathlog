@@ -23,7 +23,6 @@ local last_attack_source = nil
 local recent_msg = nil
 local general_stats = {}
 local log_normal_params = {}
-local skull_locs = {}
 local class_data = {}
 local most_deadly_units = {
 	["all"] = { -- server
@@ -51,7 +50,7 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject("Deat
 	text = "Deathlog",
 	icon = "Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull",
 	OnClick = function(self, btn)
-		deathlogShowMenu(deathlog_data, general_stats, log_normal_params, skull_locs)
+		deathlogShowMenu(deathlog_data, general_stats, log_normal_params)
 	end,
 })
 local function initMinimapButton()
@@ -118,26 +117,21 @@ local function handleEvent(self, event, ...)
 		if use_precomputed then
 			general_stats = precomputed_general_stats
 			log_normal_params = precomputed_log_normal_params
-			skull_locs = precomputed_skull_locs
 			dev_precomputed_general_stats = nil
 			dev_precomputed_log_normal_params = nil
-			dev_precomputed_skull_locs = nil
 			dev_class_data = nil
 		else
 			Deathlog_LoadFromHardcore()
 			general_stats = deathlog_calculate_statistics(deathlog_data, nil)
 			log_normal_params = deathlog_calculateLogNormalParameters(deathlog_data)
-			skull_locs = deathlog_calculateSkullLocs(deathlog_data)
 			class_data = deathlog_calculateClassData(deathlog_data)
 			if save_precompute then
 				dev_precomputed_general_stats = general_stats
 				dev_precomputed_log_normal_params = log_normal_params
-				dev_precomputed_skull_locs = skull_locs
 				dev_class_data = class_data
 			else
 				dev_precomputed_general_stats = nil
 				dev_precomputed_log_normal_params = nil
-				dev_precomputed_skull_locs = nil
 			end
 		end
 		most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
@@ -152,7 +146,7 @@ local function SlashHandler(msg, editbox)
 	elseif msg == "alert" then
 		Deathlog_DeathAlertFakeDeath()
 	else
-		deathlogShowMenu(deathlog_data, general_stats, log_normal_params, skull_locs)
+		deathlogShowMenu(deathlog_data, general_stats, log_normal_params)
 	end
 end
 

@@ -304,7 +304,6 @@ end
 local _deathlog_data = {}
 local _stats = {}
 local _log_normal_params = {}
-local _skull_locs = {}
 local initialized = false
 
 local function drawLogTab(container)
@@ -1212,7 +1211,6 @@ local function drawCreatureStatisticsTab(container)
 			modifyDescription(current_creature_id, name)
 		end
 		local stats_tbl = {
-			["skull_locs"] = _skull_locs,
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
@@ -1289,7 +1287,6 @@ local function drawStatisticsTab(container)
 			modifyDescription(map_id, name)
 		end
 		local stats_tbl = {
-			["skull_locs"] = _skull_locs,
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
@@ -1342,7 +1339,6 @@ local function drawClassStatisticsTab(container)
 			modifyTitle(name)
 		end
 		local stats_tbl = {
-			["skull_locs"] = _skull_locs,
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
@@ -1396,7 +1392,6 @@ local function drawInstanceStatisticsTab(container)
 			modifyTitle(name)
 		end
 		local stats_tbl = {
-			["skull_locs"] = _skull_locs,
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
@@ -1486,13 +1481,12 @@ end
 
 deathlog_menu = createDeathlogMenu()
 
-function deathlogShowMenu(deathlog_data, stats, log_normal_params, skull_locs)
+function deathlogShowMenu(deathlog_data, stats, log_normal_params)
 	deathlog_menu:Show()
 	deathlog_tabcontainer:SelectTab("LogTab")
 	_deathlog_data = deathlog_data
 	_stats = stats
 	_log_normal_params = log_normal_params
-	_skull_locs = skull_locs
 	setDeathlogMenuLogData(_deathlog_data)
 end
 

@@ -787,44 +787,118 @@ overlay_highlight:SetBlendMode("ADD")
 overlay_highlight:Hide()
 
 local this_map_id = nil
+local occupied_by_creature = nil
 function Deathlog_MapContainer_showSkullSet(source_id)
 	Deathlog_MapContainer_resetSkullSet()
-	if _skull_locs[this_map_id] == nil then
+	if precomputed_heatmap_creature_subset == nil then
 		return
 	end
-	local _skull_locs = precomputed_skull_locs
-	local idx = 1
+	if precomputed_heatmap_creature_subset[this_map_id] == nil then
+		return
+	end
+	if precomputed_heatmap_creature_subset[this_map_id][source_id] == nil then
+		return
+	end
 
-	local modified_width = map_container:GetWidth() * 0.98
-	local modified_height = map_container:GetHeight() * 0.87
-	for _, v in ipairs(_skull_locs[this_map_id]) do
-		if idx > 100 then
-			break
+	occupied_by_creature = {}
+	for x, v in pairs(precomputed_heatmap_creature_subset[this_map_id][source_id]) do
+		for y, _ in pairs(v) do
+			if occupied_by_creature[x + 1] == nil then
+				occupied_by_creature[x + 1] = { [y + 1] = 1 }
+			end
+			occupied_by_creature[x + 1][y + 1] = 1
 		end
-		if v[3] == source_id then
-			map_container.tomb_tex[idx]:SetVertexColor(1, 1, 1, 1)
-			map_container.tomb_tex[idx]:SetPoint(
-				"CENTER",
-				map_container,
-				"TOPLEFT",
-				modified_width * v[1] / 1000.0,
-				-modified_height * v[2] / 1000.0
-			)
-			map_container.tomb_tex[idx]:Show()
-			map_container.tomb_tex[idx]:SetVertexColor(1, 1, 1, 1)
-			idx = idx + 1
+	end
+
+	for i = 1, 100 do
+		for j = 1, 100 do
+			if map_container.heatmap[i][j].intensity > 0.01 then
+				-- map_container.heatmap[i][j].intensity = map_container.heatmap[i][j].intensity / max_intensity
+				local alpha = map_container.heatmap[i][j].intensity * 4
+				if alpha > 0.6 then
+					alpha = 0.6
+				end
+				if map_container.heatmap[i][j].intensity > 0.02 then
+					if occupied_by_creature == nil or (occupied_by_creature[i] and occupied_by_creature[i][j]) then
+						map_container.heatmap[i][j]:SetColorTexture(
+							1.0,
+							1.1 - map_container.heatmap[i][j].intensity * 4,
+							0.1,
+							alpha
+						)
+					else
+						map_container.heatmap[i][j]:SetColorTexture(
+							1.0,
+							1.1 - map_container.heatmap[i][j].intensity * 4,
+							0.1,
+							alpha * 0.01
+						)
+					end
+				else
+					map_container.heatmap[i][j]:SetColorTexture(
+						1.0,
+						1.1 - map_container.heatmap[i][j].intensity * 4,
+						0.1,
+						0
+					)
+				end
+				if map_container.heatmap_checkbox:GetChecked() then
+					map_container.heatmap[i][j]:Show()
+				else
+					map_container.heatmap[i][j]:Hide()
+				end
+			end
 		end
 	end
 end
 
 function Deathlog_MapContainer_resetSkullSet()
-	for _, v in ipairs(map_container.tomb_tex) do
-		v:SetVertexColor(1, 1, 1, 0)
+	occupied_by_creature = nil
+
+	for i = 1, 100 do
+		for j = 1, 100 do
+			if map_container.heatmap[i][j].intensity > 0.01 then
+				-- map_container.heatmap[i][j].intensity = map_container.heatmap[i][j].intensity / max_intensity
+				local alpha = map_container.heatmap[i][j].intensity * 4
+				if alpha > 0.6 then
+					alpha = 0.6
+				end
+				if map_container.heatmap[i][j].intensity > 0.02 then
+					if occupied_by_creature == nil or (occupied_by_creature[i] and occupied_by_creature[i][j]) then
+						map_container.heatmap[i][j]:SetColorTexture(
+							1.0,
+							1.1 - map_container.heatmap[i][j].intensity * 4,
+							0.1,
+							alpha
+						)
+					else
+						map_container.heatmap[i][j]:SetColorTexture(
+							1.0,
+							1.1 - map_container.heatmap[i][j].intensity * 4,
+							0.1,
+							alpha * 0.01
+						)
+					end
+				else
+					map_container.heatmap[i][j]:SetColorTexture(
+						1.0,
+						1.1 - map_container.heatmap[i][j].intensity * 4,
+						0.1,
+						0
+					)
+				end
+				if map_container.heatmap_checkbox:GetChecked() then
+					map_container.heatmap[i][j]:Show()
+				else
+					map_container.heatmap[i][j]:Hide()
+				end
+			end
+		end
 	end
 end
 
 function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
-	local _skull_locs = stats_tbl["skull_locs"]
+	-- local _skull_locs = stats_tbl["skull_locs"]
 	this_map_id = current_map_id
 	if scroll_frame.frame then
 		map_container:SetParent(scroll_frame.frame)
@@ -1009,20 +1083,20 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	if map_container.tomb_tex == nil then
 		map_container.tomb_tex = {}
 	end
-	if _skull_locs[current_map_id] then
-		for idx = 1, 100 do
-			if map_container.tomb_tex[idx] == nil then
-				map_container.tomb_tex[idx] = map_container:CreateTexture(nil, "OVERLAY")
-				map_container.tomb_tex[idx]:SetTexture("Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull")
-				map_container.tomb_tex[idx]:SetDrawLayer("OVERLAY", 7)
-				map_container.tomb_tex[idx]:SetHeight(15)
-				map_container.tomb_tex[idx]:SetWidth(15)
-				map_container.tomb_tex[idx]:Hide()
-			end
+	-- if _skull_locs[current_map_id] then
+	-- 	for idx = 1, 100 do
+	-- 		if map_container.tomb_tex[idx] == nil then
+	-- 			map_container.tomb_tex[idx] = map_container:CreateTexture(nil, "OVERLAY")
+	-- 			map_container.tomb_tex[idx]:SetTexture("Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull")
+	-- 			map_container.tomb_tex[idx]:SetDrawLayer("OVERLAY", 7)
+	-- 			map_container.tomb_tex[idx]:SetHeight(15)
+	-- 			map_container.tomb_tex[idx]:SetWidth(15)
+	-- 			map_container.tomb_tex[idx]:Hide()
+	-- 		end
 
-			map_container.tomb_tex[idx].map_id = current_map_id
-		end
-	end
+	-- 		map_container.tomb_tex[idx].map_id = current_map_id
+	-- 	end
+	-- end
 
 	local modified_width = map_container:GetWidth() * 0.98
 	local modified_height = map_container:GetHeight() * 0.87
@@ -1085,40 +1159,68 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		},
 	}
 	local max_intensity = 0
-	if _skull_locs[current_map_id] then
-		for idx, v in ipairs(_skull_locs[current_map_id]) do
-			local x = ceil(v[1] / 10)
-			local y = ceil(v[2] / 10)
-			for xi = 1, 3 do
-				for yj = 1, 3 do
-					local x_in_map = x - 2 + xi
-					local y_in_map = y - 2 + yj
-					if map_container.heatmap[x_in_map] and map_container.heatmap[x_in_map][y_in_map] then
-						map_container.heatmap[x_in_map][y_in_map].intensity = map_container.heatmap[x_in_map][y_in_map].intensity
-							+ iv[xi][yj]
-						if map_container.heatmap[x_in_map][y_in_map].intensity > max_intensity then
-							max_intensity = map_container.heatmap[x_in_map][y_in_map].intensity
-						end
-					end
-				end
+	if current_map_id ~= 947 then
+		for x, v2 in pairs(precomputed_heatmap_intensity[current_map_id]) do
+			for y, intensity in pairs(v2) do
+				map_container.heatmap[x + 1][y + 1].intensity = intensity
 			end
 		end
 	end
 
+	-- if _skull_locs[current_map_id] then
+	-- 	for idx, v in ipairs(_skull_locs[current_map_id]) do
+	-- 		local x = ceil(v[1] / 10)
+	-- 		local y = ceil(v[2] / 10)
+	-- 		for xi = 1, 3 do
+	-- 			for yj = 1, 3 do
+	-- 				local x_in_map = x - 2 + xi
+	-- 				local y_in_map = y - 2 + yj
+	-- 				if map_container.heatmap[x_in_map] and map_container.heatmap[x_in_map][y_in_map] then
+	-- 					map_container.heatmap[x_in_map][y_in_map].intensity = map_container.heatmap[x_in_map][y_in_map].intensity
+	-- 						+ iv[xi][yj]
+	-- 					if map_container.heatmap[x_in_map][y_in_map].intensity > max_intensity then
+	-- 						max_intensity = map_container.heatmap[x_in_map][y_in_map].intensity
+	-- 					end
+	-- 				end
+	-- 			end
+	-- 		end
+	-- 	end
+	-- end
+
+	local c = 0
 	for i = 1, 100 do
 		for j = 1, 100 do
 			if map_container.heatmap[i][j].intensity > 0.01 then
-				map_container.heatmap[i][j].intensity = map_container.heatmap[i][j].intensity / max_intensity
+				-- map_container.heatmap[i][j].intensity = map_container.heatmap[i][j].intensity / max_intensity
 				local alpha = map_container.heatmap[i][j].intensity * 4
 				if alpha > 0.6 then
 					alpha = 0.6
 				end
-				map_container.heatmap[i][j]:SetColorTexture(
-					1.0,
-					1.1 - map_container.heatmap[i][j].intensity * 4,
-					0.1,
-					alpha
-				)
+				if map_container.heatmap[i][j].intensity > 0.02 then
+					if occupied_by_creature == nil or (occupied_by_creature[i] and occupied_by_creature[i][j]) then
+						map_container.heatmap[i][j]:SetColorTexture(
+							1.0,
+							1.1 - map_container.heatmap[i][j].intensity * 4,
+							0.1,
+							alpha
+						)
+					else
+						map_container.heatmap[i][j]:SetColorTexture(
+							1.0,
+							1.1 - map_container.heatmap[i][j].intensity * 4,
+							0.1,
+							alpha * 0.01
+						)
+					end
+					c = c + 1
+				else
+					map_container.heatmap[i][j]:SetColorTexture(
+						1.0,
+						1.1 - map_container.heatmap[i][j].intensity * 4,
+						0.1,
+						0
+					)
+				end
 				if map_container.heatmap_checkbox:GetChecked() then
 					map_container.heatmap[i][j]:Show()
 				else
