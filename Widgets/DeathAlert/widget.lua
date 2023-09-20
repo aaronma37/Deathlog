@@ -286,7 +286,7 @@ function Deathlog_DeathAlertPlay(entry)
 
 	death_alert_frame:Show()
 	death_alert_frame.text:SetFont(
-		fonts[deathlog_settings[widget_name]["font"]],
+		(fonts[deathlog_settings[widget_name]["font"]] or "Nimrod MT"),
 		deathlog_settings[widget_name]["font_size"]
 	)
 
@@ -730,7 +730,7 @@ function Deathlog_DeathAlertWidget_applySettings()
 	end
 
 	death_alert_frame.text:SetFont(
-		fonts[deathlog_settings[widget_name]["font"]],
+		(fonts[deathlog_settings[widget_name]["font"]] or "Nimrod MT"),
 		deathlog_settings[widget_name]["font_size"]
 	)
 
