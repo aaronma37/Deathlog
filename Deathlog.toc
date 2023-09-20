@@ -13,6 +13,26 @@
 
 embeds.xml
 
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_en.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_en.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_cn.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_cn.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_de.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_de.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_es.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_es.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_fr.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_fr.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_it.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_it.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_ko.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_ko.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_pt.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_pt.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_classic_ru.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_classic_ru.lua
+Libs/DeathNotificationLib/table_localization.lua
+Libs/DeathNotificationLib/DeathNotificationLib.lua
 
 utils.lua
 id_to_display_id.lua
@@ -39,8 +59,5 @@ Widgets/DeathAlert/widget.lua
 
 menu.lua
 
-Libs/DeathNotificationLib/id_to_npc_classic.lua
-Libs/DeathNotificationLib/npc_to_id_classic.lua
-Libs/DeathNotificationLib/DeathNotificationLib.lua
 precomputed_stats.lua
 deathlog.lua
