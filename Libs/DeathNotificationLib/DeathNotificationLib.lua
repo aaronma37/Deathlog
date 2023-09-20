@@ -754,7 +754,9 @@ end
 
 local function deathlogJoinChannel()
 	LeaveChannelByName(death_alerts_channel)
-    	C_Timer.After(1, function()
+
+	local delay = 3.0
+    	C_Timer.After(delay, function()
         	JoinChannelByName(death_alerts_channel, death_alerts_channel_pw)
     	end)
 	local channel_num = GetChannelName(death_alerts_channel)
