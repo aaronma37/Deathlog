@@ -813,7 +813,6 @@ function Deathlog_MapContainer_showSkullSet(source_id)
 	for i = 1, 100 do
 		for j = 1, 100 do
 			if map_container.heatmap[i][j].intensity > 0.01 then
-				-- map_container.heatmap[i][j].intensity = map_container.heatmap[i][j].intensity / max_intensity
 				local alpha = map_container.heatmap[i][j].intensity * 4
 				if alpha > 0.6 then
 					alpha = 0.6
@@ -858,7 +857,6 @@ function Deathlog_MapContainer_resetSkullSet()
 	for i = 1, 100 do
 		for j = 1, 100 do
 			if map_container.heatmap[i][j].intensity > 0.01 then
-				-- map_container.heatmap[i][j].intensity = map_container.heatmap[i][j].intensity / max_intensity
 				local alpha = map_container.heatmap[i][j].intensity * 4
 				if alpha > 0.6 then
 					alpha = 0.6
@@ -1158,40 +1156,18 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 			[3] = 0.025,
 		},
 	}
-	local max_intensity = 0
 	if current_map_id ~= 947 then
 		for x, v2 in pairs(precomputed_heatmap_intensity[current_map_id]) do
 			for y, intensity in pairs(v2) do
-				map_container.heatmap[x + 1][y + 1].intensity = intensity
+				map_container.heatmap[x][y].intensity = intensity
 			end
 		end
 	end
-
-	-- if _skull_locs[current_map_id] then
-	-- 	for idx, v in ipairs(_skull_locs[current_map_id]) do
-	-- 		local x = ceil(v[1] / 10)
-	-- 		local y = ceil(v[2] / 10)
-	-- 		for xi = 1, 3 do
-	-- 			for yj = 1, 3 do
-	-- 				local x_in_map = x - 2 + xi
-	-- 				local y_in_map = y - 2 + yj
-	-- 				if map_container.heatmap[x_in_map] and map_container.heatmap[x_in_map][y_in_map] then
-	-- 					map_container.heatmap[x_in_map][y_in_map].intensity = map_container.heatmap[x_in_map][y_in_map].intensity
-	-- 						+ iv[xi][yj]
-	-- 					if map_container.heatmap[x_in_map][y_in_map].intensity > max_intensity then
-	-- 						max_intensity = map_container.heatmap[x_in_map][y_in_map].intensity
-	-- 					end
-	-- 				end
-	-- 			end
-	-- 		end
-	-- 	end
-	-- end
 
 	local c = 0
 	for i = 1, 100 do
 		for j = 1, 100 do
 			if map_container.heatmap[i][j].intensity > 0.01 then
-				-- map_container.heatmap[i][j].intensity = map_container.heatmap[i][j].intensity / max_intensity
 				local alpha = map_container.heatmap[i][j].intensity * 4
 				if alpha > 0.6 then
 					alpha = 0.6
