@@ -1294,6 +1294,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 			if info then
 				overlay_highlight:Hide()
 				setMapRegion(info.mapID, info.name)
+				Deathlog_MapContainer_resetSkullSet()
 			end
 		end
 	end)

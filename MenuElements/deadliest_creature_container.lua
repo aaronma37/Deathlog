@@ -167,7 +167,6 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 				deadliest_creatures_textures[i]:SetCreatureName(
 					id_to_npc[most_deadly_units[i][1]] or environment_damage[most_deadly_units[i][1]]
 				)
-				print(most_deadly_units[i][1])
 				deadliest_creatures_textures[i]:SetNumKills(most_deadly_units[i][2])
 				if valid_map then
 					deadliest_creatures_textures[i]:SetScript("OnEnter", function()
