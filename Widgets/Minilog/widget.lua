@@ -183,7 +183,9 @@ local subtitle_metadata = {
 			if _entry.player_data["source_id"] == nil then
 				return ""
 			end
-			return id_to_npc[_entry.player_data["source_id"]] or ""
+			return id_to_npc[_entry.player_data["source_id"]]
+				or environment_damage[_entry.player_data["source_id"]]
+				or ""
 		end,
 	},
 	["Class"] = {

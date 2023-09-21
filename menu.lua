@@ -23,6 +23,14 @@ local _menu_height = 600
 local current_map_id = nil
 local max_rows = 25
 local page_number = 1
+local environment_damage = {
+	[-2] = "Drowning",
+	[-3] = "Falling",
+	[-4] = "Fatigue",
+	[-5] = "Fire",
+	[-6] = "Lava",
+	[-7] = "Slime",
+}
 
 local deathlog_tabcontainer = nil
 
@@ -185,7 +193,7 @@ local subtitle_data = {
 		"Death Source",
 		140,
 		function(_entry, _server_name)
-			return id_to_npc[_entry["source_id"]] or ""
+			return id_to_npc[_entry["source_id"]] or environment_damage[_entry["source_id"]] or ""
 		end,
 	},
 	{
