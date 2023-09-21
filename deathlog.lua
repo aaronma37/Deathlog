@@ -209,6 +209,21 @@ local options = {
 				end
 			end,
 		},
+		colored_tooltips = {
+			type = "toggle",
+			name = "Colored tooltips",
+			desc = "Toggles whether tooltips have colored fields.",
+			width = 1.3,
+			get = function()
+				if deathlog_settings["colored_tooltips"] == nil then
+					deathlog_settings["colored_tooltips"] = false
+				end
+				return deathlog_settings["colored_tooltips"]
+			end,
+			set = function()
+				deathlog_settings["colored_tooltips"] = not deathlog_settings["colored_tooltips"]
+			end,
+		},
 	},
 }
 

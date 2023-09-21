@@ -115,9 +115,9 @@ end)
 local subtitle_data = {
 	{
 		"Date",
-		60,
+		105,
 		function(_entry, _server_name)
-			return date("%m/%d/%y", _entry["date"]) or ""
+			return date("%m/%d/%y, %H:%M", _entry["date"]) or ""
 		end,
 	},
 	{
@@ -1058,8 +1058,13 @@ local function drawLogTab(container)
 			GameTooltip:AddLine("Guild: " .. _guild, 1, 1, 1)
 			GameTooltip:AddLine("Race: " .. _race, 1, 1, 1)
 			GameTooltip:AddLine("Class: " .. _class, 1, 1, 1)
-			GameTooltip:AddLine("Killed by: " .. _source, 1, 1, 1)
-			GameTooltip:AddLine("Zone/Instance: " .. _zone, 1, 1, 1)
+			if deathlog_settings["colored_tooltips"] == nil or deathlog_settings["colored_tooltips"] == false then
+				GameTooltip:AddLine("Killed by: " .. _source, 1, 1, 1)
+				GameTooltip:AddLine("Zone/Instance: " .. _zone, 1, 1, 1)
+			else
+				GameTooltip:AddLine("Killed by: |cfffda172" .. _source .. "|r", 1, 1, 1)
+				GameTooltip:AddLine("Zone/Instance: |cff9fe2bf" .. _zone .. "|r", 1, 1, 1)
+			end
 			GameTooltip:AddLine("Date: " .. _date, 1, 1, 1)
 			if _last_words and _last_words ~= "" then
 				GameTooltip:AddLine("Last words: " .. _last_words, 1, 1, 0, true)
