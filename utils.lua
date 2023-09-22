@@ -20,27 +20,7 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --
 --
 
-deathlog_instance_tbl = {
-	["Shadowfang Keep"] = 33,
-	["Stormwind Stockade"] = 34,
-	["Deadmines"] = 36,
-	["Wailing Caverns"] = 43,
-	["Razorfen Kraul"] = 47,
-	["Blackfathom Deeps"] = 48,
-	["Uldaman"] = 70,
-	["Gnomeregan"] = 90,
-	["Sunken Temple"] = 109,
-	["Razorfen Downs"] = 129,
-	["Scarlet Monastery"] = 189,
-	["Zul'Farrak"] = 209,
-	["Blackrock Spire"] = 229,
-	["Blackrock Depths"] = 230,
-	["Scholomance"] = 289,
-	["Stratholme"] = 329,
-	["Maraudon"] = 349,
-	["Ragefire Chasm"] = 389,
-	["Dire Maul"] = 429,
-}
+deathlog_instance_tbl = L.instance_tbl
 
 deathlog_id_to_instance_tbl = {}
 for k, v in pairs(deathlog_instance_tbl) do
