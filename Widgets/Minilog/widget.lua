@@ -647,11 +647,17 @@ function deathlog_widget_minilog_createEntry(player_data)
 end
 death_log_icon_frame:RegisterForDrag("LeftButton")
 death_log_icon_frame:SetScript("OnDragStart", function(self, button)
+	if deathlog_settings[widget_name]["lock"] ~= nil and deathlog_settings[widget_name]["lock"] == true then
+		return
+	end
 	death_log_frame.frame:ClearAllPoints()
 	self:StartMoving()
 	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
 end)
 death_log_icon_frame:SetScript("OnDragStop", function(self)
+	if deathlog_settings[widget_name]["lock"] ~= nil and deathlog_settings[widget_name]["lock"] == true then
+		return
+	end
 	self:StopMovingOrSizing()
 	local x, y = self:GetCenter()
 	local px = (GetScreenWidth() * UIParent:GetEffectiveScale()) / 2
@@ -755,6 +761,7 @@ local defaults = {
 	["tooltip_loc"] = true,
 	["tooltip_date"] = true,
 	["tooltip_lastwords"] = true,
+	["lock"] = false,
 }
 
 local function applyDefaults(_defaults, force)
@@ -989,6 +996,25 @@ options = {
 				end
 				deathlog_settings[widget_name]["enable"] = not deathlog_settings[widget_name]["enable"]
 				Deathlog_minilog_applySettings()
+			end,
+			order = 1,
+		},
+		lock_position = {
+			type = "toggle",
+			name = "Lock position",
+			desc = "Lock position of the death log.",
+			get = function()
+				if deathlog_settings[widget_name]["lock"] == nil or deathlog_settings[widget_name]["lock"] == false then
+					return false
+				else
+					return true
+				end
+			end,
+			set = function()
+				if deathlog_settings[widget_name]["lock"] == nil then
+					deathlog_settings[widget_name]["lock"] = true
+				end
+				deathlog_settings[widget_name]["lock"] = not deathlog_settings[widget_name]["lock"]
 			end,
 			order = 1,
 		},
