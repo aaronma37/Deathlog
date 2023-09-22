@@ -188,7 +188,9 @@ local subtitle_metadata = {
 			if _entry.player_data["source_id"] == nil then
 				return ""
 			end
-			return id_to_npc[_entry.player_data["source_id"]] or ""
+			return id_to_npc[_entry.player_data["source_id"]]
+				or environment_damage[_entry.player_data["source_id"]]
+				or ""
 		end,
 	},
 	["Class"] = {
@@ -528,13 +530,27 @@ local function setupRowEntries()
 				end
 			end
 
+			local killed_by_pre = ""
+			local killed_by_post = ""
+			local zone_pre = ""
+			local zone_post = ""
+			if deathlog_settings["colored_tooltips"] ~= nil and deathlog_settings["colored_tooltips"] == true then
+				killed_by_pre = "|cfffda172"
+				zone_pre = "|cff9fe2bf"
+				killed_by_post = "|r"
+				zone_post = "|r"
+			end
+
 			if deathlog_settings[widget_name]["tooltip_killedby"] and _entry.player_data["source_id"] then
 				local source_id = id_to_npc[_entry.player_data["source_id"]]
 				if source_id then
-					GameTooltip:AddLine("Killed by: " .. source_id, 1, 1, 1, true)
+					GameTooltip:AddLine("Killed by: " .. killed_by_pre .. source_id .. killed_by_post, 1, 1, 1, true)
 				elseif environment_damage[_entry.player_data["source_id"]] then
 					GameTooltip:AddLine(
-						"Died from: " .. environment_damage[_entry.player_data["source_id"]],
+						"Died from: "
+							.. killed_by_pre
+							.. environment_damage[_entry.player_data["source_id"]]
+							.. killed_by_post,
 						1,
 						1,
 						1,
@@ -551,15 +567,14 @@ local function setupRowEntries()
 				if _entry.player_data["map_id"] then
 					local map_info = C_Map.GetMapInfo(_entry.player_data["map_id"])
 					if map_info then
-						GameTooltip:AddLine("Zone/Instance: " .. map_info.name, 1, 1, 1, true)
+						GameTooltip:AddLine("Zone/Instance: " .. zone_pre .. map_info.name .. zone_post, 1, 1, 1, true)
 					end
 				elseif _entry.player_data["instance_id"] then
 					GameTooltip:AddLine(
 						"Zone/Instance: "
-							.. (
-								deathlog_id_to_instance_tbl[_entry.player_data["instance_id"]]
-								or _entry.player_data["instance_id"]
-							),
+							.. zone_pre
+							.. (deathlog_id_to_instance_tbl[_entry.player_data["instance_id"]] or _entry.player_data["instance_id"])
+							.. zone_post,
 						1,
 						1,
 						1,

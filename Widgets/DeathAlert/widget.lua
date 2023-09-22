@@ -89,6 +89,22 @@ function Deathlog_DeathAlertPlay(entry)
 		return
 	end
 
+	if
+		deathlog_settings[widget_name]["current_zone_filter"] ~= nil
+		and deathlog_settings[widget_name]["current_zone_filter"] == true
+	then
+		local my_current_map = C_Map.GetBestMapForUnit("player")
+		if my_current_map == nil then
+			local _, _, _, _, _, _, _, _instance_id, _, _ = GetInstanceInfo()
+			if entry["instance_id"] ~= instance_id then
+				return
+			end
+		end
+		if entry["map_id"] ~= my_current_map then
+			return
+		end
+	end
+
 	if deathlog_settings[widget_name]["guild_only"] then
 		local guildName, guildRankName, guildRankIndex = GetGuildInfo("player")
 		if entry["guild"] ~= guildName then
@@ -328,6 +344,7 @@ local defaults = {
 	["accent_color_g"] = 1,
 	["accent_color_b"] = 1,
 	["accent_color_a"] = 1,
+	["current_zone_filter"] = false,
 	["alert_sound"] = "default_hardcore",
 }
 
@@ -780,6 +797,20 @@ options = {
 			end,
 			set = function()
 				deathlog_settings[widget_name]["guild_only"] = not deathlog_settings[widget_name]["guild_only"]
+				Deathlog_DeathAlertWidget_applySettings()
+			end,
+		},
+		my_zone_only_toggle = {
+			type = "toggle",
+			name = "Current zone only alerts",
+			desc = "Only show alerts for deaths within the player's current zone.",
+			order = 1,
+			get = function()
+				return deathlog_settings[widget_name]["current_zone_filter"]
+			end,
+			set = function()
+				deathlog_settings[widget_name]["current_zone_filter"] =
+					not deathlog_settings[widget_name]["current_zone_filter"]
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},

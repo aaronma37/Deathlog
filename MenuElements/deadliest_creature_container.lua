@@ -18,6 +18,14 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 local deadliest_creatures_container = CreateFrame("Frame")
+local environment_damage = {
+	[-2] = "Drowning",
+	[-3] = "Falling",
+	[-4] = "Fatigue",
+	[-5] = "Fire",
+	[-6] = "Lava",
+	[-7] = "Slime",
+}
 deadliest_creatures_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 local function createDeadliestCreaturesEntry()
 	local frame = CreateFrame("Frame")
@@ -156,7 +164,9 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 				deadliest_creatures_textures[i]:SetBackgroundWidth(
 					deadliest_creatures_container:GetWidth() * most_deadly_units[i][2] / max_kills
 				)
-				deadliest_creatures_textures[i]:SetCreatureName(id_to_npc[most_deadly_units[i][1]])
+				deadliest_creatures_textures[i]:SetCreatureName(
+					id_to_npc[most_deadly_units[i][1]] or environment_damage[most_deadly_units[i][1]]
+				)
 				deadliest_creatures_textures[i]:SetNumKills(most_deadly_units[i][2])
 				if valid_map then
 					deadliest_creatures_textures[i]:SetScript("OnEnter", function()

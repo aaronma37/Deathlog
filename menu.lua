@@ -23,6 +23,14 @@ local _menu_height = 600
 local current_map_id = nil
 local max_rows = 25
 local page_number = 1
+local environment_damage = {
+	[-2] = "Drowning",
+	[-3] = "Falling",
+	[-4] = "Fatigue",
+	[-5] = "Fire",
+	[-6] = "Lava",
+	[-7] = "Slime",
+}
 
 local main_font = "Fonts\\FRIZQT__.TTF"
 if GetLocale() == "ruRU" then
@@ -120,9 +128,9 @@ end)
 local subtitle_data = {
 	{
 		"Date",
-		60,
+		105,
 		function(_entry, _server_name)
-			return date("%m/%d/%y", _entry["date"]) or ""
+			return date("%m/%d/%y, %H:%M", _entry["date"]) or ""
 		end,
 	},
 	{
@@ -190,7 +198,7 @@ local subtitle_data = {
 		"Death Source",
 		140,
 		function(_entry, _server_name)
-			return id_to_npc[_entry["source_id"]] or ""
+			return id_to_npc[_entry["source_id"]] or environment_damage[_entry["source_id"]] or ""
 		end,
 	},
 	{
@@ -309,7 +317,6 @@ end
 local _deathlog_data = {}
 local _stats = {}
 local _log_normal_params = {}
-local _skull_locs = {}
 local initialized = false
 
 local function drawLogTab(container)
@@ -1064,8 +1071,13 @@ local function drawLogTab(container)
 			GameTooltip:AddLine("Guild: " .. _guild, 1, 1, 1)
 			GameTooltip:AddLine("Race: " .. _race, 1, 1, 1)
 			GameTooltip:AddLine("Class: " .. _class, 1, 1, 1)
-			GameTooltip:AddLine("Killed by: " .. _source, 1, 1, 1)
-			GameTooltip:AddLine("Zone/Instance: " .. _zone, 1, 1, 1)
+			if deathlog_settings["colored_tooltips"] == nil or deathlog_settings["colored_tooltips"] == false then
+				GameTooltip:AddLine("Killed by: " .. _source, 1, 1, 1)
+				GameTooltip:AddLine("Zone/Instance: " .. _zone, 1, 1, 1)
+			else
+				GameTooltip:AddLine("Killed by: |cfffda172" .. _source .. "|r", 1, 1, 1)
+				GameTooltip:AddLine("Zone/Instance: |cff9fe2bf" .. _zone .. "|r", 1, 1, 1)
+			end
 			GameTooltip:AddLine("Date: " .. _date, 1, 1, 1)
 			if _last_words and _last_words ~= "" then
 				GameTooltip:AddLine("Last words: " .. _last_words, 1, 1, 0, true)
@@ -1217,7 +1229,6 @@ local function drawCreatureStatisticsTab(container)
 			modifyDescription(current_creature_id, name)
 		end
 		local stats_tbl = {
-			["skull_locs"] = _skull_locs,
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
@@ -1294,7 +1305,6 @@ local function drawStatisticsTab(container)
 			modifyDescription(map_id, name)
 		end
 		local stats_tbl = {
-			["skull_locs"] = _skull_locs,
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
@@ -1347,7 +1357,6 @@ local function drawClassStatisticsTab(container)
 			modifyTitle(name)
 		end
 		local stats_tbl = {
-			["skull_locs"] = _skull_locs,
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
@@ -1401,7 +1410,6 @@ local function drawInstanceStatisticsTab(container)
 			modifyTitle(name)
 		end
 		local stats_tbl = {
-			["skull_locs"] = _skull_locs,
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
@@ -1491,13 +1499,12 @@ end
 
 deathlog_menu = createDeathlogMenu()
 
-function deathlogShowMenu(deathlog_data, stats, log_normal_params, skull_locs)
+function deathlogShowMenu(deathlog_data, stats, log_normal_params)
 	deathlog_menu:Show()
 	deathlog_tabcontainer:SelectTab("LogTab")
 	_deathlog_data = deathlog_data
 	_stats = stats
 	_log_normal_params = log_normal_params
-	_skull_locs = skull_locs
 	setDeathlogMenuLogData(_deathlog_data)
 end
 

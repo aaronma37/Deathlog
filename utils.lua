@@ -362,7 +362,9 @@ function deathlogGetOrdered(stats, parameters)
 			for _, v in ipairs(post_parameters) do
 				postfix_stats = postfix_stats[v]
 			end
-			table.insert(unordered_list, { k, postfix_stats["num_entries"] })
+			if k ~= -1 then
+				table.insert(unordered_list, { k, postfix_stats["num_entries"] })
+			end
 		end
 	end
 	for i, v in

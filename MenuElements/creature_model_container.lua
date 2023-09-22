@@ -24,11 +24,17 @@ creature_model_container:Hide()
 creature_model_container:SetBackdropColor(0, 0.4, 0, 1)
 creature_model_container:SetMovable(false)
 
+local _, _, _, tocversion = GetBuildInfo()
+
 creature_model_container.modelFrame = CreateFrame("PlayerModel", nil, creature_model_container)
 creature_model_container.modelFrame:SetPoint("TOPLEFT", creature_model_container, "TOPLEFT", 0, 0)
 creature_model_container.modelFrame:SetHeight(500)
 creature_model_container.modelFrame:SetWidth(500)
-creature_model_container.modelFrame:SetDisplayInfo(1693)
+if tocversion >= 11404 then
+	creature_model_container.modelFrame:SetCreature(1693)
+else
+	creature_model_container.modelFrame:SetDisplayInfo(1693)
+end
 creature_model_container.modelFrame:SetRotation(0)
 creature_model_container.modelFrame:SetCamDistanceScale(1.5)
 creature_model_container.modelFrame:SetPortraitZoom(0.6)
@@ -46,7 +52,11 @@ local animation = CreateFrame("Frame")
 
 function creature_model_container.updateMenuElement(scroll_frame, creature_id, stats_tbl, updatefun)
 	if id_to_display_id[creature_id] ~= nil then
-		creature_model_container.modelFrame:SetDisplayInfo(id_to_display_id[creature_id])
+		if tocversion >= 11404 then
+			creature_model_container.modelFrame:SetCreature(creature_id)
+		else
+			creature_model_container.modelFrame:SetDisplayInfo(id_to_display_id[creature_id])
+		end
 		creature_model_container:SetParent(scroll_frame.frame)
 		creature_model_container:Show()
 		creature_model_container.modelFrame:Show()

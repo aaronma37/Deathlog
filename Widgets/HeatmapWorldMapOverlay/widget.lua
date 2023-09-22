@@ -48,7 +48,6 @@ local function updateWMOHeatmap(map_id)
 		return
 	end
 	last_calculated_map_id = map_id
-	_skull_locs = precomputed_skull_locs
 
 	for i = 1, granularity do
 		for j = 1, granularity do
@@ -72,39 +71,16 @@ local function updateWMOHeatmap(map_id)
 			[3] = 0.025,
 		},
 	}
-	local max_intensity = 0
-	if _skull_locs[map_id] then
-		for idx, v in ipairs(_skull_locs[map_id]) do
-			local x = ceil(v[1] / 10)
-			local y = ceil(v[2] / 10)
-			for xi = 1, 3 do
-				for yj = 1, 3 do
-					local x_in_map = x - 2 + xi
-					local y_in_map = y - 2 + yj
-					if
-						heatmap_wm_overlay_frame.heatmap[x_in_map]
-						and heatmap_wm_overlay_frame.heatmap[x_in_map][y_in_map]
-					then
-						heatmap_wm_overlay_frame.heatmap[x_in_map][y_in_map].intensity = heatmap_wm_overlay_frame.heatmap[x_in_map][y_in_map].intensity
-							+ iv[xi][yj]
-						if heatmap_wm_overlay_frame.heatmap[x_in_map][y_in_map].intensity > max_intensity then
-							max_intensity = heatmap_wm_overlay_frame.heatmap[x_in_map][y_in_map].intensity
-						end
-					end
-				end
+	if map_id ~= 947 and map_id ~= nil then
+		for x, v2 in pairs(precomputed_heatmap_intensity[map_id]) do
+			for y, intensity in pairs(v2) do
+				heatmap_wm_overlay_frame.heatmap[x][y].intensity = intensity
 			end
 		end
 	end
-
 	local mWidth, mHeight = WorldMapFrame:GetCanvas():GetSize()
 	for i = 1, granularity do
 		for j = 1, granularity do
-			if max_intensity > 0 then
-				heatmap_wm_overlay_frame.heatmap[i][j].intensity = heatmap_wm_overlay_frame.heatmap[i][j].intensity
-					/ max_intensity
-			else
-				heatmap_wm_overlay_frame.heatmap[i][j].intensity = 0
-			end
 			local alpha = heatmap_wm_overlay_frame.heatmap[i][j].intensity * 4
 			if map_id == 947 then
 				alpha = 0
