@@ -2,10 +2,7 @@ local ace_refresh_timer_handle = nil
 local entry_cache = {}
 local font_handle = nil
 
-local main_font = "Fonts\\FRIZQT__.TTF"
-if GetLocale() == "ruRU" then
-	main_font = "Fonts\\ARIALN.TTF"
-end
+local main_font = L.main_font
 local deathlog_instance_tbl = {
 	{ 33, "SHADOWFANGKEEP", "Shadowfang Keep" },
 	{ 36, "DEADMINES", "Deadmines" },
