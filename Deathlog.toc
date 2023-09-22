@@ -11,6 +11,17 @@
 ## SavedVariables: deathlog_settings, deathlog_data, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs, dev_class_data
 ## SavedVariablesPerCharacter:
 
+Localization/strings_cn.lua
+Localization/strings_de.lua
+Localization/strings_en.lua
+Localization/strings_es.lua
+Localization/strings_fr.lua
+Localization/strings_it.lua
+Localization/strings_ko.lua
+Localization/strings_pt.lua
+Localization/strings_ru.lua
+Localization/localization.lua
+
 embeds.xml
 
 Libs/DeathNotificationLib/NPCs/id_to_npc_classic_en.lua
