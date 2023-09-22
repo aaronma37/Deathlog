@@ -329,13 +329,13 @@ local defaults = {
 	["font_color_g"] = 1,
 	["font_color_b"] = 1,
 	["font_color_a"] = 1,
-	["message"] = "<name> the <race> <class> has been slain\nby <source> at lvl <level> in <zone>.",
-	["fall_message"] = "<name> the <race> <class> fell to\ndeath at lvl <level> in <zone>.",
-	["drown_message"] = "<name> the <race> <class> drowned\n at lvl <level> in <zone>.",
-	["slime_message"] = "<name> the <race> <class> has died from slime.\n at lvl <level> in <zone>.",
-	["lava_message"] = "<name> the <race> <class> drowned in lava.\n at lvl <level> in <zone>.",
-	["fire_message"] = "<name> the <race> <class> has died from fire.\n at lvl <level> in <zone>.",
-	["fatigue_message"] = "<name> the <race> <class> has died from fatigue.\n at lvl <level> in <zone>.",
+	["message"] = L.death_alert_default_message,
+	["fall_message"] = L.death_alert_default_fall_message,
+	["drown_message"] = L.death_alert_default_drown_message,
+	["slime_message"] = L.death_alert_default_slime_message,
+	["lava_message"] = L.death_alert_default_lava_message,
+	["fire_message"] = L.death_alert_default_fire_message,
+	["fatigue_message"] = L.death_alert_default_fatigue_message,
 	["min_lvl"] = 1,
 	["min_lvl_player"] = false,
 	["max_lvl"] = MAX_PLAYER_LEVEL,
@@ -349,9 +349,7 @@ local defaults = {
 }
 
 local function applyDefaults(_defaults, force)
-	if deathlog_settings[widget_name] == nil then
-		deathlog_settings[widget_name] = {}
-	end
+	deathlog_settings[widget_name] = deathlog_settings[widget_name] or {}
 	for k, v in pairs(_defaults) do
 		if deathlog_settings[widget_name][k] == nil or force then
 			deathlog_settings[widget_name][k] = v
