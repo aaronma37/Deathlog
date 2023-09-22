@@ -36,11 +36,11 @@ local presets = {
 }
 
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
-local default_font = "Fonts\\blei00d.TTF"
+local default_font = L.mini_log_font
 local widget_name = "minilog"
 
 local fonts = LSM30:HashTable("font")
-fonts["blei00d"] = "Fonts\\blei00d.TTF"
+fonts["default_font"] = default_font
 fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
 fonts["BlackChancery"] = "Interface\\AddOns\\Deathlog\\Fonts\\BLKCHCRY.TTF"
 fonts["ArgosGeorge"] = "Interface\\AddOns\\Deathlog\\Fonts\\ArgosGeorge.ttf"
@@ -705,8 +705,8 @@ local default_text_color_r, default_text_color_g, default_text_color_b, default_
 
 local defaults = {
 	["enable"] = true,
-	["font"] = "blei00d",
-	["entry_font"] = "blei00d",
+	["font"] = "default_font",
+	["entry_font"] = "default_font",
 	["title_font_size"] = 19,
 	["entry_font_size"] = 14,
 	["title_x_offset"] = 0,
@@ -1258,7 +1258,7 @@ options = {
 				if deathlog_settings[widget_name]["presets"] == "concise" then
 					deathlog_settings[widget_name]["enable"] = true
 					deathlog_settings[widget_name]["font"] = "BreatheFire"
-					deathlog_settings[widget_name]["entry_font"] = "blei00d"
+					deathlog_settings[widget_name]["entry_font"] = "default_font"
 					deathlog_settings[widget_name]["title_font_size"] = 19
 					deathlog_settings[widget_name]["entry_font_size"] = 16
 					deathlog_settings[widget_name]["title_x_offset"] = 13
@@ -1283,7 +1283,7 @@ options = {
 				if deathlog_settings[widget_name]["presets"] == "Yazpad" then
 					deathlog_settings[widget_name]["enable"] = true
 					deathlog_settings[widget_name]["font"] = "BreatheFire"
-					deathlog_settings[widget_name]["entry_font"] = "blei00d"
+					deathlog_settings[widget_name]["entry_font"] = "default_font"
 					deathlog_settings[widget_name]["title_font_size"] = 19
 					deathlog_settings[widget_name]["entry_font_size"] = 16
 					deathlog_settings[widget_name]["title_x_offset"] = 13
