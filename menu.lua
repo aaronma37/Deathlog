@@ -1461,13 +1461,7 @@ local function createDeathlogMenu()
 	end
 
 	deathlog_tabcontainer = AceGUI:Create("DeathlogTabGroup") -- "InlineGroup" is also good
-	local tab_table = {
-		{ value = "ClassStatisticsTab", text = "Class Statistics" },
-		{ value = "CreatureStatisticsTab", text = "Creature Statistics" },
-		{ value = "InstanceStatisticsTab", text = "Instance Statistics" },
-		{ value = "StatisticsTab", text = "Zone Statistics" },
-		{ value = "LogTab", text = "Search" },
-	}
+	local tab_table = L.tab_table
 	deathlog_tabcontainer:SetTabs(tab_table)
 	deathlog_tabcontainer:SetFullWidth(true)
 	deathlog_tabcontainer:SetFullHeight(true)
