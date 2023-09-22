@@ -43,7 +43,7 @@ local function createDeadliestCreaturesEntry()
 
 	frame.creature_name = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	frame.creature_name:SetPoint("LEFT", frame, "LEFT", 10, 0)
-	frame.creature_name:SetFont("Fonts\\blei00d.TTF", 14, "OUTLINE")
+	frame.creature_name:SetFont(L.deadliest_creature_container_font, 14, "OUTLINE")
 	frame.creature_name:SetTextColor(0.9, 0.9, 0.9)
 	frame.creature_name:SetText("AAA")
 	frame.creature_name:Show()
@@ -78,7 +78,7 @@ if deadliest_creatures_container.heading == nil then
 	deadliest_creatures_container.heading =
 		deadliest_creatures_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	deadliest_creatures_container.heading:SetText("Deadliest Creatures")
-	deadliest_creatures_container.heading:SetFont("Fonts\\blei00d.TTF", 18, "")
+	deadliest_creatures_container.heading:SetFont(L.deadliest_creature_container_font, 18, "")
 	deadliest_creatures_container.heading:SetJustifyV("TOP")
 	deadliest_creatures_container.heading:SetTextColor(0.9, 0.9, 0.9)
 	deadliest_creatures_container.heading:SetPoint("TOP", deadliest_creatures_container, "TOP", 0, -20)
@@ -89,7 +89,7 @@ if deadliest_creatures_container.heading_description == nil then
 	deadliest_creatures_container.heading_description =
 		deadliest_creatures_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	deadliest_creatures_container.heading_description:SetText("Mouseover to view on map.")
-	deadliest_creatures_container.heading_description:SetFont("Fonts\\blei00d.TTF", 12, "")
+	deadliest_creatures_container.heading_description:SetFont(L.deadliest_creature_container_font, 12, "")
 	deadliest_creatures_container.heading_description:SetJustifyV("TOP")
 	deadliest_creatures_container.heading_description:SetTextColor(0.6, 0.6, 0.6)
 	deadliest_creatures_container.heading_description:SetPoint(
