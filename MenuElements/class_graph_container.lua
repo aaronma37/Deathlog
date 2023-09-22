@@ -47,7 +47,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 	if graph_container.heading == nil then
 		graph_container.heading = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		graph_container.heading:SetText("Death Level by Class PDF")
-		graph_container.heading:SetFont("Fonts\\blei00d.TTF", 18, "")
+		graph_container.heading:SetFont(L.class_font, 18, "")
 		graph_container.heading:SetJustifyV("TOP")
 		graph_container.heading:SetTextColor(0.9, 0.9, 0.9)
 		graph_container.heading:SetPoint("TOP", graph_container, "TOP", 25, 0)
@@ -108,7 +108,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 			end
 			graph_lines[name].label:SetPoint("BOTTOMLEFT", start_coords[1] + label[2], start_coords[2] + label[3])
 			graph_lines[name].label:SetText(label[1])
-			graph_lines[name].label:SetFont("Fonts\\blei00d.TTF", 10, "")
+			graph_lines[name].label:SetFont(L.class_font, 10, "")
 			graph_lines[name].label:SetTextColor(0.7, 0.7, 0.7, 0.7)
 		end
 		graph_lines[name]:Show()
@@ -308,7 +308,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 	if graph_container.cdf_heading == nil then
 		graph_container.cdf_heading = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		graph_container.cdf_heading:SetText("Class Level Expectancy (1-CDF(x))")
-		graph_container.cdf_heading:SetFont("Fonts\\blei00d.TTF", 18, "")
+		graph_container.cdf_heading:SetFont(L.class_font, 18, "")
 		graph_container.cdf_heading:SetJustifyV("TOP")
 		graph_container.cdf_heading:SetTextColor(0.9, 0.9, 0.9)
 		graph_container.cdf_heading:SetPoint("TOP", graph_container, "TOP", 25, -210)
@@ -337,7 +337,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 	if graph_container.cdf_desc == nil then
 		graph_container.cdf_desc = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		graph_container.cdf_desc:SetText("Calculated using the lognormal distribution PDF.")
-		graph_container.cdf_desc:SetFont("Fonts\\blei00d.TTF", 11, "")
+		graph_container.cdf_desc:SetFont(L.class_font, 11, "")
 		graph_container.cdf_desc:SetJustifyV("TOP")
 		graph_container.cdf_desc:SetTextColor(0.7, 0.7, 0.7)
 		graph_container.cdf_desc:SetPoint("TOP", graph_container, "TOP", 25, -405)
@@ -347,7 +347,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 	if graph_container.desc == nil then
 		graph_container.desc = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		graph_container.desc:SetText("Calculated using MLE on right truncated data and fitting lognormal.")
-		graph_container.desc:SetFont("Fonts\\blei00d.TTF", 11, "")
+		graph_container.desc:SetFont(L.class_font, 11, "")
 		graph_container.desc:SetJustifyV("TOP")
 		graph_container.desc:SetTextColor(0.7, 0.7, 0.7)
 		graph_container.desc:SetPoint("TOP", graph_container, "TOP", 25, -185)
