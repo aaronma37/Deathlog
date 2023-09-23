@@ -21,10 +21,7 @@ local class_stat_comparison_container = CreateFrame("Frame")
 class_stat_comparison_container:SetSize(100, 100)
 class_stat_comparison_container:Show()
 
-local class_font = "Fonts\\blei00d.TTF"
-if GetLocale() == "ruRU" then
-	class_font = "Fonts\\ARIALN.TTF"
-end
+local class_font = L.class_font
 
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl

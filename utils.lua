@@ -20,78 +20,14 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --
 --
 
-deathlog_instance_tbl = {
-	["Shadowfang Keep"] = 33,
-	["Stormwind Stockade"] = 34,
-	["Deadmines"] = 36,
-	["Wailing Caverns"] = 43,
-	["Razorfen Kraul"] = 47,
-	["Blackfathom Deeps"] = 48,
-	["Uldaman"] = 70,
-	["Gnomeregan"] = 90,
-	["Sunken Temple"] = 109,
-	["Razorfen Downs"] = 129,
-	["Scarlet Monastery"] = 189,
-	["Zul'Farrak"] = 209,
-	["Blackrock Spire"] = 229,
-	["Blackrock Depths"] = 230,
-	["Scholomance"] = 289,
-	["Stratholme"] = 329,
-	["Maraudon"] = 349,
-	["Ragefire Chasm"] = 389,
-	["Dire Maul"] = 429,
-}
+deathlog_instance_tbl = L.instance_tbl
 
 deathlog_id_to_instance_tbl = {}
 for k, v in pairs(deathlog_instance_tbl) do
 	deathlog_id_to_instance_tbl[v] = k
 end
 
-deathlog_zone_tbl = {
-	["Azeroth"] = 947,
-	["Durotar"] = 1411,
-	["Mulgore"] = 1412,
-	["The Barrens"] = 1413,
-	["Kalimdor"] = 1414,
-	["Eastern Kingdoms"] = 1415,
-	["Alterac Mountains"] = 1416,
-	["Arathi Highlands"] = 1417,
-	["Badlands"] = 1418,
-	["Blasted Lands"] = 1419,
-	["Tirisfal Glades"] = 1420,
-	["Silverpine Forest"] = 1421,
-	["Western Plaguelands"] = 1422,
-	["Eastern Plaguelands"] = 1423,
-	["Hillsbrad Foothills"] = 1424,
-	["The Hinterlands"] = 1425,
-	["Dun Morogh"] = 1426,
-	["Searing Gorge"] = 1427,
-	["Burning Steppes"] = 1428,
-	["Elwynn Forest"] = 1429,
-	["Deadwind Pass"] = 1430,
-	["Duskwood"] = 1431,
-	["Loch Modan"] = 1432,
-	["Redridge Mountains"] = 1433,
-	["Stranglethorn Vale"] = 1434,
-	["Swamp of Sorrows"] = 1435,
-	["Westfall"] = 1436,
-	["Wetlands"] = 1437,
-	["Teldrassil"] = 1438,
-	["Darkshore"] = 1439,
-	["Ashenvale"] = 1440,
-	["Thousand Needles"] = 1441,
-	["Stonetalon Mountains"] = 1442,
-	["Desolace"] = 1443,
-	["Feralas"] = 1444,
-	["Dustwallow Marsh"] = 1445,
-	["Tanaris"] = 1446,
-	["Azshara"] = 1447,
-	["Felwood"] = 1448,
-	["Un'Goro Crater"] = 1449,
-	["Moonglade"] = 1450,
-	["Silithus"] = 1451,
-	["Winterspring"] = 1452,
-}
+deathlog_zone_tbl = L.deathlog_zone_tbl
 
 deathlog_class_tbl = {
 	["Warrior"] = 1,

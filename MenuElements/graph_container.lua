@@ -42,7 +42,7 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 	if graph_container.heading == nil then
 		graph_container.heading = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		graph_container.heading:SetText("Death Level by Class PDF")
-		graph_container.heading:SetFont("Fonts\\blei00d.TTF", 18, "")
+		graph_container.heading:SetFont(L.menu_font, 18, "")
 		graph_container.heading:SetJustifyV("TOP")
 		graph_container.heading:SetTextColor(0.9, 0.9, 0.9)
 		graph_container.heading:SetPoint("TOP", graph_container, "TOP", 25, 50)
@@ -70,7 +70,7 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 	if graph_container.y_label == nil then
 		graph_container.y_label = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		graph_container.y_label:SetText("P(lvl)")
-		graph_container.y_label:SetFont("Fonts\\blei00d.TTF", 14, "")
+		graph_container.y_label:SetFont(L.menu_font, 14, "")
 		graph_container.y_label:SetJustifyV("TOP")
 		graph_container.y_label:SetTextColor(0.7, 0.7, 0.7)
 		graph_container.y_label:SetPoint("BOTTOM", graph_container, "BOTTOM", -165, 225)
@@ -80,7 +80,7 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 	if graph_container.x_label == nil then
 		graph_container.x_label = graph_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		graph_container.x_label:SetText("Lvl.")
-		graph_container.x_label:SetFont("Fonts\\blei00d.TTF", 14, "")
+		graph_container.x_label:SetFont(L.menu_font, 14, "")
 		graph_container.x_label:SetJustifyV("TOP")
 		graph_container.x_label:SetTextColor(0.7, 0.7, 0.7)
 		graph_container.x_label:SetPoint("BOTTOM", graph_container, "BOTTOM", 25, -15)
@@ -120,7 +120,7 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 			end
 			graph_lines[name].label:SetPoint("BOTTOMLEFT", start_coords[1] + label[2], start_coords[2] + label[3])
 			graph_lines[name].label:SetText(label[1])
-			graph_lines[name].label:SetFont("Fonts\\blei00d.TTF", 10, "")
+			graph_lines[name].label:SetFont(L.menu_font, 10, "")
 			graph_lines[name].label:SetTextColor(0.7, 0.7, 0.7, 0.7)
 		end
 		graph_lines[name]:Show()

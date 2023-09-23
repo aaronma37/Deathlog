@@ -2,30 +2,8 @@ local ace_refresh_timer_handle = nil
 local entry_cache = {}
 local font_handle = nil
 
-local main_font = "Fonts\\FRIZQT__.TTF"
-if GetLocale() == "ruRU" then
-	main_font = "Fonts\\ARIALN.TTF"
-end
-local deathlog_instance_tbl = {
-	{ 33, "SHADOWFANGKEEP", "Shadowfang Keep" },
-	{ 36, "DEADMINES", "Deadmines" },
-	{ 34, "STORMWINDSTOCKADES", "Stockades" },
-	{ 43, "WAILINGCAVERNS", "Wailing Caverns" },
-	{ 47, "RAZORFENKRAUL", "Razorfen Kraul" },
-	{ 48, "BLACKFATHOMDEEPS", "Blackfathom Deeps" },
-	{ 90, "GNOMEREGAN", "Gnomeregan" },
-	{ 18, "SCARLETMONASTERY", "Scarlet Monastery" },
-	{ 70, "ULDAMAN", "Uldaman" },
-	{ 109, "SUNKENTEMPLE", "Sunken Temple" },
-	{ 129, "RAZORFENDOWNS", "Razorfen Downs" },
-	{ 209, "ZULFARAK", "Zul'Farak" },
-	{ 229, "BLACKROCKSPIRE", "Blackrock Spire" },
-	{ 239, "BLACKROCKDEPTHS", "Blackrock Depths" },
-	{ 289, "SCHOLOMANCE", "Scholomance" },
-	{ 329, "STRATHOLME", "Stratholme" },
-	{ 349, "MARAUDON", "Maraudon" },
-	{ 429, "DIREMAUL", "Diremaul" },
-}
+local main_font = L.main_font
+local deathlog_instance_tbl = L.instance_tbl
 
 local tmap = {
 	["Warrior"] = { 0, 0.25, 0, 0.25 },
@@ -58,11 +36,11 @@ local presets = {
 }
 
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
-local default_font = "Fonts\\blei00d.TTF"
+local default_font = L.mini_log_font
 local widget_name = "minilog"
 
 local fonts = LSM30:HashTable("font")
-fonts["blei00d"] = "Fonts\\blei00d.TTF"
+fonts["default_font"] = default_font
 fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
 fonts["BlackChancery"] = "Interface\\AddOns\\Deathlog\\Fonts\\BLKCHCRY.TTF"
 fonts["ArgosGeorge"] = "Interface\\AddOns\\Deathlog\\Fonts\\ArgosGeorge.ttf"
@@ -144,7 +122,7 @@ local death_log_frame = AceGUI:Create("Deathlog_MiniLog")
 death_log_frame.frame:SetMovable(false)
 death_log_frame.frame:EnableMouse(false)
 death_log_frame:SetTitle("Deathlog")
-death_log_frame.titletext:SetFont("Fonts\\blei00d.TTF", 19, "THICK")
+death_log_frame.titletext:SetFont(L.mini_log_font, 19, "THICK")
 local subtitle_metadata = {
 	["ColoredName"] = {
 		"Name",
@@ -417,7 +395,7 @@ local function setupRowEntries()
 				_entry.font_strings[v[1]]:SetWidth(v[2])
 			end
 			_entry.font_strings[v[1]]:SetTextColor(1, 1, 1)
-			_entry.font_strings[v[1]]:SetFont("Fonts\\blei00d.TTF", 14, "")
+			_entry.font_strings[v[1]]:SetFont(L.mini_log_font, 14, "")
 		end
 
 		_entry.background = _entry.frame:CreateTexture(nil, "OVERLAY")
@@ -727,8 +705,8 @@ local default_text_color_r, default_text_color_g, default_text_color_b, default_
 
 local defaults = {
 	["enable"] = true,
-	["font"] = "blei00d",
-	["entry_font"] = "blei00d",
+	["font"] = "default_font",
+	["entry_font"] = "default_font",
 	["title_font_size"] = 19,
 	["entry_font_size"] = 14,
 	["title_x_offset"] = 0,
@@ -1280,7 +1258,7 @@ options = {
 				if deathlog_settings[widget_name]["presets"] == "concise" then
 					deathlog_settings[widget_name]["enable"] = true
 					deathlog_settings[widget_name]["font"] = "BreatheFire"
-					deathlog_settings[widget_name]["entry_font"] = "blei00d"
+					deathlog_settings[widget_name]["entry_font"] = "default_font"
 					deathlog_settings[widget_name]["title_font_size"] = 19
 					deathlog_settings[widget_name]["entry_font_size"] = 16
 					deathlog_settings[widget_name]["title_x_offset"] = 13
@@ -1305,7 +1283,7 @@ options = {
 				if deathlog_settings[widget_name]["presets"] == "Yazpad" then
 					deathlog_settings[widget_name]["enable"] = true
 					deathlog_settings[widget_name]["font"] = "BreatheFire"
-					deathlog_settings[widget_name]["entry_font"] = "blei00d"
+					deathlog_settings[widget_name]["entry_font"] = "default_font"
 					deathlog_settings[widget_name]["title_font_size"] = 19
 					deathlog_settings[widget_name]["entry_font_size"] = 16
 					deathlog_settings[widget_name]["title_x_offset"] = 13

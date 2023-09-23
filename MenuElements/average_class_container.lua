@@ -22,10 +22,7 @@ average_class_container:SetSize(100, 100)
 average_class_container:Show()
 average_class_container.configure_for = "map"
 
-local class_font = "Fonts\\blei00d.TTF"
-if GetLocale() == "ruRU" then
-	class_font = "Fonts\\ARIALN.TTF"
-end
+local class_font = L.class_font
 
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl

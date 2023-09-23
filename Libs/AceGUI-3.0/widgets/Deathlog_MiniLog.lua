@@ -7,10 +7,7 @@ if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then
 	return
 end
 
-local main_font = "Fonts\\FRIZQT__.TTF"
-if GetLocale() == "ruRU" then
-	main_font = "Fonts\\ARIALN.TTF"
-end
+local main_font = L.main_font
 
 -- Lua APIs
 local pairs, assert, type = pairs, assert, type

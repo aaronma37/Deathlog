@@ -40,8 +40,8 @@ local most_deadly_units_normalized = {
 	},
 }
 
-deathlog_data = {}
-deathlog_settings = {}
+deathlog_data = deathlog_data or {}
+deathlog_settings = deathlog_settings or {}
 
 local deathlog_minimap_button_stub = nil
 local deathlog_minimap_button_info = {}
