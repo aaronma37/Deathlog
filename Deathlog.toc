@@ -49,6 +49,7 @@ utils.lua
 id_to_display_id.lua
 id_to_quote.lua
 
+MenuElements/watch_list.lua
 MenuElements/map_container.lua
 MenuElements/map_container_for_creatures.lua
 MenuElements/creature_model_container.lua

@@ -1124,33 +1124,56 @@ local function drawLogTab(container)
 		setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
 	end)
 
-	-- if font_container.import_hc_button == nil then
-	-- 	font_container.import_hc_button = CreateFrame("Button", nil, font_container)
-	-- 	font_container.import_hc_button:SetPoint("CENTER", font_container.page_str, "CENTER", -395, -4)
-	-- 	font_container.import_hc_button:SetWidth(275)
-	-- 	font_container.import_hc_button:SetHeight(25)
-	-- 	font_container.import_hc_button:SetNormalTexture("Interface/Buttons/UI-SILVER-BUTTON-UP")
-	-- 	font_container.import_hc_button:GetNormalTexture():SetVertexColor(1, 1, 1, 0.5)
-	-- 	font_container.import_hc_button:SetHighlightTexture("Interface/Buttons/UI-Panel-Button-Highlight")
-	-- 	font_container.import_hc_button:SetPushedTexture("Interface/Buttons/UI-SILVER-BUTTON-Down")
-
-	-- 	font_container.import_hc_button:SetText("Import from Hardcore")
-	-- 	font_container.import_hc_button:SetNormalFontObject("GameFontNormalSmall")
-
-	-- 	local font_str = font_container.import_hc_button:GetFontString()
-	-- 	font_str:SetPoint("TOPLEFT", 12, -1)
-	-- 	font_str:SetFont(Deathlog_L.menu_font, 16, "")
-	-- end
-
-	-- font_container.import_hc_button:SetScript("OnClick", function()
-	-- 	Deathlog_LoadFromHardcore()
-	-- end)
-
 	deathlog_group.frame:HookScript("OnHide", function()
 		font_container:Hide()
-		-- deathlog_group.next_button:Hide()
-		-- deathlog_group.prev_button:Hide()
-		-- deathlog_group.import_hc_button:Hide()
+	end)
+end
+
+local function drawWatchListTab(container)
+	local current_creature_id = nil
+	local update_functions = {}
+	local scroll_container = AceGUI:Create("SimpleGroup")
+	scroll_container:SetFullWidth(true)
+	scroll_container:SetFullHeight(true)
+	scroll_container:SetLayout("Fill")
+	deathlog_tabcontainer:AddChild(scroll_container)
+
+	local scroll_frame = AceGUI:Create("SimpleGroup")
+	scroll_frame:SetLayout("Flow")
+	scroll_container:AddChild(scroll_frame)
+
+	local title_label = AceGUI:Create("Heading")
+	title_label:SetFullWidth(true)
+	title_label:SetText("Watch List")
+	title_label.label:SetFont(L.menu_font, 24, "")
+	scroll_frame:AddChild(title_label)
+
+	local description_label = AceGUI:Create("Label")
+	description_label:SetFullWidth(true)
+	description_label:SetText(
+		"[Experimental] Add players of interest to a watch list.  If a player on this list dies while you are logged off, the deathlog system will try to notify you when you log in.  Add a description and icon to remember the player by."
+	)
+	description_label.label:SetFont(L.menu_font, 14, "")
+	description_label.label:SetTextColor(0.6, 0.6, 0.6, 1.0)
+	description_label.label:SetJustifyH("CENTER")
+	scroll_frame:AddChild(description_label)
+
+	local elements = {
+		Deathlog_WatchList(),
+	}
+
+	local function updateElements()
+		for _, v in ipairs(elements) do
+			v.updateMenuElement(scroll_frame)
+		end
+	end
+
+	updateElements()
+
+	scroll_frame.frame:HookScript("OnHide", function()
+		for _, v in ipairs(elements) do
+			v:Hide()
+		end
 	end)
 end
 
@@ -1466,6 +1489,8 @@ local function createDeathlogMenu()
 			drawCreatureStatisticsTab(container)
 		elseif group == "LogTab" then
 			drawLogTab(container)
+		elseif group == "WatchListTab" then
+			drawWatchListTab(container)
 		end
 	end
 
