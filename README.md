@@ -18,12 +18,12 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 * Can be set to guild only
 
 ### Highly customizable Death Alerts
-![DeathAlert](deathalert.png)
+![DeathAlert](git_images/deathalert.png)
 
 ### Browse the Deathlog
 * Search by name, level, class, race, etc..
 
-![Deathlog](deathlog_deathlog.png)
+![Deathlog](git_images/deathlog_deathlog.png)
 
 ### Deathlog Statistics per Zone
 
@@ -31,33 +31,33 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 * List of deadliest creatures for each Zone
 * Death statistics by class list and probability density function graph
 
-![Westfall death statistics](statistics_westfall.png)
+![Westfall death statistics](git_images/statistics_westfall.png)
 
 ### Deathlog Statistics per Instance
 
 * View death stats per instance.  (WIP Needs more data)
 
-![Instance Stats](instance_stats.png)
+![Instance Stats](git_images/instance_stats.png)
 
 ### Deathlog Statistics by NPC/Creature
 
 * See what creatures do the most killing in Azeroth. Normalized and total kill ranking
 * Creature locations and models
 
-![Instance Stats](creature_stats.png)
+![Instance Stats](git_images/creature_stats.png)
 
 ### Customizable Deathlog (minilog widget)
 
 * Configure columns of the deathlog
 * Configure font of the deathlog
 
-![custom deathlog](deathlog_custom.png)
+![custom deathlog](git_images/deathlog_custom.png)
 
 ### Heatmap Indicator
 
 * Skull icon which turns red when the player is in a dangerous area
 
-![heatmap icon](heatmap_icon.png)
+![heatmap icon](git_images/heatmap_icon.png)
 
 ### Heatmap WorldMap Overlay
 
@@ -72,4 +72,4 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 
 * View deadly ranking in npc hover over tooltip
 
-![tooltip](tooltip_mod.png)
+![tooltip](git_images/tooltip_mod.png)
