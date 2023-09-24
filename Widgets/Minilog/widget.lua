@@ -129,10 +129,10 @@ local subtitle_metadata = {
 		80,
 		function(_entry)
 			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
-			if L.class_table[class_str] then 
-				if RAID_CLASS_COLORS[L.class_table[class_str]:upper()] then
+			if Deathlog_L.class_table[class_str] then
+				if RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()] then
 					return "|c"
-						.. RAID_CLASS_COLORS[L.class_table[class_str]:upper()].colorStr
+						.. RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()].colorStr
 						.. (_entry.player_data["name"] or "")
 						.. "|r"
 				end
@@ -179,9 +179,9 @@ local subtitle_metadata = {
 		function(_entry)
 			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
 			if class_str then
-				if L.class_table[class_str] then 
-					if RAID_CLASS_COLORS[L.class_table[class_str]:upper()] then
-						return "|c" .. RAID_CLASS_COLORS[L.class_table[class_str]:upper()].colorStr .. class_str .. "|r"
+				if Deathlog_L.class_table[class_str] then
+					if RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()] then
+						return "|c" .. RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()].colorStr .. class_str .. "|r"
 					end
 				end
 			end
