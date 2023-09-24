@@ -10,8 +10,8 @@ strings_ko = {
 	death_alert_default_drown_message="<level>레벨 <race> <class> <name> 가\n <zone> 에서 익사로 죽었습니다.",
 	death_alert_default_slime_message="<level>레벨 <race> <class> <name> 가\n <zone> 에서 산성에 죽었습니다.",
 	death_alert_default_lava_message="<level>레벨 <race> <class> <name> 가\n <zone> 에서 용암에 빠져 죽었습니다.",
-	death_alert_default_fire_message="<level>레벨 <race> <class> <name> 가\n <zone> 에서 불에 의해 죽었습니다.\n",
-	death_alert_default_fatigue_message="<level> <race> <class> <name> 가\n <zone> 에서 탈진으로 사망하였습니다.\n",
+	death_alert_default_fire_message="<level>레벨 <race> <class> <name> 가\n <zone> 에서 불에 타 죽었습니다.",
+	death_alert_default_fatigue_message="<level>레벨 <race> <class> <name> 가\n <zone> 에서 탈진으로 사망하였습니다.",
     tab_table = {
 		{ value = "ClassStatisticsTab", text = "직업 통계" },
 		{ value = "CreatureStatisticsTab", text = "사망 통계" },
