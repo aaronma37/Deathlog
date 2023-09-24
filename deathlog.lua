@@ -61,8 +61,8 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject(addon
 	end,
 	OnTooltipShow = function(tooltip)
 		tooltip:AddLine(addonName)
-		tooltip:AddLine(L.minimap_btn_left_click)
-		tooltip:AddLine(L.minimap_btn_right_click ..GAMEOPTIONS_MENU)
+		tooltip:AddLine(Deathlog_L.minimap_btn_left_click)
+		tooltip:AddLine(Deathlog_L.minimap_btn_right_click ..GAMEOPTIONS_MENU)
 	end
 })
 local function initMinimapButton()
