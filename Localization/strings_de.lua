@@ -14,32 +14,51 @@ strings_de = {
 	death_alert_default_fatigue_message = "<name> the <race> <class> has died from fatigue.\n at lvl <level> in <zone>.",
 	corpse_word = "Leichnam",
 	of_word = "von",
+	class_word = "Klasse",
+	killed_by_word = "Getötet von",
+	zone_instance_word = "Zone/Instanz",
+	date_word = "Datum",
+	last_words_word = "Letzte Worte",
+	death_word = "Tod",
+	guild_word = "Gilde",
+	race_word = "Rasse",
+	class_table = {
+		Krieger = "warrior";
+		Schurke = "rogue";
+		Magier = "mage";
+		Priester = "priest";
+		Paladin = "paladin";
+		Schamane = "shaman";
+		Druide = "druid";
+		Hexenmeister = "warlock";
+	   -- Hunter is missing because of ä, don't know how this works in LUA
+	},
 	tab_table = {
-		{ value = "ClassStatisticsTab", text = "Class Statistics" },
-		{ value = "CreatureStatisticsTab", text = "Creature Statistics" },
-		{ value = "InstanceStatisticsTab", text = "Instance Statistics" },
-		{ value = "StatisticsTab", text = "Zone Statistics" },
-		{ value = "LogTab", text = "Search" },
+		{ value = "ClassStatisticsTab", text = "Klassenstatistik" },
+		{ value = "CreatureStatisticsTab", text = "Kreaturenstatistik" },
+		{ value = "InstanceStatisticsTab", text = "Instanzenstatistik" },
+		{ value = "StatisticsTab", text = "Zonenstatistik" },
+		{ value = "LogTab", text = "Suche" },
 	},
 	instance_tbl = {
-		{ 33, "SHADOWFANGKEEP", "Shadowfang Keep" },
-		{ 36, "DEADMINES", "Deadmines" },
-		{ 34, "STORMWINDSTOCKADES", "Stockades" },
-		{ 43, "WAILINGCAVERNS", "Wailing Caverns" },
-		{ 47, "RAZORFENKRAUL", "Razorfen Kraul" },
-		{ 48, "BLACKFATHOMDEEPS", "Blackfathom Deeps" },
+		{ 33, "SHADOWFANGKEEP", "Burg Shadowfang" },
+		{ 36, "DEADMINES", "Die Todesminen" },
+		{ 34, "STORMWINDSTOCKADES", "Das Verlies" },
+		{ 43, "WAILINGCAVERNS", "Die Höhlen des Wehklagens" },
+		{ 47, "RAZORFENKRAUL", "Der Kral von Razorfen" },
+		{ 48, "BLACKFATHOMDEEPS", "Blackfathom-Tiefe" },
 		{ 90, "GNOMEREGAN", "Gnomeregan" },
-		{ 18, "SCARLETMONASTERY", "Scarlet Monastery" },
+		{ 18, "SCARLETMONASTERY", "Das scharlachrote Kloster" },
 		{ 70, "ULDAMAN", "Uldaman" },
-		{ 109, "SUNKENTEMPLE", "Sunken Temple" },
-		{ 129, "RAZORFENDOWNS", "Razorfen Downs" },
+		{ 109, "SUNKENTEMPLE", "Der Tempel von Atal'Hakkar" },
+		{ 129, "RAZORFENDOWNS", "Die Hügel von Razorfen" },
 		{ 209, "ZULFARAK", "Zul'Farak" },
-		{ 229, "BLACKROCKSPIRE", "Blackrock Spire" },
-		{ 239, "BLACKROCKDEPTHS", "Blackrock Depths" },
+		{ 229, "BLACKROCKSPIRE", "Schwarzfelsspitze" },
+		{ 239, "BLACKROCKDEPTHS", "Blackrocktiefen" },
 		{ 289, "SCHOLOMANCE", "Scholomance" },
 		{ 329, "STRATHOLME", "Stratholme" },
 		{ 349, "MARAUDON", "Maraudon" },
-		{ 429, "DIREMAUL", "Diremaul" },
+		{ 429, "DIREMAUL", "Düsterbruch" },
 	},
 	deathlog_zone_tbl = {
 		["Azeroth"] = 947,
