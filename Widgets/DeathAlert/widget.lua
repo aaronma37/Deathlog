@@ -49,7 +49,7 @@ death_alert_frame.text:SetText(
 		.. " in Elywynn Forest."
 )
 
-death_alert_frame.text:SetFont(L.death_alert_font, 22, "")
+death_alert_frame.text:SetFont(Deathlog_L.death_alert_font, 22, "")
 death_alert_frame.text:SetTextColor(1, 1, 1, 1)
 death_alert_frame.text:SetJustifyH("CENTER")
 death_alert_frame.text:SetParent(death_alert_frame)
@@ -329,13 +329,13 @@ local defaults = {
 	["font_color_g"] = 1,
 	["font_color_b"] = 1,
 	["font_color_a"] = 1,
-	["message"] = L.death_alert_default_message,
-	["fall_message"] = L.death_alert_default_fall_message,
-	["drown_message"] = L.death_alert_default_drown_message,
-	["slime_message"] = L.death_alert_default_slime_message,
-	["lava_message"] = L.death_alert_default_lava_message,
-	["fire_message"] = L.death_alert_default_fire_message,
-	["fatigue_message"] = L.death_alert_default_fatigue_message,
+	["message"] = Deathlog_L.death_alert_default_message,
+	["fall_message"] = Deathlog_L.death_alert_default_fall_message,
+	["drown_message"] = Deathlog_L.death_alert_default_drown_message,
+	["slime_message"] = Deathlog_L.death_alert_default_slime_message,
+	["lava_message"] = Deathlog_L.death_alert_default_lava_message,
+	["fire_message"] = Deathlog_L.death_alert_default_fire_message,
+	["fatigue_message"] = Deathlog_L.death_alert_default_fatigue_message,
 	["min_lvl"] = 1,
 	["min_lvl_player"] = false,
 	["max_lvl"] = MAX_PLAYER_LEVEL,

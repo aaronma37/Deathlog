@@ -1,4 +1,4 @@
-strings_ko = {
+deathlog_strings_ko = {
 	main_font = "Fonts\\2002.ttf",
 	class_font = "Fonts\\2002.ttf",
 	death_alert_font = "Fonts\\2002.ttf",
