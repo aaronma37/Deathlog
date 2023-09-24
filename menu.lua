@@ -1058,28 +1058,7 @@ local function drawLogTab(container)
 			if font_strings[i] and font_strings[i]["Last Words"] then
 				_last_words = font_strings[i]["Last Words"]:GetText() or ""
 			end
-
-			if string.sub(_name, #_name) == "s" then
-				GameTooltip:AddDoubleLine(_name .. "' Death", "Lvl. " .. _level, 1, 1, 1, 0.5, 0.5, 0.5)
-			else
-				GameTooltip:AddDoubleLine(_name .. "'s Death", "Lvl. " .. _level, 1, 1, 1, 0.5, 0.5, 0.5)
-			end
-			GameTooltip:AddLine("Name: " .. _name, 1, 1, 1)
-			GameTooltip:AddLine("Guild: " .. _guild, 1, 1, 1)
-			GameTooltip:AddLine("Race: " .. _race, 1, 1, 1)
-			GameTooltip:AddLine("Class: " .. _class, 1, 1, 1)
-			if deathlog_settings["colored_tooltips"] == nil or deathlog_settings["colored_tooltips"] == false then
-				GameTooltip:AddLine("Killed by: " .. _source, 1, 1, 1)
-				GameTooltip:AddLine("Zone/Instance: " .. _zone, 1, 1, 1)
-			else
-				GameTooltip:AddLine("Killed by: |cfffda172" .. _source .. "|r", 1, 1, 1)
-				GameTooltip:AddLine("Zone/Instance: |cff9fe2bf" .. _zone .. "|r", 1, 1, 1)
-			end
-			GameTooltip:AddLine("Date: " .. _date, 1, 1, 1)
-			if _last_words and _last_words ~= "" then
-				GameTooltip:AddLine("Last words: " .. _last_words, 1, 1, 0, true)
-			end
-
+			deathlog_setTooltip(_name, _level, _guild, _race, _class, _source, _zone, _date, _last_words)
 			GameTooltip:Show()
 		end)
 

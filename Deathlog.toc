@@ -8,7 +8,7 @@
 
 
 ## DefaultState: enabled
-## SavedVariables: deathlog_settings, deathlog_data, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs, dev_class_data
+## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs, dev_class_data
 ## SavedVariablesPerCharacter:
 
 Localization/strings_cn.lua
@@ -66,6 +66,7 @@ Widgets/Minilog/widget.lua
 Widgets/HeatmapIndicator/widget.lua
 Widgets/HeatmapWorldMapOverlay/widget.lua
 Widgets/CreatureRankingTooltip/widget.lua
+Widgets/CorpseTooltip/widget.lua
 Widgets/DeathAlert/widget.lua
 
 menu.lua
