@@ -31,7 +31,7 @@ strings_de = {
 		Schamane = "shaman";
 		Druide = "druid";
 		Hexenmeister = "warlock";
-	   -- Hunter is missing because of ä, don't know how this works in LUA
+		['Jäger'] = "hunter";
 	},
 	tab_table = {
 		{ value = "ClassStatisticsTab", text = "Klassenstatistik" },
