@@ -16,6 +16,25 @@ strings_ko = {
 	of_word = "~의",
 	minimap_btn_left_click = "|cFF666666좌클릭:|r 로그 열기",
 	minimap_btn_right_click = "|cFF666666우클릭:|r ",
+	class_word = "Class",
+	killed_by_word = "Killed by",
+	zone_instance_word = "Zone/Instance",
+	date_word = "Date",
+	last_words_word = "Last words",
+	death_word = "Death",
+	guild_word = "Guild",
+	race_word = "Race",
+	class_table = {
+		Warrior = "warrior";
+		Rogue = "rogue";
+		Mage = "mage";
+		Priest = "priest";
+		Paladin = "paladin";
+		Shaman = "shaman";
+		Druid = "druid";
+		Warlock = "warlock";
+	   	Hunter = "hunter";
+	},
 	tab_table = {
 		{ value = "ClassStatisticsTab", text = "직업 통계" },
 		{ value = "CreatureStatisticsTab", text = "사망 통계" },
