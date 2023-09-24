@@ -41,6 +41,7 @@ local most_deadly_units_normalized = {
 }
 
 deathlog_data = deathlog_data or {}
+deathlog_data_map = deathlog_data_map or {}
 deathlog_settings = deathlog_settings or {}
 
 local deathlog_minimap_button_stub = nil
@@ -236,8 +237,17 @@ DeathNotificationLib_HookOnNewEntry(function(_player_data, _checksum, num_peer_c
 	if deathlog_data == nil then
 		deathlog_data = {}
 	end
+
+	if deathlog_data_map == nil then
+		deathlog_data_map = {}
+	end
+
 	if deathlog_data[realmName] == nil then
 		deathlog_data[realmName] = {}
+	end
+
+	if deathlog_data_map[realmName] == nil then
+		deathlog_data_map[realmName] = {}
 	end
 
 	local function deathlog_modified_fletcher16(_player_data)
@@ -263,6 +273,7 @@ DeathNotificationLib_HookOnNewEntry(function(_player_data, _checksum, num_peer_c
 	deathlog_data[realmName][modified_checksum] = _player_data
 	deathlog_widget_minilog_createEntry(_player_data)
 	Deathlog_DeathAlertPlay(_player_data)
+	deathlog_data_map[realmName][_player_data["name"]] = modified_checksum
 end)
 
 -- DeathNotificationLib_HookOnNewEntrySecure(function()

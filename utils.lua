@@ -41,6 +41,15 @@ deathlog_class_tbl = {
 	["Druid"] = 11,
 }
 
+local environment_damage = {
+	[-2] = "Drowning",
+	[-3] = "Falling",
+	[-4] = "Fatigue",
+	[-5] = "Fire",
+	[-6] = "Lava",
+	[-7] = "Slime",
+}
+
 deathlog_class_colors = {}
 for k, _ in pairs(deathlog_class_tbl) do
 	deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)]
@@ -570,4 +579,101 @@ function deathlog_calculateSkullLocs(_deathlog_data)
 		end
 	end
 	return skull_locs
+end
+
+function deathlog_setTooltipFromEntry(_entry)
+	if _entry == nil then
+		return
+	end
+	local _name = _entry["name"]
+	local _level = _entry["level"]
+	local _guild = _entry["guild"]
+	local _race = nil
+	local _class = nil
+	local _source = id_to_npc[_entry["source_id"]] or environment_damage[_entry["source_id"]] or nil
+	local _zone = nil
+	local _loc = _entry["map_pos"]
+	local _date = nil
+	if _entry["date"] then
+		_date = date("%m/%d/%y", _entry["date"])
+	end
+	local _last_words = nil
+	if _entry["last_words"] ~= nil and not _entry["last_words"]:match("^%s*$") then
+		_last_words = _entry["last_words"]
+	end
+
+	if _entry["race_id"] ~= nil then
+		local race_info = C_CreatureInfo.GetRaceInfo(_entry["race_id"])
+		if race_info then
+			_race = race_info.raceName
+		end
+	end
+
+	if _entry["class_id"] ~= nil then
+		local class_str, _, _ = GetClassInfo(_entry["class_id"])
+		if class_str then
+			_class = class_str
+		end
+	end
+
+	if _entry["map_id"] then
+		local map_info = C_Map.GetMapInfo(_entry["map_id"])
+		if map_info then
+			_zone = map_info.name
+		end
+	elseif _entry["instance_id"] then
+		_zone = (deathlog_id_to_instance_tbl[_entry["instance_id"]] or _entry["instance_id"])
+	end
+	deathlog_setTooltip(_name, _level, _guild, _race, _class, _source, _zone, _date, _last_words)
+end
+
+function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone, _date, _last_words)
+	if _name == nil or _lvl == nil then
+		return
+	end
+	if string.sub(_name, #_name) == "s" then
+		GameTooltip:AddDoubleLine(_name .. "' Death", "Lvl. " .. _lvl, 1, 1, 1, 0.5, 0.5, 0.5)
+	else
+		GameTooltip:AddDoubleLine(_name .. "'s Death", "Lvl. " .. _lvl, 1, 1, 1, 0.5, 0.5, 0.5)
+	end
+
+	if deathlog_settings["minilog"]["tooltip_name"] and _name then
+		GameTooltip:AddLine("Name: " .. _name, 1, 1, 1)
+	end
+	if deathlog_settings["minilog"]["tooltip_guild"] and _guild then
+		GameTooltip:AddLine("Guild: " .. _guild, 1, 1, 1)
+	end
+
+	if deathlog_settings["minilog"]["tooltip_race"] and _race then
+		GameTooltip:AddLine("Race: " .. _race, 1, 1, 1)
+	end
+
+	if deathlog_settings["minilog"]["tooltip_class"] and _class then
+		GameTooltip:AddLine("Class: " .. _class, 1, 1, 1)
+	end
+	if deathlog_settings["colored_tooltips"] == nil or deathlog_settings["colored_tooltips"] == false then
+		if deathlog_settings["minilog"]["tooltip_killedby"] and _source then
+			GameTooltip:AddLine("Killed by: " .. _source, 1, 1, 1)
+		end
+		if deathlog_settings["minilog"]["tooltip_zone"] and _zone then
+			GameTooltip:AddLine("Zone/Instance: " .. _zone, 1, 1, 1)
+		end
+	else
+		if deathlog_settings["minilog"]["tooltip_killedby"] and _source then
+			GameTooltip:AddLine("Killed by: |cfffda172" .. _source .. "|r", 1, 1, 1)
+		end
+		if deathlog_settings["minilog"]["tooltip_zone"] and _zone then
+			GameTooltip:AddLine("Zone/Instance: |cff9fe2bf" .. _zone .. "|r", 1, 1, 1)
+		end
+	end
+
+	if deathlog_settings["minilog"]["tooltip_date"] and _date then
+		GameTooltip:AddLine("Date: " .. _date, 1, 1, 1)
+	end
+
+	if deathlog_settings["minilog"]["tooltip_lastwords"] then
+		if _last_words and _last_words ~= "" then
+			GameTooltip:AddLine("Last words: " .. _last_words, 1, 1, 0, true)
+		end
+	end
 end
