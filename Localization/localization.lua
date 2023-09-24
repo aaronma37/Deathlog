@@ -18,11 +18,12 @@ local function loadLocaleData(localeCode)
     local localeData = localeMap[localeCode] or localeMap["default"]
 
     -- Set the fallback mechanism in case the table is incomplete
-    setmetatable(localeData, {
-        __index = function(table, key)
-            return localeMap["default"][key]
+    local defaultData = localeMap["default"]
+    for key, value in pairs(defaultData) do
+        if not localeData[key] then
+            localeData[key] = value
         end
-    })
+    end
 
     return localeData
 end
