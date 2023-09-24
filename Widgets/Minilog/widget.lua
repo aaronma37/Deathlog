@@ -2,8 +2,8 @@ local ace_refresh_timer_handle = nil
 local entry_cache = {}
 local font_handle = nil
 
-local main_font = L.main_font
-local deathlog_instance_tbl = L.instance_tbl
+local main_font = Deathlog_L.main_font
+local deathlog_instance_tbl = Deathlog_L.instance_tbl
 
 local tmap = {
 	["Warrior"] = { 0, 0.25, 0, 0.25 },
@@ -36,7 +36,7 @@ local presets = {
 }
 
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
-local default_font = L.mini_log_font
+local default_font = Deathlog_L.mini_log_font
 local widget_name = "minilog"
 
 local fonts = LSM30:HashTable("font")
@@ -122,7 +122,7 @@ local death_log_frame = AceGUI:Create("Deathlog_MiniLog")
 death_log_frame.frame:SetMovable(false)
 death_log_frame.frame:EnableMouse(false)
 death_log_frame:SetTitle("Deathlog")
-death_log_frame.titletext:SetFont(L.mini_log_font, 19, "THICK")
+death_log_frame.titletext:SetFont(Deathlog_L.mini_log_font, 19, "THICK")
 local subtitle_metadata = {
 	["ColoredName"] = {
 		"Name",
@@ -395,7 +395,7 @@ local function setupRowEntries()
 				_entry.font_strings[v[1]]:SetWidth(v[2])
 			end
 			_entry.font_strings[v[1]]:SetTextColor(1, 1, 1)
-			_entry.font_strings[v[1]]:SetFont(L.mini_log_font, 14, "")
+			_entry.font_strings[v[1]]:SetFont(Deathlog_L.mini_log_font, 14, "")
 		end
 
 		_entry.background = _entry.frame:CreateTexture(nil, "OVERLAY")

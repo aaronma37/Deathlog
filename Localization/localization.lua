@@ -31,6 +31,6 @@ end
 local localeCode = GetLocale()
 
 -- set global variables for Localization table
-L = loadLocaleData(localeCode)
+Deathlog_L = loadLocaleData(localeCode)
 -- Use it like
 -- SetFont(L.mainFont)

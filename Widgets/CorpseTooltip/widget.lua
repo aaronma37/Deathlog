@@ -3,8 +3,8 @@ local widget_name = "Corpse Tooltip"
 
 local timer_handle = nil
 
-local corpse_word = L.corpse_word
-local of_word = L.of_word
+local corpse_word = Deathlog_L.corpse_word
+local of_word = Deathlog_L.of_word
 
 local function checkForEntryAndSetTooltip()
 	if timer_handle then
