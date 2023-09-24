@@ -3,6 +3,9 @@ local widget_name = "Corpse Tooltip"
 
 local timer_handle = nil
 
+local corpse_word = L.corpse_word
+local of_word = L.of_word
+
 local function checkForEntryAndSetTooltip()
 	if timer_handle then
 		timer_handle:Cancel()
@@ -11,9 +14,9 @@ local function checkForEntryAndSetTooltip()
 		local text = _G["GameTooltipTextLeft1"]:GetText()
 		if text ~= nil then
 			local a, b = strsplit(" ", text, 2)
-			if a == "Corpse" then
+			if a == corpse_word then
 				local c, _name = strsplit(" ", b, 2)
-				if c == "of" then
+				if c == of_word then
 					local realmName = GetRealmName()
 					local _entry = deathlog_data[realmName][deathlog_data_map[realmName][_name]]
 					deathlog_setTooltipFromEntry(_entry)
