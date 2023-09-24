@@ -14,6 +14,25 @@ strings_es = {
 	death_alert_default_fatigue_message = "<name> the <race> <class> has died from fatigue.\n at lvl <level> in <zone>.",
 	corpse_word = "Cadáver",
 	of_word = "de",
+	class_word = "Class",
+	killed_by_word = "Killed by",
+	zone_instance_word = "Zone/Instance",
+	date_word = "Date",
+	last_words_word = "Last words",
+	death_word = "Death",
+	guild_word = "Guild",
+	race_word = "Race",
+	class_table = {
+		Warrior = "warrior";
+		Rogue = "rogue";
+		Mage = "mage";
+		Priest = "priest";
+		Paladin = "paladin";
+		Shaman = "shaman";
+		Druid = "druid";
+		Warlock = "warlock";
+	   	Hunter = "hunter";
+	},
 	tab_table = {
 		{ value = "ClassStatisticsTab", text = "Class Statistics" },
 		{ value = "CreatureStatisticsTab", text = "Creature Statistics" },

@@ -14,6 +14,25 @@ strings_ko = {
 	death_alert_default_fatigue_message = "<level>레벨 <race> <class> <name> 가\n <zone> 에서 탈진으로 사망하였습니다.",
 	corpse_word = "시체",
 	of_word = "~의",
+	class_word = "Class",
+	killed_by_word = "Killed by",
+	zone_instance_word = "Zone/Instance",
+	date_word = "Date",
+	last_words_word = "Last words",
+	death_word = "Death",
+	guild_word = "Guild",
+	race_word = "Race",
+	class_table = {
+		Warrior = "warrior";
+		Rogue = "rogue";
+		Mage = "mage";
+		Priest = "priest";
+		Paladin = "paladin";
+		Shaman = "shaman";
+		Druid = "druid";
+		Warlock = "warlock";
+	   	Hunter = "hunter";
+	},
 	tab_table = {
 		{ value = "ClassStatisticsTab", text = "직업 통계" },
 		{ value = "CreatureStatisticsTab", text = "사망 통계" },
