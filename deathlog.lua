@@ -16,6 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
+local addonName, addon = ...
 
 local save_precompute = false
 local use_precomputed = true
@@ -46,13 +47,23 @@ deathlog_settings = deathlog_settings or {}
 
 local deathlog_minimap_button_stub = nil
 local deathlog_minimap_button_info = {}
-local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject("Deathlog", {
+local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject(addonName, {
 	type = "data source",
-	text = "Deathlog",
+	text = addonName,
 	icon = "Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull",
 	OnClick = function(self, btn)
-		deathlogShowMenu(deathlog_data, general_stats, log_normal_params)
+		if btn == "LeftButton" then
+			deathlogShowMenu(deathlog_data, general_stats, log_normal_params)
+		else
+			InterfaceAddOnsList_Update()
+			InterfaceOptionsFrame_OpenToCategory(addonName)
+		end
 	end,
+	OnTooltipShow = function(tooltip)
+		tooltip:AddLine(addonName)
+		tooltip:AddLine(Deathlog_L.minimap_btn_left_click)
+		tooltip:AddLine(Deathlog_L.minimap_btn_right_click ..GAMEOPTIONS_MENU)
+	end
 })
 local function initMinimapButton()
 	deathlog_minimap_button_stub = LibStub("LibDBIcon-1.0", true)

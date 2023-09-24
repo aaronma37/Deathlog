@@ -1131,7 +1131,7 @@ local function drawLogTab(container)
 
 	-- 	local font_str = font_container.import_hc_button:GetFontString()
 	-- 	font_str:SetPoint("TOPLEFT", 12, -1)
-	-- 	font_str:SetFont(L.menu_font, 16, "")
+	-- 	font_str:SetFont(Deathlog_L.menu_font, 16, "")
 	-- end
 
 	-- font_container.import_hc_button:SetScript("OnClick", function()
