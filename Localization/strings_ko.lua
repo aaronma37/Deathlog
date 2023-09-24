@@ -14,6 +14,8 @@ strings_ko = {
 	death_alert_default_fatigue_message = "<level>레벨 <race> <class> <name> 가\n <zone> 에서 탈진으로 사망하였습니다.",
 	corpse_word = "시체",
 	of_word = "~의",
+	minimap_btn_left_click = "|cFF666666좌클릭:|r 로그 열기",
+	minimap_btn_right_click = "|cFF666666우클릭:|r ",
 	tab_table = {
 		{ value = "ClassStatisticsTab", text = "직업 통계" },
 		{ value = "CreatureStatisticsTab", text = "사망 통계" },
