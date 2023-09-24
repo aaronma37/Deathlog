@@ -22,7 +22,7 @@ average_class_container:SetSize(100, 100)
 average_class_container:Show()
 average_class_container.configure_for = "map"
 
-local class_font = L.class_font
+local class_font = Deathlog_L.class_font
 
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl

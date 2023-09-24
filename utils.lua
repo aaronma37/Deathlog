@@ -20,14 +20,14 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --
 --
 
-deathlog_instance_tbl = L.instance_tbl
+deathlog_instance_tbl = Deathlog_L.instance_tbl
 
 deathlog_id_to_instance_tbl = {}
 for k, v in pairs(deathlog_instance_tbl) do
 	deathlog_id_to_instance_tbl[v] = k
 end
 
-deathlog_zone_tbl = L.deathlog_zone_tbl
+deathlog_zone_tbl = Deathlog_L.deathlog_zone_tbl
 
 deathlog_class_tbl = {
 	["Warrior"] = 1,
