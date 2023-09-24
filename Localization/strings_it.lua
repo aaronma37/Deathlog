@@ -1,4 +1,4 @@
-strings_it = {
+deathlog_strings_it = {
 	main_font = "Fonts\\FRIZQT__.TTF",
 	class_font = "Fonts\\blei00d.TTF",
 	death_alert_font = "Fonts\\blei00d.TTF",

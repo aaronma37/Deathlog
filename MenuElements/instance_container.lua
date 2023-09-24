@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
-local instance_tbl = L.instance_tbl
+local instance_tbl = Deathlog_L.instance_tbl
 
 local instance_container = CreateFrame("Frame")
 instance_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
@@ -42,7 +42,7 @@ local function createInstanceButton(path_postfix, title_text)
 
 	frame.instance_str = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	frame.instance_str:SetPoint("CENTER", frame.instance_texture, "CENTER", 0, -20)
-	frame.instance_str:SetFont(L.menu_font, 15, "OUTLINE")
+	frame.instance_str:SetFont(Deathlog_L.menu_font, 15, "OUTLINE")
 	frame.instance_str:SetTextColor(1, 1, 1, 1)
 	frame.instance_str:SetJustifyH("CENTER")
 	frame.instance_str:SetText(title_text)
