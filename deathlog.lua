@@ -62,8 +62,8 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject(addon
 	OnTooltipShow = function(tooltip)
 		tooltip:AddLine(addonName)
 		tooltip:AddLine(Deathlog_L.minimap_btn_left_click)
-		tooltip:AddLine(Deathlog_L.minimap_btn_right_click ..GAMEOPTIONS_MENU)
-	end
+		tooltip:AddLine(Deathlog_L.minimap_btn_right_click .. GAMEOPTIONS_MENU)
+	end,
 })
 local function initMinimapButton()
 	deathlog_minimap_button_stub = LibStub("LibDBIcon-1.0", true)
@@ -126,6 +126,9 @@ end
 local function handleEvent(self, event, ...)
 	if event == "PLAYER_ENTERING_WORLD" then
 		initMinimapButton()
+		if deathlog_data[GetRealmName()] and deathlog_data_map[GetRealmName()] then
+			DeathNotificationLib_attachDB(deathlog_data[GetRealmName()], deathlog_data_map[GetRealmName()])
+		end
 		if use_precomputed then
 			general_stats = precomputed_general_stats
 			log_normal_params = precomputed_log_normal_params
@@ -242,8 +245,7 @@ local options = {
 LibStub("AceConfig-3.0"):RegisterOptionsTable("Deathlog", options)
 optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("Deathlog", "Deathlog", nil)
 
--- Hook to DeathNotificationLib
-DeathNotificationLib_HookOnNewEntry(function(_player_data, _checksum, num_peer_checks, in_guild)
+local function newEntry(_player_data, _checksum, num_peer_checks, in_guild)
 	local realmName = GetRealmName()
 	if deathlog_data == nil then
 		deathlog_data = {}
@@ -285,7 +287,16 @@ DeathNotificationLib_HookOnNewEntry(function(_player_data, _checksum, num_peer_c
 	deathlog_widget_minilog_createEntry(_player_data)
 	Deathlog_DeathAlertPlay(_player_data)
 	deathlog_data_map[realmName][_player_data["name"]] = modified_checksum
-end)
+end
+
+-- Hook to DeathNotificationLib
+DeathNotificationLib_HookOnNewEntry(newEntry)
+
+-- C_Timer.After(4, function()
+-- DeathNotificationLib_queryTarget("Hogbishop", "Yazpad")
+-- DeathNotificationLib_queryYell("Hogbishop")
+-- Deathlog_queryGuild("Hogbishop")
+-- end)
 
 -- DeathNotificationLib_HookOnNewEntrySecure(function()
 -- 	print("secure!")
