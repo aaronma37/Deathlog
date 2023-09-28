@@ -1145,7 +1145,7 @@ local function drawWatchListTab(container)
 	local title_label = AceGUI:Create("Heading")
 	title_label:SetFullWidth(true)
 	title_label:SetText("Watch List")
-	title_label.label:SetFont(L.menu_font, 24, "")
+	title_label.label:SetFont(Deathlog_L.menu_font, 24, "")
 	scroll_frame:AddChild(title_label)
 
 	local description_label = AceGUI:Create("Label")
@@ -1153,7 +1153,7 @@ local function drawWatchListTab(container)
 	description_label:SetText(
 		"[Experimental] Add players of interest to a watch list.  If a player on this list dies while you are logged off, the deathlog system will try to notify you when you log in.  Add a description and icon to remember the player by."
 	)
-	description_label.label:SetFont(L.menu_font, 14, "")
+	description_label.label:SetFont(Deathlog_L.menu_font, 14, "")
 	description_label.label:SetTextColor(0.6, 0.6, 0.6, 1.0)
 	description_label.label:SetJustifyH("CENTER")
 	scroll_frame:AddChild(description_label)

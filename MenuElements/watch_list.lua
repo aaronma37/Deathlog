@@ -34,7 +34,7 @@ local environment_damage = {
 
 local selected_entry = 1
 
-local main_font = L.main_font
+local main_font = Deathlog_L.main_font
 
 local deathlog_tabcontainer = nil
 
@@ -65,7 +65,42 @@ local subtitle_data = {
 	},
 	{
 		"Description",
-		200,
+		300,
+		function(_entry)
+			return _entry["description"] or ""
+		end,
+	},
+	{
+		"Class",
+		100,
+		function(_entry)
+			return _entry["description"] or ""
+		end,
+	},
+	{
+		"Lvl",
+		50,
+		function(_entry)
+			return _entry["description"] or ""
+		end,
+	},
+	{
+		"Status",
+		90,
+		function(_entry)
+			return _entry["description"] or ""
+		end,
+	},
+	{
+		"Last Words",
+		310,
+		function(_entry)
+			return _entry["description"] or ""
+		end,
+	},
+	{
+		"Action",
+		60,
 		function(_entry)
 			return _entry["description"] or ""
 		end,
@@ -76,8 +111,8 @@ local watch_list_frame = CreateFrame("Frame")
 watch_list_frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 watch_list_frame:SetSize(100, 100)
 watch_list_frame:Show()
-local row_entry = {}
 local font_strings = {} -- idx/columns
+local description_frame = {} -- idx/columns
 local header_strings = {} -- columns
 local row_backgrounds = {} --idx
 
@@ -221,6 +256,65 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 	watch_list_frame:SetHeight(880)
 	watch_list_frame:SetClipsChildren(false)
 
+	if watch_list_frame.name_box == nil then
+		watch_list_frame.name_box = CreateFrame("EditBox", nil, watch_list_frame, "InputBoxTemplate")
+	end
+
+	if watch_list_frame.description_box == nil then
+		watch_list_frame.description_box = CreateFrame("EditBox", nil, watch_list_frame, "InputBoxTemplate")
+	end
+
+	if watch_list_frame.lvl_max_search_box == nil then
+		watch_list_frame.lvl_max_search_box = CreateFrame("EditBox", nil, watch_list_frame, "InputBoxTemplate")
+	end
+
+	if watch_list_frame.name_box.text == nil then
+		watch_list_frame.name_box.text = watch_list_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+
+	if watch_list_frame.description_box.text == nil then
+		watch_list_frame.description_box.text = watch_list_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+	watch_list_frame.name_box:SetPoint("TOPLEFT", watch_list_frame, "TOPLEFT", 0, 20)
+	watch_list_frame.name_box:SetPoint("BOTTOMLEFT", watch_list_frame, "TOPLEFT", 75, -50)
+	watch_list_frame.name_box:SetWidth(100)
+	watch_list_frame.name_box:SetFont(Deathlog_L.deadliest_creature_container_font, 14, "")
+	watch_list_frame.name_box:SetMovable(false)
+	watch_list_frame.name_box:SetBlinkSpeed(1)
+	watch_list_frame.name_box:SetAutoFocus(false)
+	watch_list_frame.name_box:SetMultiLine(false)
+	watch_list_frame.name_box:SetMaxLetters(20)
+	watch_list_frame.name_box:SetScript("OnEnterPressed", function()
+		watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
+	end)
+
+	if 1 == 1 then
+		return
+	end
+
+	watch_list_frame.name_box.text:SetPoint("LEFT", watch_list_frame.name_box, "LEFT", 0, 15)
+	watch_list_frame.name_box.text:SetFont(Deathlog_L.deadliest_creature_container_font, 12, "")
+	watch_list_frame.name_box.text:SetTextColor(255 / 255, 215 / 255, 0)
+	watch_list_frame.name_box.text:Show()
+
+	watch_list_frame.description_box:SetPoint("TOPLEFT", watch_list_frame.name_box, "TOPRIGHT", 10, 0)
+	watch_list_frame.description_box:SetPoint("BOTTOMLEFT", watch_list_frame.name_box, "BOTTOMRIGHT", 10, 0)
+	watch_list_frame.description_box:SetWidth(300)
+	watch_list_frame.description_box:SetFont(Deathlog_L.deadliest_creature_container_font, 14, "")
+	watch_list_frame.description_box:SetMovable(false)
+	watch_list_frame.description_box:SetBlinkSpeed(1)
+	watch_list_frame.description_box:SetAutoFocus(false)
+	watch_list_frame.description_box:SetMultiLine(false)
+	watch_list_frame.description_box:SetMaxLetters(20)
+	watch_list_frame.description_box:SetScript("OnEnterPressed", function()
+		watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
+	end)
+
+	watch_list_frame.description_box.text:SetPoint("LEFT", watch_list_frame.description_box, "LEFT", 0, 15)
+	watch_list_frame.description_box.text:SetFont(Deathlog_L.deadliest_creature_container_font, 12, "")
+	watch_list_frame.description_box.text:SetTextColor(255 / 255, 215 / 255, 0)
+	watch_list_frame.description_box.text:Show()
+
 	local last_frame = watch_list_frame
 	for i = 1, max_rows do
 		local idx = 101 - i
@@ -337,7 +431,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 		-- end)
 	end
 
-	header_strings[subtitle_data[1][1]]:SetPoint("TOPLEFT", font_strings[1]["Name"], "TOPLEFT", 0, 20)
+	header_strings[subtitle_data[1][1]]:SetPoint("TOPLEFT", font_strings[1]["Name"], "TOPLEFT", 0, 40)
 	header_strings[subtitle_data[1][1]]:Show()
 	for _, v in ipairs(subtitle_data) do
 		header_strings[v[1]]:SetParent(watch_list_frame)
