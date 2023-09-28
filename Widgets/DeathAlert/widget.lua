@@ -116,10 +116,12 @@ function Deathlog_DeathAlertPlay(entry)
 	end
 	alert_cache[entry["name"]] = 1
 
-	if deathlog_settings[widget_name]["alert_sound"] == "default_hardcore" then
-		PlaySound(8959)
-	else
-		PlaySoundFile(sounds[deathlog_settings[widget_name]["alert_sound"]])
+	if deathlog_settings[widget_name]["enable_sound"] then
+		if deathlog_settings[widget_name]["alert_sound"] == "default_hardcore" then
+			PlaySound(8959)
+		else
+			PlaySoundFile(sounds[deathlog_settings[widget_name]["alert_sound"]])
+		end
 	end
 	death_alert_frame.text:SetText("Some text")
 
@@ -316,6 +318,7 @@ end
 
 local defaults = {
 	["enable"] = true,
+	["enable_sound"] = true,
 	["pos_x"] = 0,
 	["pos_y"] = 250,
 	["size_x"] = 600,
@@ -782,6 +785,19 @@ options = {
 			end,
 			set = function()
 				deathlog_settings[widget_name]["enable"] = not deathlog_settings[widget_name]["enable"]
+				Deathlog_DeathAlertWidget_applySettings()
+			end,
+		},
+		enable_sound = {
+			type = "toggle",
+			name = "Enable Sound",
+			desc = "Enable alert sound.",
+			order = 0,
+			get = function()
+				return deathlog_settings[widget_name]["enable_sound"]
+			end,
+			set = function()
+				deathlog_settings[widget_name]["enable_sound"] = not deathlog_settings[widget_name]["enable_sound"]
 				Deathlog_DeathAlertWidget_applySettings()
 			end,
 		},
