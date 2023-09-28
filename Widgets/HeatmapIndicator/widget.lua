@@ -9,7 +9,8 @@ heatmap_indicator_frame:EnableMouse(true)
 heatmap_indicator_frame:Show()
 
 heatmap_indicator_frame.tex = heatmap_indicator_frame:CreateTexture(nil, "OVERLAY")
-heatmap_indicator_frame.tex:SetAllPoints()
+heatmap_indicator_frame.tex:SetParent(UIParent)
+heatmap_indicator_frame.tex:SetPoint("CENTER", heatmap_indicator_frame, "CENTER", 0, 0)
 heatmap_indicator_frame.tex:SetDrawLayer("OVERLAY", 7)
 heatmap_indicator_frame.tex:SetVertexColor(1, 1, 1, 1)
 heatmap_indicator_frame.tex:SetHeight(40)
@@ -202,9 +203,12 @@ function Deathlog_HIWidget_applySettings()
 		deathlog_settings[widget_name]["pos_x"],
 		deathlog_settings[widget_name]["pos_y"]
 	)
-	heatmap_indicator_frame.tex:SetAllPoints()
+	heatmap_indicator_frame.tex:SetPoint("CENTER", heatmap_indicator_frame, "CENTER", 0, 0)
 
-	heatmap_indicator_frame:SetSize(deathlog_settings[widget_name]["size_x"], deathlog_settings[widget_name]["size_y"])
+	heatmap_indicator_frame.tex:SetSize(
+		deathlog_settings[widget_name]["size_x"],
+		deathlog_settings[widget_name]["size_y"]
+	)
 
 	if deathlog_settings[widget_name]["show_value"] then
 		heatmap_indicator_frame.numeric_text:Show()

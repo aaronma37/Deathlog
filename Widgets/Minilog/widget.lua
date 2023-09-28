@@ -73,12 +73,14 @@ death_log_icon_frame:Show()
 
 local black_round_tex = death_log_icon_frame:CreateTexture(nil, "OVERLAY")
 black_round_tex:SetPoint("CENTER", death_log_icon_frame, "CENTER", -5, 4)
+black_round_tex:SetParent(UIParent)
 black_round_tex:SetDrawLayer("OVERLAY", 2)
 black_round_tex:SetHeight(40)
 black_round_tex:SetWidth(40)
 black_round_tex:SetTexture("Interface\\PVPFrame\\PVP-Separation-Circle-Cooldown-overlay")
 
 local hc_fire_tex = death_log_icon_frame:CreateTexture(nil, "OVERLAY")
+hc_fire_tex:SetParent(UIParent)
 hc_fire_tex:SetPoint("CENTER", death_log_icon_frame, "CENTER", -4, 4)
 hc_fire_tex:SetDrawLayer("OVERLAY", 3)
 hc_fire_tex:SetHeight(25)
@@ -86,6 +88,7 @@ hc_fire_tex:SetWidth(25)
 hc_fire_tex:SetTexture("Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull")
 
 local gold_ring_tex = death_log_icon_frame:CreateTexture(nil, "OVERLAY")
+gold_ring_tex:SetParent(UIParent)
 gold_ring_tex:SetPoint("CENTER", death_log_icon_frame, "CENTER", 0, 0)
 gold_ring_tex:SetDrawLayer("OVERLAY", 4)
 gold_ring_tex:SetHeight(50)
@@ -181,7 +184,10 @@ local subtitle_metadata = {
 			if class_str then
 				if Deathlog_L.class_table[class_str] then
 					if RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()] then
-						return "|c" .. RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()].colorStr .. class_str .. "|r"
+						return "|c"
+							.. RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()].colorStr
+							.. class_str
+							.. "|r"
 					end
 				end
 			end
