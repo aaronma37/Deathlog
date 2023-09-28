@@ -64,7 +64,7 @@ end
 
 local options = nil
 local optionsframe = nil
-function Deathlog_CRTWidget_applySettings()
+function Deathlog_CTTWidget_applySettings()
 	applyDefaults(defaults)
 
 	if deathlog_settings[widget_name]["enable_ctt"] then
@@ -79,7 +79,7 @@ end
 
 local function forceReset()
 	applyDefaults(defaults, true)
-	Deathlog_CRTWidget_applySettings()
+	Deathlog_CTTWidget_applySettings()
 end
 
 options = {
@@ -98,7 +98,7 @@ options = {
 			end,
 			set = function()
 				deathlog_settings[widget_name]["enable_ctt"] = not deathlog_settings[widget_name]["enable_ctt"]
-				Deathlog_CRTWidget_applySettings()
+				Deathlog_CTTWidget_applySettings()
 			end,
 		},
 	},

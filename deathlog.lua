@@ -80,6 +80,7 @@ end
 local function loadWidgets()
 	Deathlog_minilog_applySettings(true)
 	Deathlog_CRTWidget_applySettings()
+	Deathlog_CTTWidget_applySettings()
 	Deathlog_HIWidget_applySettings()
 	Deathlog_HWMWidget_applySettings()
 	Deathlog_DeathAlertWidget_applySettings()

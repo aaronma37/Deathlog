@@ -2,6 +2,7 @@ local loaded_crt = false
 local widget_name = "Creature Ranking Tooltip"
 
 local creature_ranking = {}
+local creature_ranking_by_zone = {}
 local creature_avg_lvl = {}
 
 function Deathlog_activateCreatureRankingTooltip()
@@ -17,11 +18,43 @@ function Deathlog_activateCreatureRankingTooltip()
 				end
 			end
 
+			if deathlog_settings[widget_name]["by_zone"] then
+				local a, _ = GameTooltip:GetUnit()
+				local _zone = C_Map.GetBestMapForUnit("player")
+				local instance_id = nil
+				local zone_name = ""
+				if _zone then
+					local map_info = C_Map.GetMapInfo(_zone)
+					if map_info then
+						zone_name = map_info.name
+					else
+						zone_name = ""
+					end
+				else
+					local _, _, _, _, _, _, _, _instance_id, _, _ = GetInstanceInfo()
+					zone_name = (deathlog_id_to_instance_tbl[_instance_id] or _instance_id)
+				end
+				if creature_ranking_by_zone[_zone] then
+					local source_id = npc_to_id[a]
+					local rank = creature_ranking_by_zone[_zone][source_id]
+					if rank then
+						GameTooltip:AddLine(
+							"#" .. rank .. " deadliest in " .. zone_name .. ".",
+							0.6,
+							0.6,
+							0.6,
+							0.6,
+							true
+						)
+					end
+				end
+			end
+
 			if deathlog_settings[widget_name]["enable_avg_lvl"] then
 				local a, _ = GameTooltip:GetUnit()
 				if creature_avg_lvl[a] then
 					GameTooltip:AddLine(
-						"Avg. prey lvl. " .. string.format("%.1f", creature_avg_lvl[a]),
+						"Avg. victim lvl. " .. string.format("%.1f", creature_avg_lvl[a]),
 						0.6,
 						0.6,
 						0.6,
@@ -48,6 +81,7 @@ local defaults = {
 	["enable_crt"] = true,
 	["enable_avg_lvl"] = true,
 	["crt_metric"] = "Normalized Score",
+	["by_zone"] = true,
 }
 
 local function applyDefaults(_defaults, force)
@@ -67,6 +101,7 @@ function Deathlog_CRTWidget_applySettings()
 	applyDefaults(defaults)
 
 	creature_ranking = {}
+	creature_ranking_by_zone = precomputed_most_deadly_by_zone
 	if deathlog_settings[widget_name]["enable_crt"] then
 		if deathlog_settings[widget_name]["crt_metric"] == "Total Kills" then
 			local most_deadly_units = deathlogGetOrdered(precomputed_general_stats, { "all", "all", "all", nil })
@@ -133,7 +168,7 @@ options = {
 		},
 		enable_avg_lvl = {
 			type = "toggle",
-			name = "Show average level of slain prey.",
+			name = "Show average level of slain victim.",
 			desc = "Shows the average level of the player that this creature has kill historically.",
 			width = 1.6,
 			order = 1,
@@ -142,6 +177,20 @@ options = {
 			end,
 			set = function()
 				deathlog_settings[widget_name]["enable_avg_lvl"] = not deathlog_settings[widget_name]["enable_avg_lvl"]
+				Deathlog_CRTWidget_applySettings()
+			end,
+		},
+		by_zone = {
+			type = "toggle",
+			name = "Show rank by zone.",
+			desc = "Shows the rank of the creature by zone.",
+			width = 1.6,
+			order = 1,
+			get = function()
+				return deathlog_settings[widget_name]["by_zone"]
+			end,
+			set = function()
+				deathlog_settings[widget_name]["by_zone"] = not deathlog_settings[widget_name]["by_zone"]
 				Deathlog_CRTWidget_applySettings()
 			end,
 		},
