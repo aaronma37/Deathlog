@@ -8,6 +8,7 @@ local death_alert_styles = {
 	["boss_banner_enemy_icon_small"] = "boss_banner_enemy_icon_small",
 	["boss_banner_enemy_icon_medium"] = "boss_banner_enemy_icon_medium",
 	["boss_banner_enemy_icon_animated"] = "boss_banner_enemy_icon_animated",
+	["text_only"] = "text_only",
 	-- ["lf_animated"] = "lf_animated",
 }
 local LSM30 = LibStub("LibSharedMedia-3.0", true)
@@ -197,6 +198,12 @@ function Deathlog_DeathAlertPlay(entry)
 	)
 
 	death_alert_frame.text:SetText(msg)
+
+	if deathlog_settings[widget_name]["style"] == "text_only" then
+		for _, v in pairs(death_alert_frame.textures) do
+			v:Hide()
+		end
+	end
 
 	if
 		deathlog_settings[widget_name]["style"] == "boss_banner_enemy_icon_small"
@@ -745,6 +752,8 @@ function Deathlog_DeathAlertWidget_applySettings()
 		initializeBossBanner("enemy_icon", "animated")
 	elseif deathlog_settings[widget_name]["style"] == "lf_animated" then
 		initializeLFBanner("enemy_icon", "animated")
+	elseif deathlog_settings[widget_name]["style"] == "text_only" then
+		initializeBossBanner("enemy_icon", "medium")
 	end
 
 	death_alert_frame.text:SetFont(
