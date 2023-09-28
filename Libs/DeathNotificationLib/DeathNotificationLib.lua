@@ -945,7 +945,7 @@ death_notification_lib_event_handler:RegisterEvent("PLAYER_DEAD")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_SAY")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_PARTY")
-death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON")
+-- death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON") -- enable again for queries
 death_notification_lib_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 if tocversion >= 11404 then
 	death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD_DEATHS")
