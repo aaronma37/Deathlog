@@ -29,6 +29,7 @@ local COMM_COMMANDS = {
 	["GUILD_DEATH_NOTIFICATION"] = "4",
 }
 local COMM_QUERY = "Q"
+local comm_query_lock = nil
 local COMM_QUERY_ACK = "R"
 local COMM_COMMAND_DELIM = "$"
 local COMM_FIELD_DELIM = "~"
@@ -175,9 +176,11 @@ function DeathNotificationLib_attachDB(db, db_map)
 	attached_db_map = db_map
 end
 
+local expect_ack = {}
 function DeathNotificationLib_queryGuild(_name)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "GUILD")
 	end
 end
@@ -185,6 +188,7 @@ end
 function DeathNotificationLib_queryTarget(_name, _target)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "WHISPER", _target)
 	end
 end
@@ -192,7 +196,16 @@ end
 function DeathNotificationLib_queryYell(_name)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "YELL")
+	end
+end
+
+function DeathNotificationLib_querySay(_name)
+	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
+	if CTL then
+		expect_ack[_name] = 1
+		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "SAY")
 	end
 end
 
@@ -1104,6 +1117,16 @@ local function handleEvent(self, event, ...)
 		local command, msg, _doublechecksum = string.split(COMM_COMMAND_DELIM, arg[2])
 		if command == COMM_QUERY then
 			local realm = GetRealmName()
+			if comm_query_lock then
+				return
+			end
+			comm_query_lock = C_Timer.NewTimer(3, function()
+				comm_query_lock:Cancel()
+				comm_query_lock = nil
+			end)
+			if expect_ack[msg] == nil then
+				return
+			end
 			if attached_db_map and attached_db_map[msg] and attached_db[attached_db_map[msg]] then
 				local data = attached_db[attached_db_map[msg]]
 				local msg = encodeMessageFull(

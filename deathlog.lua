@@ -293,10 +293,9 @@ end
 -- Hook to DeathNotificationLib
 DeathNotificationLib_HookOnNewEntry(newEntry)
 
--- C_Timer.After(4, function()
--- DeathNotificationLib_queryTarget("Hogbishop", "Yazpad")
+-- local b = C_Timer.NewTicker(0.5, function()
+-- DeathNotificationLib_queryTarget("Hogbishop", UnitName("player"))
 -- DeathNotificationLib_queryYell("Hogbishop")
--- Deathlog_queryGuild("Hogbishop")
 -- end)
 
 -- DeathNotificationLib_HookOnNewEntrySecure(function()
