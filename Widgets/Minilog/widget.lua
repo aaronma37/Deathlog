@@ -95,6 +95,18 @@ gold_ring_tex:SetHeight(50)
 gold_ring_tex:SetWidth(50)
 gold_ring_tex:SetTexture("Interface\\COMMON\\BlueMenuRing")
 
+death_log_icon_frame:HookScript("OnShow", function(self, button)
+	black_round_tex:Show()
+	hc_fire_tex:Show()
+	gold_ring_tex:Show()
+end)
+
+death_log_icon_frame:HookScript("OnHide", function(self, button)
+	black_round_tex:Hide()
+	hc_fire_tex:Hide()
+	gold_ring_tex:Hide()
+end)
+
 local environment_damage = {
 	[-2] = "Drowning",
 	[-3] = "Falling",
