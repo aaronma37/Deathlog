@@ -26,76 +26,6 @@ heatmap_indicator_frame.numeric_text:SetParent(heatmap_indicator_frame)
 heatmap_indicator_frame.numeric_text:SetPoint("BOTTOM", heatmap_indicator_frame, "BOTTOM", 0, 0)
 heatmap_indicator_frame.numeric_text:Show()
 
-local last_calculated_map_id = nil
-
-function updateHeatmap(map_id)
-	if last_calculated_map_id == map_id then
-		return
-	end
-	last_calculated_map_id = map_id
-	if heatmap_indicator_frame.heatmap == nil then
-		heatmap_indicator_frame.heatmap = {}
-		for i = 1, 100 do
-			heatmap_indicator_frame.heatmap[i] = {}
-			for j = 1, 100 do
-				heatmap_indicator_frame.heatmap[i][j] = 0
-			end
-		end
-	end
-
-	for i = 1, 100 do
-		for j = 1, 100 do
-			heatmap_indicator_frame.heatmap[i][j] = 0.0
-		end
-	end
-	local iv = {
-		[1] = {
-			[1] = 0.025,
-			[2] = 0.045,
-			[3] = 0.025,
-		},
-		[2] = {
-			[1] = 0.045,
-			[2] = 0.1,
-			[3] = 0.045,
-		},
-		[3] = {
-			[1] = 0.025,
-			[2] = 0.045,
-			[3] = 0.025,
-		},
-	}
-	local max_intensity = 0
-	-- if _skull_locs[map_id] then
-	-- 	for idx, v in ipairs(_skull_locs[map_id]) do
-	-- 		local x = ceil(v[1] / 10)
-	-- 		local y = ceil(v[2] / 10)
-	-- 		for xi = 1, 3 do
-	-- 			for yj = 1, 3 do
-	-- 				local x_in_map = x - 2 + xi
-	-- 				local y_in_map = y - 2 + yj
-	-- 				if
-	-- 					heatmap_indicator_frame.heatmap[x_in_map]
-	-- 					and heatmap_indicator_frame.heatmap[x_in_map][y_in_map]
-	-- 				then
-	-- 					heatmap_indicator_frame.heatmap[x_in_map][y_in_map] = heatmap_indicator_frame.heatmap[x_in_map][y_in_map]
-	-- 						+ iv[xi][yj]
-	-- 					if heatmap_indicator_frame.heatmap[x_in_map][y_in_map] > max_intensity then
-	-- 						max_intensity = heatmap_indicator_frame.heatmap[x_in_map][y_in_map]
-	-- 					end
-	-- 				end
-	-- 			end
-	-- 		end
-	-- 	end
-	-- end
-
-	for i = 1, 100 do
-		for j = 1, 100 do
-			heatmap_indicator_frame.heatmap[i][j] = heatmap_indicator_frame.heatmap[i][j] / max_intensity
-		end
-	end
-end
-
 local function startUpdate()
 	if heatmap_indicator_frame.ticker == nil then
 		heatmap_indicator_frame.ticker = C_Timer.NewTicker(1, function()
@@ -103,21 +33,28 @@ local function startUpdate()
 			local instance_id = nil
 			local position = nil
 			if map then
+				if precomputed_heatmap_intensity[map] == nil then
+					return
+				end
 				position = C_Map.GetPlayerMapPosition(map, "player")
-
 				local x = ceil(position.x * 100)
 				local y = ceil(position.y * 100)
-				updateHeatmap(map)
-				if heatmap_indicator_frame.heatmap[x][y] < 0.1 then
+				if precomputed_heatmap_intensity[map][x] == nil then
+					return
+				end
+				local intensity = precomputed_heatmap_intensity[map][x][y]
+				if intensity == nil then
+					return
+				end
+
+				if intensity < 0.1 then
 					heatmap_indicator_frame.tex:SetVertexColor(1, 1, 1, 1)
-				elseif heatmap_indicator_frame.heatmap[x][y] < 0.25 then
+				elseif intensity < 0.25 then
 					heatmap_indicator_frame.tex:SetVertexColor(1, 1, 0, 1)
 				else
 					heatmap_indicator_frame.tex:SetVertexColor(1, 0, 0, 1)
 				end
-				heatmap_indicator_frame.numeric_text:SetText(
-					string.format("%.1f", heatmap_indicator_frame.heatmap[x][y] * 10)
-				)
+				heatmap_indicator_frame.numeric_text:SetText(string.format("%.1f", intensity * 10))
 				if deathlog_settings[widget_name]["show_value"] then
 					heatmap_indicator_frame.numeric_text:Show()
 				else
