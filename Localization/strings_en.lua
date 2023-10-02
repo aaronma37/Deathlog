@@ -24,6 +24,7 @@ deathlog_strings_en = {
 	death_word = "Death",
 	guild_word = "Guild",
 	race_word = "Race",
+	show_heatmap = "Show heatmap",
 	class_table = {
 		Warrior = "warrior";
 		Rogue = "rogue";
