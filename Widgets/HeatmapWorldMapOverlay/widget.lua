@@ -39,7 +39,7 @@ if heatmap_wm_overlay_checkbox_frame.heatmap_checkbox == nil then
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetFont(Deathlog_L.menu_font, 14, "OUTLINE")
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetTextColor(0.9, 0.9, 0.9)
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetJustifyH("RIGHT")
-	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetText("Show heatmap")
+	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:SetText(Deathlog_L.show_heatmap)
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox.label:Show()
 end
 

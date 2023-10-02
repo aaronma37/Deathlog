@@ -932,7 +932,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		map_container.heatmap_checkbox.label:SetFont(Deathlog_L.menu_font, 14, "OUTLINE")
 		map_container.heatmap_checkbox.label:SetTextColor(0.9, 0.9, 0.9)
 		map_container.heatmap_checkbox.label:SetJustifyH("RIGHT")
-		map_container.heatmap_checkbox.label:SetText("Show heatmap")
+		map_container.heatmap_checkbox.label:SetText(Deathlog_L.show_heatmap)
 		map_container.heatmap_checkbox.label:Show()
 	end
 	if map_container.heatmap_checkbox then
