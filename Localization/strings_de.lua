@@ -26,15 +26,15 @@ deathlog_strings_de = {
 	race_word = "Rasse",
 	show_heatmap = "Show heatmap",
 	class_table = {
-		Krieger = "warrior";
-		Schurke = "rogue";
-		Magier = "mage";
-		Priester = "priest";
-		Paladin = "paladin";
-		Schamane = "shaman";
-		Druide = "druid";
-		Hexenmeister = "warlock";
-		['Jäger'] = "hunter";
+		Krieger = "warrior",
+		Schurke = "rogue",
+		Magier = "mage",
+		Priester = "priest",
+		Paladin = "paladin",
+		Schamane = "shaman",
+		Druide = "druid",
+		Hexenmeister = "warlock",
+		["Jäger"] = "hunter",
 	},
 	tab_table = {
 		{ value = "ClassStatisticsTab", text = "Klassenstatistik" },
@@ -51,17 +51,39 @@ deathlog_strings_de = {
 		{ 47, "RAZORFENKRAUL", "Der Kral von Razorfen" },
 		{ 48, "BLACKFATHOMDEEPS", "Blackfathom-Tiefe" },
 		{ 90, "GNOMEREGAN", "Gnomeregan" },
-		{ 18, "SCARLETMONASTERY", "Das scharlachrote Kloster" },
+		{ 189, "SCARLETMONASTERY", "Das scharlachrote Kloster" },
 		{ 70, "ULDAMAN", "Uldaman" },
 		{ 109, "SUNKENTEMPLE", "Der Tempel von Atal'Hakkar" },
 		{ 129, "RAZORFENDOWNS", "Die Hügel von Razorfen" },
 		{ 209, "ZULFARAK", "Zul'Farak" },
 		{ 229, "BLACKROCKSPIRE", "Schwarzfelsspitze" },
-		{ 239, "BLACKROCKDEPTHS", "Blackrocktiefen" },
+		{ 230, "BLACKROCKDEPTHS", "Blackrocktiefen" },
 		{ 289, "SCHOLOMANCE", "Scholomance" },
 		{ 329, "STRATHOLME", "Stratholme" },
+		{ 389, "RAGEFIRECHASM", "Ragefire Chasm" },
 		{ 349, "MARAUDON", "Maraudon" },
 		{ 429, "DIREMAUL", "Düsterbruch" },
+	},
+	instance_map = {
+		["Burg Shadowfang"] = 33,
+		["Das Verlies"] = 34,
+		["Die Todesminen"] = 36,
+		["Die Höhlen des Wehklagens"] = 43,
+		["Der Kral von Razorfen"] = 47,
+		["Blackfathom-Tiefe"] = 48,
+		["Uldaman"] = 70,
+		["Gnomeregan"] = 90,
+		["Der Tempel von Atal'Hakkar"] = 109,
+		["Die Hügel von Razorfen"] = 129,
+		["Das scharlachrote Kloster"] = 189,
+		["Zul'Farak"] = 209,
+		["Schwarzfelsspitze"] = 229,
+		["Blackrocktiefen"] = 230,
+		["Scholomance"] = 289,
+		["Stratholme"] = 329,
+		["Maraudon"] = 349,
+		["Ragefire Chasm"] = 389,
+		["Düsterbruch"] = 429,
 	},
 	deathlog_zone_tbl = {
 		["Azeroth"] = 947,

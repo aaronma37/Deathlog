@@ -39,7 +39,7 @@ local deathlog_tabcontainer = nil
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl
 local zone_tbl = deathlog_zone_tbl
-local instance_tbl = deathlog_instance_tbl
+local instance_tbl = Deathlog_L.instance_map
 
 local deathlog_menu = nil
 
