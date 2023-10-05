@@ -24,7 +24,7 @@ deathlog_instance_tbl = Deathlog_L.instance_tbl
 
 deathlog_id_to_instance_tbl = {}
 for k, v in pairs(deathlog_instance_tbl) do
-	deathlog_id_to_instance_tbl[v] = k
+	deathlog_id_to_instance_tbl[v[1]] = v[3]
 end
 
 deathlog_zone_tbl = Deathlog_L.deathlog_zone_tbl
