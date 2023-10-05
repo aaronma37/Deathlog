@@ -33,6 +33,7 @@ local environment_damage = {
 }
 
 local selected_entry = 1
+local edit_box_type = nil
 
 local main_font = Deathlog_L.main_font
 
@@ -45,64 +46,52 @@ local instance_tbl = deathlog_instance_tbl
 
 local deathlog_watch_list = nil
 
-local function EntryData(name, description)
-	return {
-		["name"] = name,
-		["description"] = description,
-		["status"] = "alive",
-	}
-end
+deathlog_watchlist_entries = deathlog_watchlist_entries or {}
 
-deathlog_watchlist_entries = { EntryData("Yazpad", "WoW"), EntryData("Yaz", "Y") }
+local function isDead(_name)
+	return deathlog_data_map[GetRealmName()][_name]
+end
 
 local subtitle_data = {
 	{
 		"Name",
-		105,
+		120,
 		function(_entry)
-			return _entry["name"] or ""
+			if _entry["Name"] == "" then
+				return "<Click to add>"
+			end
+			local _status = ""
+			if _entry["Name"] ~= nil then
+				if isDead(_entry["Name"]) then
+					_status = " |cffff0000(DEAD)|r"
+				end
+				return (_entry["Name"] .. _status)
+			end
+			return "<Click to add>"
 		end,
 	},
 	{
-		"Description",
-		300,
+		"Note",
+		750,
 		function(_entry)
-			return _entry["description"] or ""
+			if _entry["Note"] == "" then
+				return "<Click to add note>"
+			end
+			return _entry["Note"] or "<Click to add note>"
 		end,
 	},
 	{
-		"Class",
+		"Icon",
 		100,
 		function(_entry)
-			return _entry["description"] or ""
+			return _entry["Icon"] or "<Click to set>"
 		end,
 	},
 	{
-		"Lvl",
+		"Remove",
 		50,
 		function(_entry)
-			return _entry["description"] or ""
-		end,
-	},
-	{
-		"Status",
-		90,
-		function(_entry)
-			return _entry["description"] or ""
-		end,
-	},
-	{
-		"Last Words",
-		310,
-		function(_entry)
-			return _entry["description"] or ""
-		end,
-	},
-	{
-		"Action",
-		60,
-		function(_entry)
-			return _entry["description"] or ""
+			return "|TInterface\\WorldMap\\X_MARK_64:16:16:0:0:64:64:0:32:0:32|t"
 		end,
 	},
 }
@@ -116,18 +105,32 @@ local description_frame = {} -- idx/columns
 local header_strings = {} -- columns
 local row_backgrounds = {} --idx
 
+if watch_list_frame.icon_dd == nil then
+	watch_list_frame.icon_dd = CreateFrame("Frame", nil, watch_list_frame, "UIDropDownMenuTemplate")
+end
+
+local dropdownFunctions = nil
+watch_list_frame.icon_dd:SetPoint("TOPLEFT", watch_list_frame, "BOTTOMLEFT", -20, 0)
+watch_list_frame.icon_dd:Hide()
+UIDropDownMenu_SetText(watch_list_frame.icon_dd, "")
+UIDropDownMenu_SetWidth(watch_list_frame.icon_dd, 50)
+UIDropDownMenu_Initialize(watch_list_frame.icon_dd, dropdownFunctions)
+UIDropDownMenu_JustifyText(watch_list_frame.icon_dd, "LEFT")
+
 local function setFontData(i, _entry)
 	for _, v in ipairs(subtitle_data) do
 		font_strings[i][v[1]]:SetText(v[3](_entry))
+		font_strings[i].name = _entry["Name"]
 	end
 end
 
 local function refreshFontData()
 	local i = 1
-	for k, v in pairs(deathlog_watchlist_entries) do
+	for _name, v in pairs(deathlog_watchlist_entries) do
 		setFontData(i, v)
 		i = i + 1
 	end
+	setFontData(i, {})
 end
 
 local function DDMenu(frame, level, menuList)
@@ -254,79 +257,124 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 	watch_list_frame:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -80)
 	watch_list_frame:SetWidth(1040)
 	watch_list_frame:SetHeight(880)
-	watch_list_frame:SetClipsChildren(false)
 
 	if watch_list_frame.name_box == nil then
 		watch_list_frame.name_box = CreateFrame("EditBox", nil, watch_list_frame, "InputBoxTemplate")
-	end
-
-	if watch_list_frame.description_box == nil then
-		watch_list_frame.description_box = CreateFrame("EditBox", nil, watch_list_frame, "InputBoxTemplate")
-	end
-
-	if watch_list_frame.lvl_max_search_box == nil then
-		watch_list_frame.lvl_max_search_box = CreateFrame("EditBox", nil, watch_list_frame, "InputBoxTemplate")
 	end
 
 	if watch_list_frame.name_box.text == nil then
 		watch_list_frame.name_box.text = watch_list_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	end
 
-	if watch_list_frame.description_box.text == nil then
-		watch_list_frame.description_box.text = watch_list_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	end
 	watch_list_frame.name_box:SetPoint("TOPLEFT", watch_list_frame, "TOPLEFT", 0, 20)
 	watch_list_frame.name_box:SetPoint("BOTTOMLEFT", watch_list_frame, "TOPLEFT", 75, -50)
 	watch_list_frame.name_box:SetWidth(100)
 	watch_list_frame.name_box:SetFont(Deathlog_L.deadliest_creature_container_font, 14, "")
 	watch_list_frame.name_box:SetMovable(false)
 	watch_list_frame.name_box:SetBlinkSpeed(1)
-	watch_list_frame.name_box:SetAutoFocus(false)
+	-- watch_list_frame.name_box:SetAutoFocus(false)
 	watch_list_frame.name_box:SetMultiLine(false)
 	watch_list_frame.name_box:SetMaxLetters(20)
-	watch_list_frame.name_box:SetScript("OnEnterPressed", function()
-		watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
+	watch_list_frame.name_box:SetScript("OnEnterPressed", function(self, msg)
+		if edit_box_type == 1 then
+			local name = font_strings[selected_entry].name
+			if name == nil then
+				return
+			end
+			if deathlog_watchlist_entries[name] == nil then
+				return
+			end
+			deathlog_watchlist_entries[name]["Note"] = watch_list_frame.name_box:GetText()
+			watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
+		else
+			local name = font_strings[selected_entry]["Name"]
+			if name ~= nil and name["Name"] ~= nil then
+				deathlog_watchlist_entries[_name] = nil
+			end
+			local _name = watch_list_frame.name_box:GetText():gsub("^%l", string.upper)
+			deathlog_watchlist_entries[_name] = {
+				["Name"] = _name,
+				["Icon"] = "|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_7:16:16:0:0:64:64:|t",
+			}
+			watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
+		end
 	end)
-
-	if 1 == 1 then
-		return
-	end
 
 	watch_list_frame.name_box.text:SetPoint("LEFT", watch_list_frame.name_box, "LEFT", 0, 15)
 	watch_list_frame.name_box.text:SetFont(Deathlog_L.deadliest_creature_container_font, 12, "")
 	watch_list_frame.name_box.text:SetTextColor(255 / 255, 215 / 255, 0)
 	watch_list_frame.name_box.text:Show()
 
-	watch_list_frame.description_box:SetPoint("TOPLEFT", watch_list_frame.name_box, "TOPRIGHT", 10, 0)
-	watch_list_frame.description_box:SetPoint("BOTTOMLEFT", watch_list_frame.name_box, "BOTTOMRIGHT", 10, 0)
-	watch_list_frame.description_box:SetWidth(300)
-	watch_list_frame.description_box:SetFont(Deathlog_L.deadliest_creature_container_font, 14, "")
-	watch_list_frame.description_box:SetMovable(false)
-	watch_list_frame.description_box:SetBlinkSpeed(1)
-	watch_list_frame.description_box:SetAutoFocus(false)
-	watch_list_frame.description_box:SetMultiLine(false)
-	watch_list_frame.description_box:SetMaxLetters(20)
-	watch_list_frame.description_box:SetScript("OnEnterPressed", function()
-		watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
-	end)
-
-	watch_list_frame.description_box.text:SetPoint("LEFT", watch_list_frame.description_box, "LEFT", 0, 15)
-	watch_list_frame.description_box.text:SetFont(Deathlog_L.deadliest_creature_container_font, 12, "")
-	watch_list_frame.description_box.text:SetTextColor(255 / 255, 215 / 255, 0)
-	watch_list_frame.description_box.text:Show()
+	dropdownFunctions = function(frame, level, menuList)
+		local info = UIDropDownMenu_CreateInfo()
+		info.text, info.checked, info.func =
+			"|T133784:16|t", metric == "|T133784:16|t", function()
+				local name = font_strings[selected_entry].name
+				if name == nil then
+					return
+				end
+				if deathlog_watchlist_entries[name] == nil then
+					return
+				end
+				deathlog_watchlist_entries[name]["Icon"] = "|T133784:16|t"
+				watch_list_frame.updateMenuElement(scroll_frame)
+			end
+		UIDropDownMenu_AddButton(info)
+		info.text, info.checked, info.func =
+			"|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_7:16:16:0:0:64:64:|t",
+			metric == "|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_7:16:16:0:0:64:64:|t",
+			function()
+				local name = font_strings[selected_entry].name
+				if name == nil then
+					return
+				end
+				if deathlog_watchlist_entries[name] == nil then
+					return
+				end
+				deathlog_watchlist_entries[name]["Icon"] =
+					"|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_7:16:16:0:0:64:64:|t"
+				watch_list_frame.updateMenuElement(scroll_frame)
+			end
+		UIDropDownMenu_AddButton(info)
+		info.text, info.checked, info.func =
+			"|TInterface\\COMMON\\friendship-heart:16:16:0:0:64:64:|t",
+			metric == "|TInterface\\COMMON\\friendship-heart:16:16:0:0:64:64:|t",
+			function()
+				local name = font_strings[selected_entry].name
+				print(name)
+				if name == nil then
+					return
+				end
+				if deathlog_watchlist_entries[name] == nil then
+					return
+				end
+				deathlog_watchlist_entries[name]["Icon"] = "|TInterface\\COMMON\\friendship-heart:16:16:0:0:64:64:|t"
+				watch_list_frame.updateMenuElement(scroll_frame)
+			end
+		UIDropDownMenu_AddButton(info)
+	end
+	UIDropDownMenu_Initialize(watch_list_frame.icon_dd, dropdownFunctions)
+	watch_list_frame.icon_dd:Hide()
 
 	local last_frame = watch_list_frame
+	local shift = 0
 	for i = 1, max_rows do
 		local idx = 101 - i
+
 		local _entry = CreateFrame("Frame", nil, watch_list_frame)
 		_entry:SetWidth(watch_list_frame:GetWidth())
 		_entry:SetHeight(15)
-		_entry:SetPoint("TOPLEFT", last_frame, "TOPLEFT", 0, -15)
+		if shift == 0 then
+			_entry:SetPoint("TOPLEFT", last_frame, "TOPLEFT", 0, 0)
+		else
+			_entry:SetPoint("TOPLEFT", last_frame, "BOTTOMLEFT", 0, 0)
+		end
+		shift = -30
 		last_frame = _entry
 
 		font_strings[i][subtitle_data[1][1]]:SetPoint("LEFT", _entry, "LEFT", 0, 0)
 		font_strings[i][subtitle_data[1][1]]:Show()
-		setFontData(1, EntryData("Yazpad", "B"))
+		-- setFontData(1, EntryData("Yazpad", "B"))
 		for _, v in ipairs(subtitle_data) do
 			font_strings[i][v[1]]:SetParent(_entry)
 		end
@@ -335,8 +383,18 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 		row_backgrounds[i]:SetParent(_entry)
 		row_backgrounds[i]:SetWidth(_entry:GetWidth())
 
-		_entry:SetHeight(40)
+		-- _entry:SetHeight(40)
 		_entry:SetWidth(watch_list_frame:GetWidth())
+
+		_entry:SetScript("OnEnter", function(widget)
+			local hash = isDead(font_strings[i].name)
+			if hash == nil then
+				return
+			end
+			GameTooltip_SetDefaultAnchor(GameTooltip, WorldFrame)
+			deathlog_setTooltipFromEntry(deathlog_data[GetRealmName()][hash])
+			GameTooltip:Show()
+		end)
 
 		_entry:SetScript("OnMouseDown", function(self, button)
 			if button == "RightButton" then
@@ -348,141 +406,93 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 				-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
 				UIDropDownMenu_Initialize(dropDown, DDMenu, "MENU")
 				ToggleDropDownMenu(1, nil, dropDown, "cursor", 3, -3)
+			else
+				selected_entry = i
+				if font_strings[i]["Name"]:GetText() == "" or font_strings[i]["Name"]:GetText() == nil then
+					return
+				end
+
+				local x, y = GetCursorPosition()
+				local pos_x = x - _entry:GetLeft()
+				if pos_x < 100 then
+					edit_box_type = 0
+					local function setEditBox(other)
+						watch_list_frame.name_box:ClearAllPoints()
+						watch_list_frame.name_box:SetPoint(
+							"LEFT",
+							other,
+							"LEFT",
+							font_strings[i]["Name"]:GetLeft() - _entry:GetLeft(),
+							0
+						)
+						watch_list_frame.name_box:SetWidth(120)
+						watch_list_frame.name_box:SetHeight(15)
+					end
+					setEditBox(_entry)
+					watch_list_frame.name_box:SetText((font_strings[i]["Name"]:GetText() or "<Click to add>"))
+					font_strings[i]["Name"]:SetText("")
+					watch_list_frame.name_box:HighlightText()
+					watch_list_frame.name_box:SetFocus()
+
+					watch_list_frame.name_box:Show()
+				elseif pos_x < 700 then
+					edit_box_type = 1
+					local function setEditBox(other)
+						watch_list_frame.name_box:ClearAllPoints()
+						watch_list_frame.name_box:SetPoint(
+							"LEFT",
+							other,
+							"LEFT",
+							font_strings[i]["Note"]:GetLeft() - _entry:GetLeft(),
+							0
+						)
+						watch_list_frame.name_box:SetWidth(400)
+						watch_list_frame.name_box:SetHeight(15)
+					end
+					setEditBox(_entry)
+					watch_list_frame.name_box:SetText((font_strings[i]["Note"]:GetText() or "<Click to add note>"))
+					font_strings[i]["Note"]:SetText("")
+					watch_list_frame.name_box:HighlightText()
+					watch_list_frame.name_box:SetFocus()
+
+					watch_list_frame.name_box:Show()
+				elseif pos_x < 800 then
+					watch_list_frame.icon_dd:SetParent(_entry)
+					watch_list_frame.icon_dd:ClearAllPoints()
+					watch_list_frame.icon_dd:SetPoint(
+						"LEFT",
+						_entry,
+						"LEFT",
+						font_strings[i]["Icon"]:GetLeft() - _entry:GetLeft() - 20,
+						0
+					)
+					watch_list_frame.icon_dd:Show()
+					UIDropDownMenu_SetWidth(watch_list_frame.icon_dd, 50)
+				elseif pos_x > 820 and pos_x < 850 then
+					if deathlog_watchlist_entries and deathlog_watchlist_entries[font_strings[i].name] then
+						deathlog_watchlist_entries[font_strings[i].name] = nil
+						watch_list_frame.updateMenuElement(
+							scroll_frame,
+							_,
+							stats_tbl,
+							updateFun,
+							filterFunction,
+							metric,
+							class_id
+						)
+					end
+				end
 			end
 		end)
-
-		-- _entry:SetCallback("OnLeave", function(widget)
-		-- 	GameTooltip:Hide()
-		-- end)
-
-		-- _entry:SetCallback("OnClick", function()
-		-- 	local click_type = GetMouseButtonClicked()
-
-		-- 	if click_type == "LeftButton" then
-		-- 	elseif click_type == "RightButton" then
-		-- 		local dropDown = CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
-		-- 		-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
-		-- 		UIDropDownMenu_Initialize(dropDown, WPDropDownDemo_Menu, "MENU")
-		-- 		ToggleDropDownMenu(1, nil, dropDown, "cursor", 3, -3)
-		-- 	end
-		-- end)
-
-		-- _entry:SetCallback("OnEnter", function(widget)
-		-- 	GameTooltip_SetDefaultAnchor(GameTooltip, WorldFrame)
-		-- 	local _name = ""
-		-- 	local _level = ""
-		-- 	local _guild = ""
-		-- 	local _race = ""
-		-- 	local _class = ""
-		-- 	local _source = ""
-		-- 	local _zone = ""
-		-- 	local _date = ""
-		-- 	local _last_words = ""
-		-- 	if font_strings[i] and font_strings[i]["Name"] then
-		-- 		_name = font_strings[i]["Name"]:GetText() or ""
-		-- 	end
-		-- 	if font_strings[i] and font_strings[i]["Lvl"] then
-		-- 		_level = font_strings[i]["Lvl"]:GetText() or ""
-		-- 	end
-		-- 	if font_strings[i] and font_strings[i]["Guild"] then
-		-- 		_guild = font_strings[i]["Guild"]:GetText() or ""
-		-- 	end
-		-- 	if font_strings[i] and font_strings[i]["Race"] then
-		-- 		_race = font_strings[i]["Race"]:GetText() or ""
-		-- 	end
-		-- 	if font_strings[i] and font_strings[i]["Class"] then
-		-- 		_class = font_strings[i]["Class"]:GetText() or ""
-		-- 	end
-		-- 	if font_strings[i] and font_strings[i]["Death Source"] then
-		-- 		_source = font_strings[i]["Death Source"]:GetText() or ""
-		-- 	end
-		-- 	if font_strings[i] and font_strings[i]["Zone/Instance"] then
-		-- 		_zone = font_strings[i]["Zone/Instance"]:GetText() or ""
-		-- 	end
-		-- 	if font_strings[i] and font_strings[i]["Date"] then
-		-- 		_date = font_strings[i]["Date"]:GetText() or ""
-		-- 	end
-		-- 	if font_strings[i] and font_strings[i]["Last Words"] then
-		-- 		_last_words = font_strings[i]["Last Words"]:GetText() or ""
-		-- 	end
-
-		-- 	if string.sub(_name, #_name) == "s" then
-		-- 		GameTooltip:AddDoubleLine(_name .. "' Death", "Lvl. " .. _level, 1, 1, 1, 0.5, 0.5, 0.5)
-		-- 	else
-		-- 		GameTooltip:AddDoubleLine(_name .. "'s Death", "Lvl. " .. _level, 1, 1, 1, 0.5, 0.5, 0.5)
-		-- 	end
-		-- 	GameTooltip:AddLine("Name: " .. _name, 1, 1, 1)
-		-- 	GameTooltip:AddLine("Guild: " .. _guild, 1, 1, 1)
-		-- 	GameTooltip:AddLine("Race: " .. _race, 1, 1, 1)
-		-- 	GameTooltip:AddLine("Class: " .. _class, 1, 1, 1)
-		-- 	if deathlog_settings["colored_tooltips"] == nil or deathlog_settings["colored_tooltips"] == false then
-		-- 		GameTooltip:AddLine("Killed by: " .. _source, 1, 1, 1)
-		-- 		GameTooltip:AddLine("Zone/Instance: " .. _zone, 1, 1, 1)
-		-- 	else
-		-- 		GameTooltip:AddLine("Killed by: |cfffda172" .. _source .. "|r", 1, 1, 1)
-		-- 		GameTooltip:AddLine("Zone/Instance: |cff9fe2bf" .. _zone .. "|r", 1, 1, 1)
-		-- 	end
-		-- 	GameTooltip:AddLine("Date: " .. _date, 1, 1, 1)
-		-- 	if _last_words and _last_words ~= "" then
-		-- 		GameTooltip:AddLine("Last words: " .. _last_words, 1, 1, 0, true)
-		-- 	end
-
-		-- 	GameTooltip:Show()
-		-- end)
 	end
+	watch_list_frame.name_box:Hide()
 
-	header_strings[subtitle_data[1][1]]:SetPoint("TOPLEFT", font_strings[1]["Name"], "TOPLEFT", 0, 40)
+	header_strings[subtitle_data[1][1]]:SetPoint("TOPLEFT", font_strings[1]["Name"], "TOPLEFT", 0, 20)
 	header_strings[subtitle_data[1][1]]:Show()
 	for _, v in ipairs(subtitle_data) do
 		header_strings[v[1]]:SetParent(watch_list_frame)
 		header_strings[v[1]]:SetText(v[1])
 	end
-
-	-- if watch_list_frame.page_str == nil then
-	-- 	watch_list_frame.page_str = watch_list_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	-- 	watch_list_frame.page_str:SetText("Page " .. page_number)
-	-- 	watch_list_frame.page_str:SetFont(L.menu_font, 14, "")
-	-- 	watch_list_frame.page_str:SetJustifyV("BOTTOM")
-	-- 	watch_list_frame.page_str:SetJustifyH("CENTER")
-	-- 	watch_list_frame.page_str:SetTextColor(0.7, 0.7, 0.7)
-	-- 	watch_list_frame.page_str:SetPoint("TOP", watch_list_frame, "TOP", 0, -444)
-	-- 	watch_list_frame.page_str:Show()
-	-- end
-
-	-- if watch_list_frame.prev_button == nil then
-	-- 	watch_list_frame.prev_button = CreateFrame("Button", nil, watch_list_frame)
-	-- 	watch_list_frame.prev_button:SetPoint("CENTER", watch_list_frame.page_str, "CENTER", -50, 0)
-	-- 	watch_list_frame.prev_button:SetWidth(25)
-	-- 	watch_list_frame.prev_button:SetHeight(25)
-	-- 	watch_list_frame.prev_button:SetNormalTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
-	-- 	watch_list_frame.prev_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
-	-- 	watch_list_frame.prev_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Down.PNG")
-	-- end
-
-	-- watch_list_frame.prev_button:SetScript("OnClick", function()
-	-- 	page_number = page_number - 1
-	-- 	if page_number < 1 then
-	-- 		page_number = 1
-	-- 	end
-	-- 	watch_list_frame.page_str:SetText("Page " .. page_number)
-	-- 	-- setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
-	-- end)
-
-	-- if watch_list_frame.next_button == nil then
-	-- 	watch_list_frame.next_button = CreateFrame("Button", nil, watch_list_frame)
-	-- 	watch_list_frame.next_button:SetPoint("CENTER", watch_list_frame.page_str, "CENTER", 50, 0)
-	-- 	watch_list_frame.next_button:SetWidth(25)
-	-- 	watch_list_frame.next_button:SetHeight(25)
-	-- 	watch_list_frame.next_button:SetNormalTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Up.PNG")
-	-- 	watch_list_frame.next_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Up.PNG")
-	-- 	watch_list_frame.next_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Down.PNG")
-	-- end
-
-	-- watch_list_frame.next_button:SetScript("OnClick", function()
-	-- 	page_number = page_number + 1
-	-- 	watch_list_frame.page_str:SetText("Page " .. page_number)
-	-- 	-- setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
-	-- end)
 
 	refreshFontData()
 	scroll_frame.frame:HookScript("OnHide", function()

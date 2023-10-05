@@ -1144,7 +1144,7 @@ local function drawWatchListTab(container)
 
 	local title_label = AceGUI:Create("Heading")
 	title_label:SetFullWidth(true)
-	title_label:SetText("Watch List")
+	title_label:SetText("Watch List (Experimental)")
 	title_label.label:SetFont(Deathlog_L.menu_font, 24, "")
 	scroll_frame:AddChild(title_label)
 
