@@ -41,6 +41,13 @@ deathlog_class_tbl = {
 	["Druid"] = 11,
 }
 
+-- values between 0 and 7
+deathlog_pvp_flag = {
+	NONE = 0,
+	REGULAR = 1,
+	DUEL_TO_DEATH = 2
+}
+
 local environment_damage = {
 	[-2] = "Drowning",
 	[-3] = "Falling",
@@ -679,13 +686,18 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 end
 
 function deathlog_encode_pvp_source(source_str)
-	local function create_source_id(race, class, level)
+	local function create_source_id(source, race, class, level)
 		local source_id = 0;
 
-		source_id = bit.bor(source_id, bit.lshift(1, 20))
-		source_id = bit.bor(source_id, bit.lshift(race, 28))
-		source_id = bit.bor(source_id, bit.lshift(class, 36))
-		source_id = bit.bor(source_id, bit.lshift(level, 44))
+		local pvp_flag = deathlog_pvp_flag.REGULAR
+		if (last_duel_to_death_player ~= nil and (last_duel_to_death_player == source or last_duel_to_death_player == UnitName(source))) then
+			pvp_flag = deathlog_pvp_flag.DUEL_TO_DEATH
+		end
+
+		source_id = bit.bor(source_id, bit.lshift(pvp_flag, 21))
+		source_id = bit.bor(source_id, bit.lshift(race, 29))
+		source_id = bit.bor(source_id, bit.lshift(class, 37))
+		source_id = bit.bor(source_id, bit.lshift(level, 45))
 
 		--as in the current setup the source_id needs to be a number, we can't parse the real player's name over with it... :(
 		return tostring(source_id)
@@ -696,26 +708,26 @@ function deathlog_encode_pvp_source(source_str)
 	end
 
 	if (last_attack_player ~= nil and last_attack_player == source_str) then
-		return reate_source_id(last_attack_race, last_attack_class, last_attack_level)
+		return create_source_id(source_str, last_attack_race, last_attack_class, last_attack_level)
 	end
 
-	local source_id = nil
+	local source_str_safe = nil
 	if UnitIsPlayer(source_str) then
-		source_id = source_str
+		source_str_safe = source_str
 	elseif UnitIsPlayer("target") and UnitName("target") ~= UnitName("player") then
-		source_id = "target"
+		source_str_safe = "target"
 	end
 
-	if source_id == nil then
+	if source_str_safe == nil then
 		return "-1"
 	end
 	
-	source_str = source_id
+	source_str = source_str_safe
 
 	if UnitIsPlayer(source_str) then
 		local _, _, enemyRaceId = UnitRace(source_str)
 		local _, _, enemyClassId = UnitClass(source_str)
-		return create_source_id(tonumber(enemyRaceId), tonumber(enemyClassId), UnitLevel(source_str))
+		return create_source_id(source_str, tonumber(enemyRaceId), tonumber(enemyClassId), UnitLevel(source_str))
 	end
 	
 	return "-1"
@@ -728,11 +740,11 @@ function deathlog_decode_pvp_source(source_id)
 
 	local source_id_num = tonumber(source_id)
 
-	local retrievedPvPDeath = bit.band(bit.rshift(source_id_num, 20), 1)
-	if retrievedPvPDeath and retrievedPvPDeath == 1 then
-		local retrievedEnemyRace = bit.band(bit.rshift(source_id_num, 28), 0xFF)
-		local retrievedEnemyClass = bit.band(bit.rshift(source_id_num, 36), 0xFF)
-		local retrievedEnemyLevel = bit.band(bit.rshift(source_id_num, 44), 0xFF)
+	local retrievedPvPFlag = bit.band(bit.rshift(source_id_num, 21), 0x7)
+	if retrievedPvPFlag and retrievedPvPFlag ~= deathlog_pvp_flag.NONE then
+		local retrievedEnemyRace = bit.band(bit.rshift(source_id_num, 29), 0xFF)
+		local retrievedEnemyClass = bit.band(bit.rshift(source_id_num, 37), 0xFF)
+		local retrievedEnemyLevel = bit.band(bit.rshift(source_id_num, 45), 0xFF)
 
 		local enemyClass = ""
 		if retrievedEnemyRace and retrievedEnemyRace > 0 then
@@ -758,6 +770,10 @@ function deathlog_decode_pvp_source(source_id)
 		end
 
 		local source_name = "PvP"
+		if retrievedPvPFlag == deathlog_pvp_flag.DUEL_TO_DEATH then
+			source_name = "Duel to Death"
+		end
+
 		if enemyClass or enemyRace or enemyLevel then
 			local enemyTable = {}
 			if enemyLevel then

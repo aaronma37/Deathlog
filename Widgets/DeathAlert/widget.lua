@@ -78,11 +78,17 @@ function Deathlog_DeathAlertFakeDeath()
 	}
 
 	-- pvp tests
-	local pvp_r = math.random(0, 2)
+	local pvp_r = math.random(0, 3)
 	if pvp_r == 1 then
 		fake_entry["source_id"] = deathlog_encode_pvp_source("target")
 	elseif pvp_r == 2 then
 		fake_entry["source_id"] = deathlog_encode_pvp_source(last_attack_player)
+	elseif pvp_r == 3 then
+		refresh_last_attack_info(UnitName("target"))
+		last_duel_to_death_player = last_attack_player
+		fake_entry["source_id"] = deathlog_encode_pvp_source(last_attack_player)
+		last_duel_to_death_player = nil
+		clear_last_attack_info()
 	end
 
 	alert_cache[UnitName("player")] = nil
@@ -225,7 +231,11 @@ function Deathlog_DeathAlertPlay(entry)
 		or deathlog_settings[widget_name]["style"] == "boss_banner_enemy_icon_medium"
 	then
 		if source_name_pvp ~= "" then
-			death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Ability_warrior_challange")
+			if string.find(source_name_pvp, "Duel to Death") then
+				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\inv_jewelry_trinketpvp_02")
+			else
+				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Ability_warrior_challange")
+			end
 		elseif entry["source_id"] then
 			if id_to_display_id[entry["source_id"]] then
 				SetPortraitTextureFromCreatureDisplayID(
