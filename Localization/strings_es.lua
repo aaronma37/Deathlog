@@ -26,15 +26,15 @@ deathlog_strings_es = {
 	race_word = "Race",
 	show_heatmap = "Show heatmap",
 	class_table = {
-		Warrior = "warrior";
-		Rogue = "rogue";
-		Mage = "mage";
-		Priest = "priest";
-		Paladin = "paladin";
-		Shaman = "shaman";
-		Druid = "druid";
-		Warlock = "warlock";
-	   	Hunter = "hunter";
+		Warrior = "warrior",
+		Rogue = "rogue",
+		Mage = "mage",
+		Priest = "priest",
+		Paladin = "paladin",
+		Shaman = "shaman",
+		Druid = "druid",
+		Warlock = "warlock",
+		Hunter = "hunter",
 	},
 	tab_table = {
 		{ value = "ClassStatisticsTab", text = "Class Statistics" },
@@ -51,17 +51,39 @@ deathlog_strings_es = {
 		{ 47, "RAZORFENKRAUL", "Razorfen Kraul" },
 		{ 48, "BLACKFATHOMDEEPS", "Blackfathom Deeps" },
 		{ 90, "GNOMEREGAN", "Gnomeregan" },
-		{ 18, "SCARLETMONASTERY", "Scarlet Monastery" },
+		{ 189, "SCARLETMONASTERY", "Scarlet Monastery" },
 		{ 70, "ULDAMAN", "Uldaman" },
 		{ 109, "SUNKENTEMPLE", "Sunken Temple" },
 		{ 129, "RAZORFENDOWNS", "Razorfen Downs" },
 		{ 209, "ZULFARAK", "Zul'Farak" },
 		{ 229, "BLACKROCKSPIRE", "Blackrock Spire" },
-		{ 239, "BLACKROCKDEPTHS", "Blackrock Depths" },
+		{ 230, "BLACKROCKDEPTHS", "Blackrock Depths" },
 		{ 289, "SCHOLOMANCE", "Scholomance" },
 		{ 329, "STRATHOLME", "Stratholme" },
 		{ 349, "MARAUDON", "Maraudon" },
+		{ 389, "RAGEFIRECHASM", "Ragefire Chasm" },
 		{ 429, "DIREMAUL", "Diremaul" },
+	},
+	instance_map = {
+		["Shadowfang Keep"] = 33,
+		["Stormwind Stockade"] = 34,
+		["Deadmines"] = 36,
+		["Wailing Caverns"] = 43,
+		["Razorfen Kraul"] = 47,
+		["Blackfathom Deeps"] = 48,
+		["Uldaman"] = 70,
+		["Gnomeregan"] = 90,
+		["Sunken Temple"] = 109,
+		["Razorfen Downs"] = 129,
+		["Scarlet Monastery"] = 189,
+		["Zul'Farrak"] = 209,
+		["Blackrock Spire"] = 229,
+		["Blackrock Depths"] = 230,
+		["Scholomance"] = 289,
+		["Stratholme"] = 329,
+		["Maraudon"] = 349,
+		["Ragefire Chasm"] = 389,
+		["Dire Maul"] = 429,
 	},
 	deathlog_zone_tbl = {
 		["Azeroth"] = 947,

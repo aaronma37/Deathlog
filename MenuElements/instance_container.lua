@@ -195,12 +195,19 @@ function instance_container.updateMenuElement(scroll_frame, current_instance_id,
 
 	instance_container.instance_buttons[17]:SetPoint(
 		"TOPLEFT",
-		instance_container.instance_buttons[14],
+		instance_container.instance_buttons[13],
 		"TOPLEFT",
 		0,
 		vert_sep
 	)
 	instance_container.instance_buttons[18]:SetPoint(
+		"TOPLEFT",
+		instance_container.instance_buttons[14],
+		"TOPLEFT",
+		0,
+		vert_sep
+	)
+	instance_container.instance_buttons[19]:SetPoint(
 		"TOPLEFT",
 		instance_container.instance_buttons[15],
 		"TOPLEFT",
