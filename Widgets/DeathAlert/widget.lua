@@ -17,6 +17,7 @@ sounds["default_hardcore"] = 8959
 sounds["golfclap"] = "Interface\\AddOns\\Deathlog\\Sounds\\golfclap.ogg"
 sounds["hunger_games"] = "Interface\\AddOns\\Deathlog\\Sounds\\hunger_games.ogg"
 sounds["HeroFallen"] = "Interface\\AddOns\\Deathlog\\Sounds\\HeroFallen.ogg"
+sounds["random"] = "random"
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
 fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
@@ -55,6 +56,22 @@ death_alert_frame.text:SetTextColor(1, 1, 1, 1)
 death_alert_frame.text:SetJustifyH("CENTER")
 death_alert_frame.text:SetParent(death_alert_frame)
 death_alert_frame.text:Show()
+
+local function PlayRandomSound()
+	local count = 0
+	for _, _ in pairs(sounds) do
+		count = count + 1
+	end
+	local randomIndex = math.random(1, count)
+
+	local count = 0
+	for _, v in pairs(sounds) do
+		count = count + 1
+		if count == randomIndex then
+			PlaySoundFile(v)
+		end
+	end
+end
 
 function Deathlog_DeathAlertFakeDeath()
 	local r = math.random(1, 100)
@@ -120,6 +137,8 @@ function Deathlog_DeathAlertPlay(entry)
 	if deathlog_settings[widget_name]["enable_sound"] then
 		if deathlog_settings[widget_name]["alert_sound"] == "default_hardcore" then
 			PlaySound(8959)
+		elseif deathlog_settings[widget_name]["alert_sound"] == "random" then
+			PlayRandomSound()
 		else
 			PlaySoundFile(sounds[deathlog_settings[widget_name]["alert_sound"]])
 		end
