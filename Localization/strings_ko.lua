@@ -61,7 +61,7 @@ deathlog_strings_ko = {
 		{ 289, "SCHOLOMANCE", "스칼로맨스" },
 		{ 329, "STRATHOLME", "스트라솔름" },
 		{ 349, "MARAUDON", "마라우돈" },
-		{ 389, "RAGEFIRECHASM", "Ragefire Chasm" },
+		{ 389, "RAGEFIRECHASM", "성난불길 협곡" },
 		{ 429, "DIREMAUL", "혈투의 전장" },
 	},
 	instance_map = {
@@ -82,7 +82,7 @@ deathlog_strings_ko = {
 		["스칼로맨스"] = 289,
 		["스트라솔름"] = 329,
 		["마라우돈"] = 349,
-		["Ragefire Chasm"] = 389,
+		["성난불길 협곡"] = 389,
 		["혈투의 전장"] = 429,
 	},
 	deathlog_zone_tbl = {
