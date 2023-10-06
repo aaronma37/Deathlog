@@ -189,6 +189,16 @@ local options = {
 				Deathlog_LoadFromHardcore()
 			end,
 		},
+		clear_cache_button = {
+			type = "execute",
+			name = "Clear cache",
+			desc = "WARNING: This will remove deathlog data.  Do this if your log is getting too long.  The data is stored at _classic_era_/WTF/Account/<your_account_name>/SavedVariables/Deathlog.lua.  Reload after doing this.",
+			width = 1.3,
+			func = function()
+				deathlog_data = {}
+				deathlog_data_map = {}
+			end,
+		},
 		require_validation = {
 			type = "toggle",
 			name = "Allow guildless death logging",
