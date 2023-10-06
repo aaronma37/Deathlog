@@ -30,6 +30,7 @@ local COMM_COMMANDS = {
 }
 local COMM_QUERY = "Q"
 local comm_query_lock = nil
+local comm_query_lock_out = nil
 local COMM_QUERY_ACK = "R"
 local COMM_COMMAND_DELIM = "$"
 local COMM_FIELD_DELIM = "~"
@@ -180,6 +181,13 @@ local expect_ack = {}
 function DeathNotificationLib_queryGuild(_name)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		if comm_query_lock_out then
+			return
+		end
+		comm_query_lock_out = C_Timer.NewTimer(3, function()
+			comm_query_lock_out:Cancel()
+			comm_query_lock_out = nil
+		end)
 		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "GUILD")
 	end
@@ -204,6 +212,13 @@ end
 function DeathNotificationLib_querySay(_name)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		if comm_query_lock_out then
+			return
+		end
+		comm_query_lock_out = C_Timer.NewTimer(3, function()
+			comm_query_lock_out:Cancel()
+			comm_query_lock_out = nil
+		end)
 		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "SAY")
 	end
@@ -958,7 +973,7 @@ death_notification_lib_event_handler:RegisterEvent("PLAYER_DEAD")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_SAY")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_PARTY")
--- death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON") -- enable again for queries
+death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON") -- enable again for queries
 death_notification_lib_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 if tocversion >= 11404 then
 	death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD_DEATHS")
