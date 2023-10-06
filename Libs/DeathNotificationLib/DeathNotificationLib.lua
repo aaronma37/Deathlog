@@ -116,6 +116,11 @@ local environment_damage = {
 	[-7] = "Slime",
 }
 
+last_attack_player = nil
+last_attack_race = nil
+last_attack_class = nil
+last_attack_level = nil
+
 local function PlayerData(
 	name,
 	guild,
@@ -601,6 +606,10 @@ local function selfDeathAlert(death_source_str)
 		death_source = death_source_str
 	end
 
+	if death_source == "-1" and death_source_str then
+		death_source = deathlog_encode_pvp_source(death_source_str)
+	end
+
 	msg = encodeMessage(
 		UnitName("player"),
 		guildName,
@@ -1064,6 +1073,16 @@ local function handleEvent(self, event, ...)
 			if not (source_name == nil) then
 				if string.find(ev, "DAMAGE") ~= nil then
 					last_attack_source = source_name
+
+					if (source_name == UnitName("target") and UnitIsPlayer("target")) then
+						local _, _, targetRaceId = UnitRace("target")
+						local _, _, targetClassId = UnitClass("target")
+
+						last_attack_player = source_name
+						last_attack_race = tonumber(targetRaceId)
+						last_attack_class = tonumber(targetClassId)
+						last_attack_level = UnitLevel("target")
+					end
 				end
 			end
 		end

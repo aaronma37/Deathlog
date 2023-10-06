@@ -76,6 +76,15 @@ function Deathlog_DeathAlertFakeDeath()
 		["source_id"] = s,
 		["last_words"] = "Sample last words, help!",
 	}
+
+	-- pvp tests
+	local pvp_r = math.random(0, 2)
+	if pvp_r == 1 then
+		fake_entry["source_id"] = deathlog_encode_pvp_source("target")
+	elseif pvp_r == 2 then
+		fake_entry["source_id"] = deathlog_encode_pvp_source(last_attack_player)
+	end
+
 	alert_cache[UnitName("player")] = nil
 	Deathlog_DeathAlertPlay(fake_entry)
 end
@@ -174,6 +183,12 @@ function Deathlog_DeathAlertPlay(entry)
 	if entry["source_id"] == -7 then
 		msg = deathlog_settings[widget_name]["slime_message"]
 	end
+
+	local source_name_pvp = deathlog_decode_pvp_source(entry["source_id"])
+	if source_name_pvp ~= "" then
+		source_name = source_name_pvp
+	end
+
 	msg = msg:gsub("%<name>", entry["name"])
 	msg = msg:gsub("%<class>", class)
 	msg = msg:gsub("%<race>", race)
@@ -209,7 +224,9 @@ function Deathlog_DeathAlertPlay(entry)
 		deathlog_settings[widget_name]["style"] == "boss_banner_enemy_icon_small"
 		or deathlog_settings[widget_name]["style"] == "boss_banner_enemy_icon_medium"
 	then
-		if entry["source_id"] then
+		if source_name_pvp ~= "" then
+			death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Ability_warrior_challange")
+		elseif entry["source_id"] then
 			if id_to_display_id[entry["source_id"]] then
 				SetPortraitTextureFromCreatureDisplayID(
 					death_alert_frame.textures.enemy_portrait,
