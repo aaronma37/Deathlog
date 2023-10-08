@@ -257,6 +257,10 @@ LibStub("AceConfig-3.0"):RegisterOptionsTable("Deathlog", options)
 optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("Deathlog", "Deathlog", nil)
 
 local function newEntry(_player_data, _checksum, num_peer_checks, in_guild)
+	if UnitIsDeadOrGhost("player") == false then -- Check if the player is really dead or not
+		return
+	end
+
 	local realmName = GetRealmName()
 	if deathlog_data == nil then
 		deathlog_data = {}
