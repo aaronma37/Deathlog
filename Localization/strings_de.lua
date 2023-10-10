@@ -63,6 +63,7 @@ deathlog_strings_de = {
 		{ 389, "RAGEFIRECHASM", "Ragefire Chasm" },
 		{ 349, "MARAUDON", "Maraudon" },
 		{ 429, "DIREMAUL", "Düsterbruch" },
+		{ 469, "BLACKWINGLAIR", "Blackwing Lair" },
 	},
 	instance_map = {
 		["Burg Shadowfang"] = 33,
@@ -84,6 +85,7 @@ deathlog_strings_de = {
 		["Maraudon"] = 349,
 		["Ragefire Chasm"] = 389,
 		["Düsterbruch"] = 429,
+		["Blackwing Lair"] = 469,
 	},
 	deathlog_zone_tbl = {
 		["Azeroth"] = 947,
