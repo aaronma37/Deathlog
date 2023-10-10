@@ -30,6 +30,7 @@ local COMM_COMMANDS = {
 }
 local COMM_QUERY = "Q"
 local comm_query_lock = nil
+local comm_query_lock_out = nil
 local COMM_QUERY_ACK = "R"
 local COMM_COMMAND_DELIM = "$"
 local COMM_FIELD_DELIM = "~"
@@ -180,6 +181,13 @@ local expect_ack = {}
 function DeathNotificationLib_queryGuild(_name)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		if comm_query_lock_out then
+			return
+		end
+		comm_query_lock_out = C_Timer.NewTimer(3, function()
+			comm_query_lock_out:Cancel()
+			comm_query_lock_out = nil
+		end)
 		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "GUILD")
 	end
@@ -188,6 +196,13 @@ end
 function DeathNotificationLib_queryTarget(_name, _target)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		if comm_query_lock_out then
+			return
+		end
+		comm_query_lock_out = C_Timer.NewTimer(3, function()
+			comm_query_lock_out:Cancel()
+			comm_query_lock_out = nil
+		end)
 		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "WHISPER", _target)
 	end
@@ -196,6 +211,13 @@ end
 function DeathNotificationLib_queryYell(_name)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		if comm_query_lock_out then
+			return
+		end
+		comm_query_lock_out = C_Timer.NewTimer(3, function()
+			comm_query_lock_out:Cancel()
+			comm_query_lock_out = nil
+		end)
 		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "YELL")
 	end
@@ -204,6 +226,13 @@ end
 function DeathNotificationLib_querySay(_name)
 	local commMessage = COMM_QUERY .. COMM_COMMAND_DELIM .. _name
 	if CTL then
+		if comm_query_lock_out then
+			return
+		end
+		comm_query_lock_out = C_Timer.NewTimer(3, function()
+			comm_query_lock_out:Cancel()
+			comm_query_lock_out = nil
+		end)
 		expect_ack[_name] = 1
 		CTL:SendAddonMessage("BULK", COMM_NAME, commMessage, "SAY")
 	end
