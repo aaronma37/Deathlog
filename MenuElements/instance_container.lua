@@ -214,6 +214,13 @@ function instance_container.updateMenuElement(scroll_frame, current_instance_id,
 		0,
 		vert_sep
 	)
+	instance_container.instance_buttons[20]:SetPoint(
+		"TOPLEFT",
+		instance_container.instance_buttons[16],
+		"TOPLEFT",
+		0,
+		vert_sep
+	)
 
 	local idx = 1
 	for i, v in ipairs(instance_tbl) do
