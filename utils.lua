@@ -45,7 +45,7 @@ deathlog_class_tbl = {
 deathlog_pvp_flag = {
 	NONE = 0,
 	REGULAR = 1,
-	DUEL_TO_DEATH = 2
+	DUEL_TO_DEATH = 2,
 }
 
 local environment_damage = {
@@ -597,7 +597,10 @@ function deathlog_setTooltipFromEntry(_entry)
 	local _guild = _entry["guild"]
 	local _race = nil
 	local _class = nil
-	local _source = id_to_npc[_entry["source_id"]] or environment_damage[_entry["source_id"]] or deathlog_decode_pvp_source(_entry["source_id"]) or ""
+	local _source = id_to_npc[_entry["source_id"]]
+		or environment_damage[_entry["source_id"]]
+		or deathlog_decode_pvp_source(_entry["source_id"])
+		or ""
 	local _zone = nil
 	local _loc = _entry["map_pos"]
 	local _date = nil
@@ -639,9 +642,9 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 		return
 	end
 	if string.sub(_name, #_name) == "s" then
-		GameTooltip:AddDoubleLine(_name .. "' " .. Deathlog_L.death_word , "Lvl. " .. _lvl, 1, 1, 1, 0.5, 0.5, 0.5)
+		GameTooltip:AddDoubleLine(_name .. "' " .. Deathlog_L.death_word, "Lvl. " .. _lvl, 1, 1, 1, 0.5, 0.5, 0.5)
 	else
-		GameTooltip:AddDoubleLine(_name .. "'s " .. Deathlog_L.death_word , "Lvl. " .. _lvl, 1, 1, 1, 0.5, 0.5, 0.5)
+		GameTooltip:AddDoubleLine(_name .. "'s " .. Deathlog_L.death_word, "Lvl. " .. _lvl, 1, 1, 1, 0.5, 0.5, 0.5)
 	end
 
 	if deathlog_settings["minilog"]["tooltip_name"] and _name then
@@ -687,10 +690,13 @@ end
 
 function deathlog_encode_pvp_source(source_str)
 	local function create_source_id(source, race, class, level)
-		local source_id = 0;
+		local source_id = 0
 
 		local pvp_flag = deathlog_pvp_flag.REGULAR
-		if (deathlog_last_duel_to_death_player ~= nil and (deathlog_last_duel_to_death_player == source or deathlog_last_duel_to_death_player == UnitName(source))) then
+		if
+			deathlog_last_duel_to_death_player ~= nil
+			and (deathlog_last_duel_to_death_player == source or deathlog_last_duel_to_death_player == UnitName(source))
+		then
 			pvp_flag = deathlog_pvp_flag.DUEL_TO_DEATH
 		end
 
@@ -707,8 +713,13 @@ function deathlog_encode_pvp_source(source_str)
 		return "-1"
 	end
 
-	if (deathlog_last_attack_player ~= nil and deathlog_last_attack_player == source_str) then
-		return create_source_id(source_str, deathlog_last_attack_race, deathlog_last_attack_class, deathlog_last_attack_level)
+	if deathlog_last_attack_player ~= nil and deathlog_last_attack_player == source_str then
+		return create_source_id(
+			source_str,
+			deathlog_last_attack_race,
+			deathlog_last_attack_class,
+			deathlog_last_attack_level
+		)
 	end
 
 	local source_str_safe = nil
@@ -721,7 +732,7 @@ function deathlog_encode_pvp_source(source_str)
 	if source_str_safe == nil then
 		return "-1"
 	end
-	
+
 	source_str = source_str_safe
 
 	if UnitIsPlayer(source_str) then
@@ -729,12 +740,18 @@ function deathlog_encode_pvp_source(source_str)
 		local _, _, enemyClassId = UnitClass(source_str)
 		return create_source_id(source_str, tonumber(enemyRaceId), tonumber(enemyClassId), UnitLevel(source_str))
 	end
-	
+
 	return "-1"
 end
 
 function deathlog_decode_pvp_source(source_id)
-	if source_id == nil or source_id == "-1" or source_id == -1 or id_to_npc[source_id] or environment_damage[source_id] then
+	if
+		source_id == nil
+		or source_id == "-1"
+		or source_id == -1
+		or id_to_npc[source_id]
+		or environment_damage[source_id]
+	then
 		return ""
 	end
 

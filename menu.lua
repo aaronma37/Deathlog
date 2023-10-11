@@ -195,7 +195,46 @@ local subtitle_data = {
 		"Death Source",
 		140,
 		function(_entry, _server_name)
-			return id_to_npc[_entry["source_id"]] or environment_damage[_entry["source_id"]] or deathlog_decode_pvp_source(_entry["source_id"]) or ""
+			local _source = id_to_npc[_entry["source_id"]]
+				or environment_damage[_entry["source_id"]]
+				or deathlog_decode_pvp_source(_entry["source_id"])
+				or ""
+
+			if _source == "" then
+				for map_id = 1424, 1465 do
+					local xx, yy = strsplit(",", _entry["map_pos"], 2)
+					if xx == nil or tonumber(_entry["map_id"]) == nil then
+						break
+					end
+					local pos = { x = xx, y = yy }
+					local m, v = C_Map.GetWorldPosFromMapPos(tonumber(_entry["map_id"]), pos)
+					if m == nil then
+						break
+					end
+					local m, v = C_Map.GetMapPosFromWorldPos(m, v, map_id)
+					if m ~= nil then
+						local x = ceil(v.x * 100)
+						local y = ceil(v.y * 100)
+						if x > 0 and x < 100 and y > 0 and y < 100 then
+							if precomputed_heatmap_intensity[map_id] and precomputed_heatmap_intensity[map_id][x] then
+								if precomputed_heatmap_intensity[map_id][x][y] then
+									for k, v in pairs(precomputed_heatmap_creature_subset[map_id]) do
+										if v[x] and v[x][y] then
+											if id_to_npc[k] then
+												return id_to_npc[k] .. "*"
+											end
+											if environment_damage[k] then
+												return environment_damage[k] .. "*"
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			return _source
 		end,
 	},
 	{
