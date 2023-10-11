@@ -27,6 +27,7 @@ local COMM_COMMANDS = {
 	["BROADCAST_DEATH_PING_CHECKSUM"] = "2",
 	["LAST_WORDS"] = "3",
 	["GUILD_DEATH_NOTIFICATION"] = "4",
+	["REQUEST_DUEL_TO_DEATH"] = "5"
 }
 local COMM_QUERY = "Q"
 local comm_query_lock = nil
@@ -116,6 +117,29 @@ local environment_damage = {
 	[-6] = "Lava",
 	[-7] = "Slime",
 }
+
+deathlog_last_duel_to_death_player = nil
+deathlog_last_attack_player = nil
+deathlog_last_attack_race = nil
+deathlog_last_attack_class = nil
+deathlog_last_attack_level = nil
+
+function deathlog_refresh_last_attack_info(source_name)
+	local _, _, targetRaceId = UnitRace("target")
+	local _, _, targetClassId = UnitClass("target")
+
+	deathlog_last_attack_player = source_name
+	deathlog_last_attack_race = tonumber(targetRaceId)
+	deathlog_last_attack_class = tonumber(targetClassId)
+	deathlog_last_attack_level = UnitLevel("target")
+end
+
+function deathlog_clear_last_attack_info()
+	deathlog_last_attack_player = nil
+	deathlog_last_attack_race = nil
+	deathlog_last_attack_class = nil
+	deathlog_last_attack_level = nil
+end
 
 local function PlayerData(
 	name,
@@ -446,6 +470,7 @@ local broadcast_death_ping_queue = {}
 local death_alert_out_queue = {}
 local death_alert_out_queue_guild_notification = {}
 local last_words_queue = {}
+local deathlog_request_duel_to_death_queue = {}
 
 local function fletcher16Raw(data)
 	local sum1 = 0
@@ -628,6 +653,10 @@ local function selfDeathAlert(death_source_str)
 
 	if death_source_str and environment_damage[death_source_str] then
 		death_source = death_source_str
+	end
+
+	if death_source == "-1" and death_source_str then
+		death_source = deathlog_encode_pvp_source(death_source_str)
 	end
 
 	msg = encodeMessage(
@@ -903,6 +932,20 @@ local function deathlogJoinChannel()
 end
 
 local function sendNextInQueue()
+	if #deathlog_request_duel_to_death_queue > 0 then
+		local channel_num = GetChannelName(death_alerts_channel)
+		if channel_num == 0 then
+			deathlogJoinChannel()
+			return
+		end
+		local commMessage = COMM_COMMANDS["REQUEST_DUEL_TO_DEATH"]
+			.. COMM_COMMAND_DELIM
+			.. request_duel_to_death_queue[1]
+		CTL:SendChatMessage("BULK", COMM_NAME, commMessage, "CHANNEL", nil, channel_num)
+		table.remove(request_duel_to_death_queue, 1)
+		return
+	end
+
 	if #broadcast_death_ping_queue > 0 then
 		local channel_num = GetChannelName(death_alerts_channel)
 		if channel_num == 0 then
@@ -989,6 +1032,7 @@ death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_PARTY")
 -- death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON") -- enable again for queries
 death_notification_lib_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
+death_notification_lib_event_handler:RegisterEvent("DUEL_TO_THE_DEATH_REQUESTED")
 if tocversion >= 11404 then
 	death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD_DEATHS")
 end
@@ -1084,6 +1128,30 @@ local function handleEvent(self, event, ...)
 			end
 			return
 		end
+
+		if command == COMM_COMMANDS["REQUEST_DUEL_TO_DEATH"] then
+			local player_name_short, _ = string.split("-", arg[2])
+			if shadowbanned[player_name_short] then
+				return
+			end
+
+			if throttle_player[player_name_short] == nil then
+				throttle_player[player_name_short] = 0
+			end
+			throttle_player[player_name_short] = throttle_player[player_name_short] + 1
+			if throttle_player[player_name_short] > 1000 then
+				shadowbanned[player_name_short] = 1
+			end
+
+			local checksum, players = string.split(COMM_FIELD_DELIM, msg)
+			local player_one, player_two = string.split("_", players)
+			if (player_one == UnitName("player")) then
+				deathlog_last_duel_to_death_player = player_two
+			elseif (player_two == UnitName("player")) then
+				deathlog_last_duel_to_death_player = player_one
+			end
+			return
+		end
 	elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
 		-- local time, token, hidding, source_serial, source_name, caster_flags, caster_flags2, target_serial, target_name, target_flags, target_flags2, ability_id, ability_name, ability_type, extraSpellID, extraSpellName, extraSchool = CombatLogGetCurrentEventInfo()
 		local _, ev, _, _, source_name, _, _, target_guid, _, _, _, environmental_type, _, _, _, _, _ =
@@ -1093,6 +1161,10 @@ local function handleEvent(self, event, ...)
 			if not (source_name == nil) then
 				if string.find(ev, "DAMAGE") ~= nil then
 					last_attack_source = source_name
+
+					if (source_name == UnitName("target") and UnitIsPlayer("target")) then
+						deathlog_refresh_last_attack_info(source_name)
+					end
 				end
 			end
 		end
@@ -1142,6 +1214,17 @@ local function handleEvent(self, event, ...)
 		C_Timer.After(5.0, function()
 			deathlogJoinChannel()
 		end)
+	elseif event == "DUEL_TO_THE_DEATH_REQUESTED" then
+		deathlog_last_duel_to_death_player = arg[1]
+		
+		local guildName, guildRankName, guildRankIndex = GetGuildInfo("player")
+		if guildName == nil then
+			guildName = ""
+		end
+		local player_data = PlayerData(UnitName("player"), guildName, nil, nil, nil, UnitLevel("player"), nil, nil, nil, nil, nil)
+		local checksum = fletcher16(player_data)
+		local msg = checksum .. COMM_FIELD_DELIM .. (UnitName("player") .. "_" .. deathlog_last_duel_to_death_player) .. COMM_FIELD_DELIM
+		table.insert(request_duel_to_death_queue, msg)
 	elseif event == "CHAT_MSG_ADDON" then
 		local command, msg, _doublechecksum = string.split(COMM_COMMAND_DELIM, arg[2])
 		if command == COMM_QUERY then

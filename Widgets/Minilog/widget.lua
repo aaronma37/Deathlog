@@ -185,7 +185,7 @@ local subtitle_metadata = {
 			end
 			return id_to_npc[_entry.player_data["source_id"]]
 				or environment_damage[_entry.player_data["source_id"]]
-				or ""
+				or deathlog_decode_pvp_source(_entry.player_data["source_id"]) or ""
 		end,
 	},
 	["Class"] = {
@@ -1320,6 +1320,20 @@ options = {
 					["instance_id"] = instance_id,
 					["guild"] = some_guild,
 				}
+
+				-- pvp tests
+				local pvp_r = math.random(0, 3)
+				if pvp_r == 1 then
+					fake_player_data["source_id"] = deathlog_encode_pvp_source("target")
+				elseif pvp_r == 2 then
+					fake_player_data["source_id"] = deathlog_encode_pvp_source(deathlog_last_attack_player)
+				elseif pvp_r == 3 and UnitIsPlayer("target") then
+					deathlog_refresh_last_attack_info(UnitName("target"))
+					deathlog_last_duel_to_death_player = deathlog_last_attack_player
+					fake_player_data["source_id"] = deathlog_encode_pvp_source(deathlog_last_attack_player)
+					deathlog_last_duel_to_death_player = nil
+					deathlog_clear_last_attack_info()
+				end
 
 				deathlog_widget_minilog_createEntry(fake_player_data)
 			end,

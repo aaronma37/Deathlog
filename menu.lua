@@ -195,7 +195,7 @@ local subtitle_data = {
 		"Death Source",
 		140,
 		function(_entry, _server_name)
-			return id_to_npc[_entry["source_id"]] or environment_damage[_entry["source_id"]] or ""
+			return id_to_npc[_entry["source_id"]] or environment_damage[_entry["source_id"]] or deathlog_decode_pvp_source(_entry["source_id"]) or ""
 		end,
 	},
 	{
