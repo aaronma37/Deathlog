@@ -63,6 +63,7 @@ deathlog_strings_ko = {
 		{ 349, "MARAUDON", "마라우돈" },
 		{ 389, "RAGEFIRECHASM", "성난불길 협곡" },
 		{ 429, "DIREMAUL", "혈투의 전장" },
+		{ 469, "BLACKWINGLAIR", "검은날개 둥지" },
 	},
 	instance_map = {
 		["그림자송곳니 성채"] = 33,
@@ -84,6 +85,7 @@ deathlog_strings_ko = {
 		["마라우돈"] = 349,
 		["성난불길 협곡"] = 389,
 		["혈투의 전장"] = 429,
+		["검은날개 둥지"] = 469,
 	},
 	deathlog_zone_tbl = {
 		["아제로스"] = 947,
