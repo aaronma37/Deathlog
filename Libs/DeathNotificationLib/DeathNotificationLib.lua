@@ -117,27 +117,27 @@ local environment_damage = {
 	[-7] = "Slime",
 }
 
-last_duel_to_death_player = nil
-last_attack_player = nil
-last_attack_race = nil
-last_attack_class = nil
-last_attack_level = nil
+deathlog_last_duel_to_death_player = nil
+deathlog_last_attack_player = nil
+deathlog_last_attack_race = nil
+deathlog_last_attack_class = nil
+deathlog_last_attack_level = nil
 
-function refresh_last_attack_info(source_name)
+function deathlog_refresh_last_attack_info(source_name)
 	local _, _, targetRaceId = UnitRace("target")
 	local _, _, targetClassId = UnitClass("target")
 
-	last_attack_player = source_name
-	last_attack_race = tonumber(targetRaceId)
-	last_attack_class = tonumber(targetClassId)
-	last_attack_level = UnitLevel("target")
+	deathlog_last_attack_player = source_name
+	deathlog_last_attack_race = tonumber(targetRaceId)
+	deathlog_last_attack_class = tonumber(targetClassId)
+	deathlog_last_attack_level = UnitLevel("target")
 end
 
-function clear_last_attack_info()
-	last_attack_player = nil
-	last_attack_race = nil
-	last_attack_class = nil
-	last_attack_level = nil
+function deathlog_clear_last_attack_info()
+	deathlog_last_attack_player = nil
+	deathlog_last_attack_race = nil
+	deathlog_last_attack_class = nil
+	deathlog_last_attack_level = nil
 end
 
 local function PlayerData(
@@ -441,7 +441,7 @@ local broadcast_death_ping_queue = {}
 local death_alert_out_queue = {}
 local death_alert_out_queue_guild_notification = {}
 local last_words_queue = {}
-local request_duel_to_death_queue = {}
+local deathlog_request_duel_to_death_queue = {}
 
 local function fletcher16Raw(data)
 	local sum1 = 0
@@ -903,7 +903,7 @@ local function deathlogJoinChannel()
 end
 
 local function sendNextInQueue()
-	if #request_duel_to_death_queue > 0 then
+	if #deathlog_request_duel_to_death_queue > 0 then
 		local channel_num = GetChannelName(death_alerts_channel)
 		if channel_num == 0 then
 			deathlogJoinChannel()
@@ -1117,9 +1117,9 @@ local function handleEvent(self, event, ...)
 			local checksum, players = string.split(COMM_FIELD_DELIM, msg)
 			local player_one, player_two = string.split("_", players)
 			if (player_one == UnitName("player")) then
-				last_duel_to_death_player = player_two
+				deathlog_last_duel_to_death_player = player_two
 			elseif (player_two == UnitName("player")) then
-				last_duel_to_death_player = player_one
+				deathlog_last_duel_to_death_player = player_one
 			end
 			return
 		end
@@ -1134,7 +1134,7 @@ local function handleEvent(self, event, ...)
 					last_attack_source = source_name
 
 					if (source_name == UnitName("target") and UnitIsPlayer("target")) then
-						refresh_last_attack_info(source_name)
+						deathlog_refresh_last_attack_info(source_name)
 					end
 				end
 			end
@@ -1186,7 +1186,7 @@ local function handleEvent(self, event, ...)
 			deathlogJoinChannel()
 		end)
 	elseif event == "DUEL_TO_THE_DEATH_REQUESTED" then
-		last_duel_to_death_player = arg[1]
+		deathlog_last_duel_to_death_player = arg[1]
 		
 		local guildName, guildRankName, guildRankIndex = GetGuildInfo("player")
 		if guildName == nil then
@@ -1194,7 +1194,7 @@ local function handleEvent(self, event, ...)
 		end
 		local player_data = PlayerData(UnitName("player"), guildName, nil, nil, nil, UnitLevel("player"), nil, nil, nil, nil, nil)
 		local checksum = fletcher16(player_data)
-		local msg = checksum .. COMM_FIELD_DELIM .. (UnitName("player") .. "_" .. last_duel_to_death_player) .. COMM_FIELD_DELIM
+		local msg = checksum .. COMM_FIELD_DELIM .. (UnitName("player") .. "_" .. deathlog_last_duel_to_death_player) .. COMM_FIELD_DELIM
 		table.insert(request_duel_to_death_queue, msg)
 	elseif event == "CHAT_MSG_ADDON" then
 		local command, msg, _doublechecksum = string.split(COMM_COMMAND_DELIM, arg[2])

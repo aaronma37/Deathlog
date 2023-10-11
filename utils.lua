@@ -690,7 +690,7 @@ function deathlog_encode_pvp_source(source_str)
 		local source_id = 0;
 
 		local pvp_flag = deathlog_pvp_flag.REGULAR
-		if (last_duel_to_death_player ~= nil and (last_duel_to_death_player == source or last_duel_to_death_player == UnitName(source))) then
+		if (deathlog_last_duel_to_death_player ~= nil and (deathlog_last_duel_to_death_player == source or deathlog_last_duel_to_death_player == UnitName(source))) then
 			pvp_flag = deathlog_pvp_flag.DUEL_TO_DEATH
 		end
 
@@ -707,8 +707,8 @@ function deathlog_encode_pvp_source(source_str)
 		return "-1"
 	end
 
-	if (last_attack_player ~= nil and last_attack_player == source_str) then
-		return create_source_id(source_str, last_attack_race, last_attack_class, last_attack_level)
+	if (deathlog_last_attack_player ~= nil and deathlog_last_attack_player == source_str) then
+		return create_source_id(source_str, deathlog_last_attack_race, deathlog_last_attack_class, deathlog_last_attack_level)
 	end
 
 	local source_str_safe = nil

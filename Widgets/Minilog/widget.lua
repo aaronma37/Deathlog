@@ -1326,13 +1326,13 @@ options = {
 				if pvp_r == 1 then
 					fake_player_data["source_id"] = deathlog_encode_pvp_source("target")
 				elseif pvp_r == 2 then
-					fake_player_data["source_id"] = deathlog_encode_pvp_source(last_attack_player)
+					fake_player_data["source_id"] = deathlog_encode_pvp_source(deathlog_last_attack_player)
 				elseif pvp_r == 3 and UnitIsPlayer("target") then
-					refresh_last_attack_info(UnitName("target"))
-					last_duel_to_death_player = last_attack_player
-					fake_player_data["source_id"] = deathlog_encode_pvp_source(last_attack_player)
-					last_duel_to_death_player = nil
-					clear_last_attack_info()
+					deathlog_refresh_last_attack_info(UnitName("target"))
+					deathlog_last_duel_to_death_player = deathlog_last_attack_player
+					fake_player_data["source_id"] = deathlog_encode_pvp_source(deathlog_last_attack_player)
+					deathlog_last_duel_to_death_player = nil
+					deathlog_clear_last_attack_info()
 				end
 
 				deathlog_widget_minilog_createEntry(fake_player_data)
