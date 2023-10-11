@@ -503,3 +503,58 @@ end
 function Deathlog_WatchList()
 	return watch_list_frame
 end
+
+local watchlist_idx = 1
+local watchlist_event_handler = CreateFrame("Frame")
+
+local comm_query_lock_out = nil
+local function handleEvent(self, event, ...)
+	local arg = { ... }
+	if event == "UPDATE_MOUSEOVER_UNIT" then
+		if comm_query_lock_out then
+			return
+		end
+		comm_query_lock_out = C_Timer.NewTimer(15, function()
+			comm_query_lock_out:Cancel()
+			comm_query_lock_out = nil
+		end)
+		local mouseover_name = UnitName("mouseover")
+
+		if UnitName("player") == mouseover_name then
+			return
+		end
+
+		if UnitIsPlayer(mouseover_name) == false then
+			return
+		end
+
+		local num = 0
+		local _name = nil
+		for k, v in pairs(deathlog_watchlist_entries) do
+			num = num + 1
+			if num >= watchlist_idx and isDead(k) == nil then
+				_name = k
+				break
+			end
+		end
+		if _name == nil then
+			watchlist_idx = 1
+			return
+		end
+
+		watchlist_idx = watchlist_idx + 1
+
+		DeathNotificationLib_queryTarget(_name, mouseover_name)
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		local num = 0
+		for _, _ in pairs(deathlog_watchlist_entries) do
+			num = num + 1
+		end
+		if num > 0 then
+			watchlist_event_handler:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+		end
+	end
+end
+
+watchlist_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
+watchlist_event_handler:SetScript("OnEvent", handleEvent)
