@@ -524,7 +524,7 @@ local function handleEvent(self, event, ...)
 			return
 		end
 
-		if UnitIsPlayer(mouseover_name) == false then
+		if UnitIsPlayer("mouseover") == false then
 			return
 		end
 
