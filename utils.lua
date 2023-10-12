@@ -105,6 +105,42 @@ function deathlogShallowCopy(t)
 	return t2
 end
 
+function deathlogPredictSource(entry_map_pos, entry_map_id)
+	local xx, yy = strsplit(",", entry_map_pos, 2)
+	if xx == nil or tonumber(entry_map_id) == nil then
+		return nil
+	end
+	local pos = { x = xx, y = yy }
+	local cont, cont_pos = C_Map.GetWorldPosFromMapPos(tonumber(entry_map_id), pos)
+	if cont == nil then
+		return nil
+	end
+	for map_id = 1424, 1465 do
+		local m, v = C_Map.GetMapPosFromWorldPos(cont, cont_pos, map_id)
+		if m ~= nil then
+			local x = ceil(v.x * 100)
+			local y = ceil(v.y * 100)
+			if x > 0 and x < 100 and y > 0 and y < 100 then
+				if precomputed_heatmap_intensity[map_id] and precomputed_heatmap_intensity[map_id][x] then
+					if precomputed_heatmap_intensity[map_id][x][y] then
+						for k, v in pairs(precomputed_heatmap_creature_subset[map_id]) do
+							if v[x] and v[x][y] then
+								if id_to_npc[k] then
+									return id_to_npc[k] .. "*"
+								end
+								if environment_damage[k] then
+									return environment_damage[k] .. "*"
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return nil
+end
+
 -- Tue Apr 18 21:36:54 2023
 function deathlogConvertStringDateUnix(s)
 	if tonumber(s) then

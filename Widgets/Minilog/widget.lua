@@ -183,9 +183,15 @@ local subtitle_metadata = {
 			if _entry.player_data["source_id"] == nil then
 				return ""
 			end
-			return id_to_npc[_entry.player_data["source_id"]]
+			local _source = id_to_npc[_entry.player_data["source_id"]]
 				or environment_damage[_entry.player_data["source_id"]]
-				or deathlog_decode_pvp_source(_entry.player_data["source_id"]) or ""
+				or deathlog_decode_pvp_source(_entry.player_data["source_id"])
+				or ""
+
+			if _source == "" and deathlogPredictSource then
+				_source = deathlogPredictSource(_entry.player_data["map_pos"], _entry.player_data["map_id"]) or ""
+			end
+			return _source
 		end,
 	},
 	["Class"] = {
