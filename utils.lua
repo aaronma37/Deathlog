@@ -677,10 +677,37 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 	if _name == nil or _lvl == nil then
 		return
 	end
+
+	local _deathlog_watchlist_icon = ""
+	if
+		deathlog_watchlist_entries
+		and deathlog_watchlist_entries[_name]
+		and deathlog_watchlist_entries[_name]["Icon"]
+	then
+		_deathlog_watchlist_icon = deathlog_watchlist_entries[_name]["Icon"] .. " "
+	end
 	if string.sub(_name, #_name) == "s" then
-		GameTooltip:AddDoubleLine(_name .. "' " .. Deathlog_L.death_word, "Lvl. " .. _lvl, 1, 1, 1, 0.5, 0.5, 0.5)
+		GameTooltip:AddDoubleLine(
+			_deathlog_watchlist_icon .. _name .. "' " .. Deathlog_L.death_word,
+			"Lvl. " .. _lvl,
+			1,
+			1,
+			1,
+			0.5,
+			0.5,
+			0.5
+		)
 	else
-		GameTooltip:AddDoubleLine(_name .. "'s " .. Deathlog_L.death_word, "Lvl. " .. _lvl, 1, 1, 1, 0.5, 0.5, 0.5)
+		GameTooltip:AddDoubleLine(
+			_deathlog_watchlist_icon .. _name .. "'s " .. Deathlog_L.death_word,
+			"Lvl. " .. _lvl,
+			1,
+			1,
+			1,
+			0.5,
+			0.5,
+			0.5
+		)
 	end
 
 	if deathlog_settings["minilog"]["tooltip_name"] and _name then

@@ -27,7 +27,7 @@ local COMM_COMMANDS = {
 	["BROADCAST_DEATH_PING_CHECKSUM"] = "2",
 	["LAST_WORDS"] = "3",
 	["GUILD_DEATH_NOTIFICATION"] = "4",
-	["REQUEST_DUEL_TO_DEATH"] = "5"
+	["REQUEST_DUEL_TO_DEATH"] = "5",
 }
 local COMM_QUERY = "Q"
 local comm_query_lock = nil
@@ -1030,7 +1030,7 @@ death_notification_lib_event_handler:RegisterEvent("PLAYER_DEAD")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_SAY")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_PARTY")
--- death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON") -- enable again for queries
+death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON") -- enable again for queries
 death_notification_lib_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 death_notification_lib_event_handler:RegisterEvent("DUEL_TO_THE_DEATH_REQUESTED")
 if tocversion >= 11404 then
@@ -1145,9 +1145,9 @@ local function handleEvent(self, event, ...)
 
 			local checksum, players = string.split(COMM_FIELD_DELIM, msg)
 			local player_one, player_two = string.split("_", players)
-			if (player_one == UnitName("player")) then
+			if player_one == UnitName("player") then
 				deathlog_last_duel_to_death_player = player_two
-			elseif (player_two == UnitName("player")) then
+			elseif player_two == UnitName("player") then
 				deathlog_last_duel_to_death_player = player_one
 			end
 			return
@@ -1162,7 +1162,7 @@ local function handleEvent(self, event, ...)
 				if string.find(ev, "DAMAGE") ~= nil then
 					last_attack_source = source_name
 
-					if (source_name == UnitName("target") and UnitIsPlayer("target")) then
+					if source_name == UnitName("target") and UnitIsPlayer("target") then
 						deathlog_refresh_last_attack_info(source_name)
 					end
 				end
@@ -1216,14 +1216,18 @@ local function handleEvent(self, event, ...)
 		end)
 	elseif event == "DUEL_TO_THE_DEATH_REQUESTED" then
 		deathlog_last_duel_to_death_player = arg[1]
-		
+
 		local guildName, guildRankName, guildRankIndex = GetGuildInfo("player")
 		if guildName == nil then
 			guildName = ""
 		end
-		local player_data = PlayerData(UnitName("player"), guildName, nil, nil, nil, UnitLevel("player"), nil, nil, nil, nil, nil)
+		local player_data =
+			PlayerData(UnitName("player"), guildName, nil, nil, nil, UnitLevel("player"), nil, nil, nil, nil, nil)
 		local checksum = fletcher16(player_data)
-		local msg = checksum .. COMM_FIELD_DELIM .. (UnitName("player") .. "_" .. deathlog_last_duel_to_death_player) .. COMM_FIELD_DELIM
+		local msg = checksum
+			.. COMM_FIELD_DELIM
+			.. (UnitName("player") .. "_" .. deathlog_last_duel_to_death_player)
+			.. COMM_FIELD_DELIM
 		table.insert(request_duel_to_death_queue, msg)
 	elseif event == "CHAT_MSG_ADDON" then
 		local command, msg, _doublechecksum = string.split(COMM_COMMAND_DELIM, arg[2])

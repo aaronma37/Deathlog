@@ -219,7 +219,17 @@ function Deathlog_DeathAlertPlay(entry)
 		source_name = deathlogPredictSource(entry["map_pos"], entry["map_id"]) or ""
 	end
 
-	msg = msg:gsub("%<name>", entry["name"])
+	local _deathlog_watchlist_icon = ""
+	if
+		deathlog_watchlist_entries
+		and deathlog_watchlist_entries[entry["name"]]
+		and deathlog_watchlist_entries[entry["name"]]["Icon"]
+	then
+		_deathlog_watchlist_icon = deathlog_watchlist_entries[entry["name"]]["Icon"] .. " "
+	end
+
+	msg = msg:gsub("%<name>", _deathlog_watchlist_icon .. entry["name"])
+
 	msg = msg:gsub("%<class>", class)
 	msg = msg:gsub("%<race>", race)
 	msg = msg:gsub("%<source>", source_name)

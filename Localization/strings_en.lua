@@ -42,6 +42,7 @@ deathlog_strings_en = {
 		{ value = "InstanceStatisticsTab", text = "Instance Statistics" },
 		{ value = "StatisticsTab", text = "Zone Statistics" },
 		{ value = "LogTab", text = "Search" },
+		{ value = "WatchListTab", text = "Watch List" },
 	},
 	instance_tbl = {
 		{ 33, "SHADOWFANGKEEP", "Shadowfang Keep" },
