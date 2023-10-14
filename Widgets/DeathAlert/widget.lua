@@ -214,6 +214,10 @@ function Deathlog_DeathAlertPlay(entry)
 		source_name = source_name_pvp
 	end
 
+	if source_name == "" and deathlogPredictSource then
+		source_name = deathlogPredictSource(entry["map_pos"], entry["map_id"]) or ""
+	end
+
 	msg = msg:gsub("%<name>", entry["name"])
 	msg = msg:gsub("%<class>", class)
 	msg = msg:gsub("%<race>", race)
