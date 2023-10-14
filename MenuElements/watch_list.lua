@@ -72,12 +72,29 @@ local subtitle_data = {
 	},
 	{
 		"Note",
-		750,
+		650,
 		function(_entry)
 			if _entry["Note"] == "" then
 				return "<Click to add note>"
 			end
 			return _entry["Note"] or "<Click to add note>"
+		end,
+	},
+	{
+		"Last Checked",
+		100,
+		function(_entry)
+			if _entry["last_checked"] == nil then
+				return "Never"
+			end
+			local dur = abs(time() - _entry["last_checked"])
+			if dur < 60 then
+				return ceil(dur) .. "s ago"
+			elseif dur < 3600 then
+				return ceil(dur / 60) .. "m ago"
+			else
+				return ceil(dur / 3600) .. "hr ago"
+			end
 		end,
 	},
 	{
@@ -104,6 +121,7 @@ local font_strings = {} -- idx/columns
 local description_frame = {} -- idx/columns
 local header_strings = {} -- columns
 local row_backgrounds = {} --idx
+local status_string = watch_list_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 
 if watch_list_frame.icon_dd == nil then
 	watch_list_frame.icon_dd = CreateFrame("Frame", nil, watch_list_frame, "UIDropDownMenuTemplate")
@@ -205,53 +223,54 @@ for i = 1, max_rows do
 	row_backgrounds[i]:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
 end
 
-local function clearDeathlogMenuLogData()
-	for i, v in ipairs(font_strings) do
-		for _, col in ipairs(subtitle_data) do
-			v[col[1]]:SetText("")
+local comm_query_lock_out = nil
+local last_time = nil
+local scroll_frame_ref = nil
+local ticker_handler = nil
+local function checkAll()
+	if comm_query_lock_out then
+		local time_til = ""
+		if last_time then
+			time_til = math.ceil(60 - (time() - last_time))
 		end
-	end
-end
 
-local function setDeathlogMenuLogData(data)
-	local ordered = deathlogOrderBy(data, function(t, a, b)
-		return tonumber(t[b]["date"]) < tonumber(t[a]["date"])
+		if ticker_handler then
+			status_string:SetText("Querying for deaths...")
+		else
+			status_string:SetText("Can't refresh yet; wait " .. time_til .. " seconds and visit this tab again.")
+		end
+		return
+	end
+	comm_query_lock_out = C_Timer.NewTimer(60, function()
+		comm_query_lock_out:Cancel()
+		comm_query_lock_out = nil
 	end)
-	for i = 1, max_rows do
-		local idx = (i + (page_number - 1) * max_rows)
-		if idx > #ordered then
-			break
+
+	status_string:SetText("Querying for deaths...")
+	last_time = time()
+	local idx = 1
+	ticker_handler = C_Timer.NewTicker(5, function(self)
+		watch_list_frame.updateMenuElement(scroll_frame_ref)
+		if font_strings[idx] == nil or font_strings[idx].name == nil or font_strings[idx].name == "" then
+			self:Cancel()
+			ticker_handler = nil
+			status_string:SetText("Done querying!")
+			return
 		end
-		for _, col in ipairs(subtitle_data) do
-			font_strings[i][col[1]]:SetText(col[3](ordered[idx], ""))
+		local _name = font_strings[idx].name
+		if isDead(_name) == nil then
+			if deathlog_watchlist_entries[_name] then
+				deathlog_watchlist_entries[_name]["last_checked"] = time()
+			end
+			DeathNotificationLib_queryGuild(_name)
+			DeathNotificationLib_querySay(_name)
 		end
-		if ordered[idx] and ordered[idx].map_id then
-			font_strings[i].map_id = ordered[idx].map_id
-		end
-		if ordered[idx] and ordered[idx].map_pos then
-			local x, y = strsplit(",", ordered[idx].map_pos, 2)
-			font_strings[i].map_id_coords_x = x
-			font_strings[i].map_id_coords_y = y
-		end
-	end
-	if #ordered == 1 then
-		deathlog_watch_list:SetStatusText(
-			#ordered
-				.. " search result/"
-				.. precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]
-				.. " preprocessed"
-		)
-	else
-		deathlog_watch_list:SetStatusText(
-			#ordered
-				.. " search results/"
-				.. precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]
-				.. " preprocessed"
-		)
-	end
+		idx = idx + 1
+	end, 20)
 end
 
 function watch_list_frame.updateMenuElement(scroll_frame)
+	scroll_frame_ref = scroll_frame
 	watch_list_frame:SetParent(scroll_frame.frame)
 	watch_list_frame:Show()
 	watch_list_frame:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -80)
@@ -305,6 +324,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 	watch_list_frame.name_box.text:SetTextColor(255 / 255, 215 / 255, 0)
 	watch_list_frame.name_box.text:Show()
 
+	status_string:SetPoint("TOPLEFT", watch_list_frame, "TOPLEFT", 0, -400)
 	dropdownFunctions = function(frame, level, menuList)
 		local info = UIDropDownMenu_CreateInfo()
 		info.text, info.checked, info.func =
@@ -396,6 +416,10 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 			GameTooltip:Show()
 		end)
 
+		_entry:SetScript("OnLeave", function(widget)
+			GameTooltip:Hide()
+		end)
+
 		_entry:SetScript("OnMouseDown", function(self, button)
 			if button == "RightButton" then
 				selected_entry = i
@@ -435,7 +459,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 					watch_list_frame.name_box:SetFocus()
 
 					watch_list_frame.name_box:Show()
-				elseif pos_x < 700 then
+				elseif pos_x < 600 then
 					edit_box_type = 1
 					local function setEditBox(other)
 						watch_list_frame.name_box:ClearAllPoints()
@@ -456,7 +480,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 					watch_list_frame.name_box:SetFocus()
 
 					watch_list_frame.name_box:Show()
-				elseif pos_x < 800 then
+				elseif pos_x < 760 and pos_x > 720 then
 					watch_list_frame.icon_dd:SetParent(_entry)
 					watch_list_frame.icon_dd:ClearAllPoints()
 					watch_list_frame.icon_dd:SetPoint(
@@ -493,6 +517,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 		header_strings[v[1]]:SetParent(watch_list_frame)
 		header_strings[v[1]]:SetText(v[1])
 	end
+	checkAll()
 
 	refreshFontData()
 	scroll_frame.frame:HookScript("OnHide", function()
@@ -506,55 +531,6 @@ end
 
 local watchlist_idx = 1
 local watchlist_event_handler = CreateFrame("Frame")
-
-local comm_query_lock_out = nil
-local function handleEvent(self, event, ...)
-	local arg = { ... }
-	if event == "UPDATE_MOUSEOVER_UNIT" then
-		if comm_query_lock_out then
-			return
-		end
-		comm_query_lock_out = C_Timer.NewTimer(15, function()
-			comm_query_lock_out:Cancel()
-			comm_query_lock_out = nil
-		end)
-		local mouseover_name = UnitName("mouseover")
-
-		if UnitName("player") == mouseover_name then
-			return
-		end
-
-		if UnitIsPlayer("mouseover") == false then
-			return
-		end
-
-		local num = 0
-		local _name = nil
-		for k, v in pairs(deathlog_watchlist_entries) do
-			num = num + 1
-			if num >= watchlist_idx and isDead(k) == nil then
-				_name = k
-				break
-			end
-		end
-		if _name == nil then
-			watchlist_idx = 1
-			return
-		end
-
-		watchlist_idx = watchlist_idx + 1
-
-		DeathNotificationLib_queryTarget(_name, mouseover_name)
-	elseif event == "PLAYER_ENTERING_WORLD" then
-		local num = 0
-		for _, _ in pairs(deathlog_watchlist_entries) do
-			num = num + 1
-		end
-		if num > 0 then
-			watchlist_event_handler:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
-		end
-	end
-end
 
 watchlist_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 watchlist_event_handler:SetScript("OnEvent", handleEvent)
