@@ -18,6 +18,7 @@ sounds["golfclap"] = "Interface\\AddOns\\Deathlog\\Sounds\\golfclap.ogg"
 sounds["hunger_games"] = "Interface\\AddOns\\Deathlog\\Sounds\\hunger_games.ogg"
 sounds["HeroFallen"] = "Interface\\AddOns\\Deathlog\\Sounds\\HeroFallen.ogg"
 sounds["Dread_Hunger"] = "Interface\\AddOns\\Deathlog\\Sounds\\Dread_Hunger.ogg"
+sounds["Arugal"] = "Interface\\AddOns\\Deathlog\\Sounds\\Arugal.ogg"
 sounds["random"] = "random"
 local fonts = LSM30:HashTable("font")
 fonts["blei00d"] = "Fonts\\blei00d.TTF"
