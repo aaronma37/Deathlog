@@ -46,6 +46,7 @@ local function createInstanceButton(path_postfix, title_text)
 	frame.instance_str:SetTextColor(1, 1, 1, 1)
 	frame.instance_str:SetJustifyH("CENTER")
 	frame.instance_str:SetText(title_text)
+	frame.instance_str:SetWidth(180)
 	frame.instance_str:Hide()
 	return frame
 end

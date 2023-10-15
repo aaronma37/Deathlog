@@ -63,6 +63,7 @@ for k, class_id in pairs(class_tbl) do
 		average_class_font_strings[class_id][v[1]]:SetJustifyH(v[3])
 		average_class_font_strings[class_id][v[1]]:SetWidth(50)
 		average_class_font_strings[class_id][v[1]]:SetTextColor(1, 1, 1, 1)
+		average_class_font_strings[class_id][v[1]]:SetWordWrap(false)
 	end
 	sep = sep - 15
 end

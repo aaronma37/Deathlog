@@ -684,7 +684,7 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 	end
 
 	if deathlog_settings["minilog"]["tooltip_name"] and _name then
-		GameTooltip:AddLine("Name: " .. _name, 1, 1, 1)
+		GameTooltip:AddLine(Deathlog_L.name_word .. ": " .. _name, 1, 1, 1)
 	end
 	if deathlog_settings["minilog"]["tooltip_guild"] and _guild then
 		GameTooltip:AddLine(Deathlog_L.guild_word .. ": " .. _guild, 1, 1, 1)
