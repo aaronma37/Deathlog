@@ -9,7 +9,7 @@ deathlog_strings_ru = {
 	creature_model_quote_font = "Fonts\\MORPHEUS_CYR.TTF",
 	-- death alerts messages
 	death_alert_default_message = "<name> <race> <class> был убит\n<source> на уровне <level> в <zone>.",
-	death_alert_default_fall_message = "<name> <race> <class> упал\nнасмерть на уровне <level> в <zone>.",
+	death_alert_default_fall_message = "<name> <race> <class> разбился\nнасмерть на уровне <level> в <zone>.",
 	death_alert_default_drown_message = "<name> <race> <class> утонул\n на уровне <level> в <zone>.",
 	death_alert_default_slime_message = "<name> <race> <class> умер от слизи.\n на уровне <level> в <zone>.",
 	death_alert_default_lava_message = "<name> <race> <class> утонул в лаве.\n на уровне <level> в <zone>.",
