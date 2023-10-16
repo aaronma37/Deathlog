@@ -18,8 +18,8 @@ deathlog_strings_ru = {
 	-- words
 	corpse_word = "Труп",
 	of_word = "из",
-	minimap_btn_left_click = "|cFF666666Left Click:|r Посмотреть журнал",
-	minimap_btn_right_click = "|cFF666666Right Click:|r ",
+	minimap_btn_left_click = "|cFF666666ЛКМ:|r Посмотреть журнал",
+ 	minimap_btn_right_click = "|cFF666666ПКМ:|r ",
 	class_word = "Класс",
 	killed_by_word = "Убит",
 	zone_instance_word = "Зона/Подземелье",
