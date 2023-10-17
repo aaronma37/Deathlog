@@ -915,6 +915,8 @@ local function deathlogReceiveGuildDeathNotification(sender, data, doublechecksu
 	end)
 end
 
+StaticPopupDialogs["CHAT_CHANNEL_PASSWORD"] = nil
+local remaining_attempts = 5
 local function deathlogJoinChannel()
 	LeaveChannelByName(death_alerts_channel)
 
@@ -929,6 +931,22 @@ local function deathlogJoinChannel()
 			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], death_alerts_channel)
 		end
 	end
+
+	local backup_channel_ticker = C_Timer.NewTicker(4, function(self)
+		if remaining_attempts < 1 then
+			self:Cancel()
+			return
+		end
+		local channel_num = GetChannelName(death_alerts_channel)
+		if channel_num ~= 0 then
+			self:Cancel()
+			return
+		end
+		remaining_attempts = remaining_attempts - 1
+		death_alerts_channel = death_alerts_channel .. "b"
+		print("Couldn't join main deathlog channel; joining backup")
+		JoinChannelByName(death_alerts_channel, death_alerts_channel_pw)
+	end)
 end
 
 local function sendNextInQueue()

@@ -361,7 +361,6 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 			metric == "|TInterface\\COMMON\\friendship-heart:16:16:0:0:64:64:|t",
 			function()
 				local name = font_strings[selected_entry].name
-				print(name)
 				if name == nil then
 					return
 				end
