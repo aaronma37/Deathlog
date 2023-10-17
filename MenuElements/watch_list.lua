@@ -250,7 +250,9 @@ local function checkAll()
 	last_time = time()
 	local idx = 1
 	ticker_handler = C_Timer.NewTicker(5, function(self)
-		watch_list_frame.updateMenuElement(scroll_frame_ref)
+		if watch_list_frame:IsShown() then
+			watch_list_frame.updateMenuElement(scroll_frame_ref)
+		end
 		if font_strings[idx] == nil or font_strings[idx].name == nil or font_strings[idx].name == "" then
 			self:Cancel()
 			ticker_handler = nil
