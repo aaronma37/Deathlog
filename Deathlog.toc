@@ -47,7 +47,6 @@ Libs/DeathNotificationLib/DeathNotificationLib.lua
 
 utils.lua
 id_to_display_id.lua
-id_to_quote.lua
 
 MenuElements/watch_list.lua
 MenuElements/map_container.lua

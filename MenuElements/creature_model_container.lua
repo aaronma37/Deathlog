@@ -42,7 +42,7 @@ creature_model_container.modelFrame:Hide()
 
 creature_model_container.quote = creature_model_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 creature_model_container.quote:SetText("")
-creature_model_container.quote:SetFont("Fonts\\MORPHEUS.TTF", 14, "THICK")
+creature_model_container.quote:SetFont(Deathlog_L.creature_model_quote_font, 14, "THICK")
 creature_model_container.quote:SetJustifyV("TOP")
 creature_model_container.quote:SetJustifyH("CENTER")
 creature_model_container.quote:SetTextColor(0.7, 0.7, 0.7)
@@ -70,8 +70,8 @@ function creature_model_container.updateMenuElement(scroll_frame, creature_id, s
 	else
 		creature_model_container:Hide()
 	end
-	if id_to_quote[creature_id] then
-		creature_model_container.quote:SetText('"' .. id_to_quote[creature_id] .. '"')
+	if Deathlog_L.id_to_quote[creature_id] then
+		creature_model_container.quote:SetText('"' .. Deathlog_L.id_to_quote[creature_id] .. '"')
 		creature_model_container.quote:SetParent(creature_model_container.modelFrame)
 
 		creature_model_container.quote:SetPoint("BOTTOM", creature_model_container, "BOTTOM", 0, 25)
