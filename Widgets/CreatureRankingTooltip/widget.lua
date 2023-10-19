@@ -35,7 +35,7 @@ function Deathlog_activateCreatureRankingTooltip()
 					zone_name = (deathlog_id_to_instance_tbl[_instance_id] or _instance_id)
 				end
 				if creature_ranking_by_zone[_zone] then
-					local source_id = npc_to_id[a]
+					local source_id = d_npc_to_id[a]
 					local rank = creature_ranking_by_zone[_zone][source_id]
 					if rank then
 						GameTooltip:AddLine(
@@ -106,8 +106,8 @@ function Deathlog_CRTWidget_applySettings()
 		if deathlog_settings[widget_name]["crt_metric"] == "Total Kills" then
 			local most_deadly_units = deathlogGetOrdered(precomputed_general_stats, { "all", "all", "all", nil })
 			for k, v in ipairs(most_deadly_units) do
-				if id_to_npc[v[1]] then
-					creature_ranking[id_to_npc[v[1]]] = k
+				if d_id_to_npc[v[1]] then
+					creature_ranking[d_id_to_npc[v[1]]] = k
 				end
 			end
 		elseif deathlog_settings[widget_name]["crt_metric"] == "Normalized Score" then
@@ -119,16 +119,16 @@ function Deathlog_CRTWidget_applySettings()
 			)
 
 			for k, v in ipairs(most_deadly_units_normalized) do
-				if id_to_npc[v[1]] then
-					creature_ranking[id_to_npc[v[1]]] = k
+				if d_id_to_npc[v[1]] then
+					creature_ranking[d_id_to_npc[v[1]]] = k
 				end
 			end
 		end
 	end
 
 	for k, v in pairs(precomputed_general_stats["all"]["all"]["all"]) do
-		if id_to_npc[k] then
-			creature_avg_lvl[id_to_npc[k]] = v["avg_lvl"]
+		if d_id_to_npc[k] then
+			creature_avg_lvl[d_id_to_npc[k]] = v["avg_lvl"]
 		end
 	end
 

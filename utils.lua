@@ -125,8 +125,8 @@ function deathlogPredictSource(entry_map_pos, entry_map_id)
 					if precomputed_heatmap_intensity[map_id][x][y] then
 						for k, v in pairs(precomputed_heatmap_creature_subset[map_id]) do
 							if v[x] and v[x][y] then
-								if id_to_npc[k] then
-									return id_to_npc[k] .. "*"
+								if d_id_to_npc[k] then
+									return d_id_to_npc[k] .. "*"
 								end
 								if environment_damage[k] then
 									return environment_damage[k] .. "*"
@@ -487,7 +487,7 @@ function deathlog_calculate_statistics(_deathlog_data)
 	-- local ordered = deathlogGetOrdered(stats, {"all", "all", "all", nil})
 	-- for i,v in ipairs(ordered) do
 	--   if i < 25 then
-	--     print(i, id_to_npc[v[1]], v[2])
+	--     print(i, d_id_to_npc[v[1]], v[2])
 	--   end
 	-- end
 
@@ -633,7 +633,7 @@ function deathlog_setTooltipFromEntry(_entry)
 	local _guild = _entry["guild"]
 	local _race = nil
 	local _class = nil
-	local _source = id_to_npc[_entry["source_id"]]
+	local _source = d_id_to_npc[_entry["source_id"]]
 		or environment_damage[_entry["source_id"]]
 		or deathlog_decode_pvp_source(_entry["source_id"])
 		or ""
@@ -812,7 +812,7 @@ function deathlog_decode_pvp_source(source_id)
 		source_id == nil
 		or source_id == "-1"
 		or source_id == -1
-		or id_to_npc[source_id]
+		or d_id_to_npc[source_id]
 		or environment_damage[source_id]
 	then
 		return ""
