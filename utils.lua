@@ -41,6 +41,18 @@ deathlog_class_tbl = {
 	["Druid"] = 11,
 }
 
+deathlog_id_to_class_tbl = {
+	[1] = "Warrior",
+	[2] = "Paladin",
+	[3] = "Hunter",
+	[4] = "Rogue",
+	[5] = "Priest",
+	[7] = "Shaman",
+	[8] = "Mage",
+	[9] = "Warlock",
+	[11] = "Druid",
+}
+
 -- values between 0 and 7
 deathlog_pvp_flag = {
 	NONE = 0,
