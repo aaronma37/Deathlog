@@ -106,6 +106,9 @@ function deathlogShallowCopy(t)
 end
 
 function deathlogPredictSource(entry_map_pos, entry_map_id)
+	if entry_map_pos == nil then
+		return nil
+	end
 	local xx, yy = strsplit(",", entry_map_pos, 2)
 	if xx == nil or tonumber(entry_map_id) == nil then
 		return nil
