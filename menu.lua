@@ -203,7 +203,7 @@ local subtitle_data = {
 		"Death Source",
 		140,
 		function(_entry, _server_name)
-			local _source = id_to_npc[_entry["source_id"]]
+			local _source = d_id_to_npc[_entry["source_id"]]
 				or environment_damage[_entry["source_id"]]
 				or deathlog_decode_pvp_source(_entry["source_id"])
 				or ""
@@ -900,8 +900,8 @@ local function drawLogTab(container)
 		if #text > 0 then
 			death_source_filter = function(_, _entry)
 				if
-					id_to_npc[_entry["source_id"]] ~= nil
-					and string.find(string.lower(id_to_npc[_entry["source_id"]]), string.lower(text))
+				d_id_to_npc[_entry["source_id"]] ~= nil
+					and string.find(string.lower(d_id_to_npc[_entry["source_id"]]), string.lower(text))
 				then
 					return true
 				else
@@ -1224,7 +1224,7 @@ local function drawCreatureStatisticsTab(container)
 		description_label:SetText(
 			string.format("%.2f", deaths_by_creature / all_deaths * 100)
 				.. "% of all deaths are caused by "
-				.. id_to_npc[creature_id]
+				.. d_id_to_npc[creature_id]
 				.. "."
 		)
 	end
