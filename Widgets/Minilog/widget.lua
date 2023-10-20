@@ -143,16 +143,18 @@ local subtitle_metadata = {
 		"Name",
 		80,
 		function(_entry)
-			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
-			if Deathlog_L.class_table[class_str] then
-				if RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()] then
-					return "|c"
-						.. RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()].colorStr
-						.. (_entry.player_data["name"] or "")
-						.. "|r"
+			local class_id = _entry.player_data["class_id"]
+			if class_id then
+				if deathlog_class_tbl[class_id] then
+					if RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()] then
+						return "|c"
+							.. RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()].colorStr
+							.. (_entry.player_data["name"] or "")
+							.. "|r"
+					end
 				end
 			end
-			return class_str or ""
+			return _entry.player_data["name"] or ""
 		end,
 	},
 	["Zone"] = {
@@ -198,12 +200,13 @@ local subtitle_metadata = {
 		"Class",
 		60,
 		function(_entry)
-			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
-			if class_str then
-				if Deathlog_L.class_table[class_str] then
-					if RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()] then
+			local class_id = _entry.player_data["class_id"]
+			local class_str, _, _ = GetClassInfo(class_id)
+			if class_id then
+				if deathlog_id_to_class_tbl[class_id] then
+					if RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()] then
 						return "|c"
-							.. RAID_CLASS_COLORS[Deathlog_L.class_table[class_str]:upper()].colorStr
+							.. RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()].colorStr
 							.. class_str
 							.. "|r"
 					end
