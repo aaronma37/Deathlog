@@ -70,6 +70,7 @@ deathlog_strings_de = {
 		{ 349, "MARAUDON", "Maraudon" },
 		{ 429, "DIREMAUL", "Düsterbruch" },
 		{ 469, "BLACKWINGLAIR", "Blackwing Lair" },
+		{ 509, "RUINSOFAHN'QIRAJ", "Ruins of Ahn'Qiraj" },
 	},
 	instance_map = {
 		["Burg Shadowfang"] = 33,

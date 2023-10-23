@@ -71,6 +71,7 @@ deathlog_strings_en = {
 		{ 349, "MARAUDON", "Maraudon" },
 		{ 429, "DIREMAUL", "Diremaul" },
 		{ 469, "BLACKWINGLAIR", "Blackwing Lair" },
+		{ 509, "RUINSOFAHN'QIRAJ", "Ruins of Ahn'Qiraj" },
 	},
 	instance_map = {
 		["Shadowfang Keep"] = 33,

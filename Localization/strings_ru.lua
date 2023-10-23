@@ -70,6 +70,7 @@ deathlog_strings_ru = {
 		{ 389, "RAGEFIRECHASM", "Огненная пропасть" },
 		{ 429, "DIREMAUL", "Забытый Город" },
 		{ 469, "BLACKWINGLAIR", "Логово Крыла Тьмы" },
+		{ 509, "RUINSOFAHN'QIRAJ", "Ruins of Ahn'Qiraj" },
 	},
 	instance_map = {
 		["Крепость Темного Клыка"] = 33,
