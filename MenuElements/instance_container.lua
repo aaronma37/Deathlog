@@ -24,10 +24,19 @@ instance_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 instance_container:SetSize(1000, 1000)
 instance_container:Show()
 
+local scrollFrame = CreateFrame("ScrollFrame", nil, instance_container, "UIPanelScrollFrameTemplate")
+scrollFrame:SetPoint("TOPLEFT", instance_container, "TOPLEFT", 0, -10)
+scrollFrame:SetPoint("BOTTOMRIGHT", instance_container, "BOTTOMRIGHT", -55, 10)
+
+local contentFrame = CreateFrame("Frame", nil, scrollFrame)
+scrollFrame:SetScrollChild(contentFrame)
+
+contentFrame:SetSize(instance_container:GetWidth(), instance_container:GetHeight())
+
 local function createInstanceButton(path_postfix, title_text)
 	local frame = CreateFrame("Frame")
-	frame:SetParent(instance_container)
-	frame:SetPoint("TOPLEFT", instance_container, "TOPLEFT", 0, 0)
+	frame:SetParent(contentFrame)
+	frame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, 0)
 	frame:SetWidth(60)
 	frame:SetHeight(20)
 	frame:Hide()
@@ -66,6 +75,8 @@ for i = 2, #instance_container.instance_buttons do
 		-10
 	)
 end
+
+contentFrame:SetHeight(#instance_container.instance_buttons * (instance_container.instance_buttons[1]:GetHeight() + 10))
 
 function instance_container.updateMenuElement(scroll_frame, current_instance_id, stats_tbl, setMapRegion)
 	instance_container:SetParent(scroll_frame.frame)
@@ -218,6 +229,13 @@ function instance_container.updateMenuElement(scroll_frame, current_instance_id,
 	instance_container.instance_buttons[20]:SetPoint(
 		"TOPLEFT",
 		instance_container.instance_buttons[16],
+		"TOPLEFT",
+		0,
+		vert_sep
+	)
+	instance_container.instance_buttons[21]:SetPoint(
+		"TOPLEFT",
+		instance_container.instance_buttons[17],
 		"TOPLEFT",
 		0,
 		vert_sep
