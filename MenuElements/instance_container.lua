@@ -44,7 +44,13 @@ local function createInstanceButton(path_postfix, title_text)
 	frame.instance_texture:SetDrawLayer("OVERLAY", 7)
 	frame.instance_texture:SetVertexColor(1, 1, 1, 1)
 	frame.instance_texture:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	frame.instance_texture:SetTexture("Interface\\LFGFRAME\\UI-LFG-BACKGROUND-" .. path_postfix)
+	local filePath = "Interface\\LFGFRAME\\UI-LFG-BACKGROUND-" .. path_postfix
+	frame.instance_texture:SetTexture(filePath)
+	-- Use full path if no file exists
+	local texturePath = frame.instance_texture:GetTexture()
+	if not texturePath then
+		frame.instance_texture:SetTexture(path_postfix)
+	end
 	frame.instance_texture:SetParent(frame)
 	frame.instance_texture:SetDesaturated(1)
 	frame.instance_texture:Hide()
