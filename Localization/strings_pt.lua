@@ -70,7 +70,7 @@ deathlog_strings_pt = {
 		{ 389, "RAGEFIRECHASM", "Ragefire Chasm" },
 		{ 429, "DIREMAUL", "Diremaul" },
 		{ 469, "BLACKWINGLAIR", "Blackwing Lair" },
-		{ 509, "RUINSOFAHN'QIRAJ", "Ruins of Ahn'Qiraj" },
+		{ 509, "Interface\\AddOns\\Deathlog\\Media\\RUINSOFAHNQIRAJ", "Ruins of Ahn'Qiraj" },
 	},
 	instance_map = {
 		["Shadowfang Keep"] = 33,
