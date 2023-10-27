@@ -24,10 +24,19 @@ instance_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 instance_container:SetSize(1000, 1000)
 instance_container:Show()
 
+local scrollFrame = CreateFrame("ScrollFrame", nil, instance_container, "UIPanelScrollFrameTemplate")
+scrollFrame:SetPoint("TOPLEFT", instance_container, "TOPLEFT", 0, 0)
+scrollFrame:SetPoint("BOTTOMRIGHT", instance_container, "BOTTOMRIGHT", -55, 0)
+
+local contentFrame = CreateFrame("Frame", nil, scrollFrame)
+scrollFrame:SetScrollChild(contentFrame)
+
+contentFrame:SetSize(instance_container:GetWidth(), instance_container:GetHeight())
+
 local function createInstanceButton(path_postfix, title_text)
 	local frame = CreateFrame("Frame")
-	frame:SetParent(instance_container)
-	frame:SetPoint("TOPLEFT", instance_container, "TOPLEFT", 0, 0)
+	frame:SetParent(contentFrame)
+	frame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, 0)
 	frame:SetWidth(60)
 	frame:SetHeight(20)
 	frame:Hide()
@@ -35,7 +44,13 @@ local function createInstanceButton(path_postfix, title_text)
 	frame.instance_texture:SetDrawLayer("OVERLAY", 7)
 	frame.instance_texture:SetVertexColor(1, 1, 1, 1)
 	frame.instance_texture:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	frame.instance_texture:SetTexture("Interface\\LFGFRAME\\UI-LFG-BACKGROUND-" .. path_postfix)
+	local filePath = "Interface\\LFGFRAME\\UI-LFG-BACKGROUND-" .. path_postfix
+	frame.instance_texture:SetTexture(filePath)
+	-- Use full path if no file exists
+	local texturePath = frame.instance_texture:GetTexture()
+	if not texturePath then
+		frame.instance_texture:SetTexture(path_postfix)
+	end
 	frame.instance_texture:SetParent(frame)
 	frame.instance_texture:SetDesaturated(1)
 	frame.instance_texture:Hide()
@@ -66,6 +81,8 @@ for i = 2, #instance_container.instance_buttons do
 		-10
 	)
 end
+
+contentFrame:SetHeight(#instance_container.instance_buttons * (instance_container.instance_buttons[1]:GetHeight() + 10))
 
 function instance_container.updateMenuElement(scroll_frame, current_instance_id, stats_tbl, setMapRegion)
 	instance_container:SetParent(scroll_frame.frame)
@@ -218,6 +235,13 @@ function instance_container.updateMenuElement(scroll_frame, current_instance_id,
 	instance_container.instance_buttons[20]:SetPoint(
 		"TOPLEFT",
 		instance_container.instance_buttons[16],
+		"TOPLEFT",
+		0,
+		vert_sep
+	)
+	instance_container.instance_buttons[21]:SetPoint(
+		"TOPLEFT",
+		instance_container.instance_buttons[17],
 		"TOPLEFT",
 		0,
 		vert_sep
