@@ -25,8 +25,8 @@ instance_container:SetSize(1000, 1000)
 instance_container:Show()
 
 local scrollFrame = CreateFrame("ScrollFrame", nil, instance_container, "UIPanelScrollFrameTemplate")
-scrollFrame:SetPoint("TOPLEFT", instance_container, "TOPLEFT", 0, -10)
-scrollFrame:SetPoint("BOTTOMRIGHT", instance_container, "BOTTOMRIGHT", -55, 10)
+scrollFrame:SetPoint("TOPLEFT", instance_container, "TOPLEFT", 0, 0)
+scrollFrame:SetPoint("BOTTOMRIGHT", instance_container, "BOTTOMRIGHT", -55, 0)
 
 local contentFrame = CreateFrame("Frame", nil, scrollFrame)
 scrollFrame:SetScrollChild(contentFrame)
