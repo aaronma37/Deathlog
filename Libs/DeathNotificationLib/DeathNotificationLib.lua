@@ -1052,7 +1052,7 @@ death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON") -- enable a
 death_notification_lib_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 death_notification_lib_event_handler:RegisterEvent("DUEL_TO_THE_DEATH_REQUESTED")
 if tocversion >= 11404 then
-	death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD_DEATHS")
+	-- death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD_DEATHS") -- NOTE: This was removed in 11502
 end
 
 local function handleEvent(self, event, ...)
