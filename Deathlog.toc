@@ -1,10 +1,10 @@
-## Interface: 11404
+## Interface: 11502
 ## Title: Deathlog
 ## Notes: Only for Hardcore on classic era servers.
 ## Author: Yazpad
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.1.11
+## Version: 0.1.12
 
 
 ## DefaultState: enabled
