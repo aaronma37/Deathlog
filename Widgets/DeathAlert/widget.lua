@@ -162,7 +162,10 @@ function Deathlog_DeathAlertPlay(entry)
 	end
 	death_alert_frame.text:SetText("Some text")
 
-	local class = GetClassInfo(entry["class_id"]) or ""
+	local class = ""
+	if entry["class_id"] then
+		class = GetClassInfo(entry["class_id"]) or ""
+	end
 	if deathlog_class_colors[class] then
 		class = "|c" .. deathlog_class_colors[class]:GenerateHexColor() .. class .. "|r"
 	end
@@ -229,31 +232,35 @@ function Deathlog_DeathAlertPlay(entry)
 		_deathlog_watchlist_icon = deathlog_watchlist_entries[entry["name"]]["Icon"] .. " "
 	end
 
-	msg = msg:gsub("%<name>", _deathlog_watchlist_icon .. entry["name"])
+	if race == "" and class == "" and zone == "" then
+		death_alert_frame.text:SetText(
+			entry["name"] .. " has been slain\nby " .. source_name .. ", at level " .. entry["level"] .. "."
+		)
+	else
+		msg = msg:gsub("%<name>", _deathlog_watchlist_icon .. entry["name"])
 
-	msg = msg:gsub("%<class>", class)
-	msg = msg:gsub("%<race>", race)
-	msg = msg:gsub("%<source>", source_name)
-	msg = msg:gsub("%<level>", entry["level"])
-	msg = msg:gsub("%<zone>", zone)
-	msg = msg:gsub("%<last_words>", entry["last_words"] or "")
-
-	death_alert_frame.text:SetText(
-		entry["name"]
-			.. " the "
-			.. race
-			.. " "
-			.. class
-			.. " has been slain\nby "
-			.. source_name
-			.. ", at level "
-			.. entry["level"]
-			.. " in "
-			.. zone
-			.. "."
-	)
-
-	death_alert_frame.text:SetText(msg)
+		msg = msg:gsub("%<class>", class)
+		msg = msg:gsub("%<race>", race)
+		msg = msg:gsub("%<source>", source_name)
+		msg = msg:gsub("%<level>", entry["level"])
+		msg = msg:gsub("%<zone>", zone)
+		msg = msg:gsub("%<last_words>", entry["last_words"] or "")
+		death_alert_frame.text:SetText(
+			entry["name"]
+				.. " the "
+				.. race
+				.. " "
+				.. class
+				.. " has been slain\nby "
+				.. source_name
+				.. ", at level "
+				.. entry["level"]
+				.. " in "
+				.. zone
+				.. "."
+		)
+		death_alert_frame.text:SetText(msg)
+	end
 
 	if deathlog_settings[widget_name]["style"] == "text_only" then
 		for _, v in pairs(death_alert_frame.textures) do
