@@ -29,7 +29,8 @@ local COMM_COMMANDS = {
 	["GUILD_DEATH_NOTIFICATION"] = "4",
 	["REQUEST_DUEL_TO_DEATH"] = "5",
 }
-local practice_str = "[Syphonage] drowned to death in Mist's Edge! They were level 18"
+-- local practice_str = "[Syphonage] drowned to death in Mist's Edge! They were level 18"
+-- local practice_str = "[Syphonage] fell to death in Mist's Edge! They were level 18"
 -- local practice_str_2 = "[Syphonage] has been slain by a Defias Rogue Wizard in Mirror Lake! They were level 13"
 local COMM_QUERY = "Q"
 local comm_query_lock = nil
@@ -200,15 +201,15 @@ function DeathNotificationLib_HookOnNewEntrySecure(fun)
 end
 
 DeathNotificationLib_HookOnNewEntrySecure(function(_player_data)
-  if _player_data["name"] ~= nil then
-    bliz_alert_cache[_player_data["name"]] = 1
-  end
+	if _player_data["name"] ~= nil then
+		bliz_alert_cache[_player_data["name"]] = 1
+	end
 end)
 
 DeathNotificationLib_HookOnNewEntry(function(_player_data)
-  if _player_data["name"] ~= nil then
-    bliz_alert_cache[_player_data["name"]] = 1
-  end
+	if _player_data["name"] ~= nil then
+		bliz_alert_cache[_player_data["name"]] = 1
+	end
 end)
 
 function DeathNotificationLib_attachDB(db, db_map)
@@ -941,7 +942,7 @@ local function deathlogJoinChannel()
 	end)
 	local channel_num = GetChannelName(death_alerts_channel)
 
-    SetCVar("hardcoreDeathChatType", 1);
+	SetCVar("hardcoreDeathChatType", 1)
 	for i = 1, 10 do
 		if _G["ChatFrame" .. i] then
 			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], death_alerts_channel)
@@ -1073,35 +1074,36 @@ if tocversion >= 11404 then
 end
 
 local function onBlizzardChat(msg)
-        C_Timer.After(10.0, function()
-          local _, a = string.split("[", msg)
-          local death_name, rest = string.split("]", a)
-          local s,e = string.find(msg,"has been slain by a ")
-          local drowned_s,e = string.find(msg,"drowned ")
-          local at_s,at_e = string.find(msg," in ")
-          local lvl_s, lvl_e = string.find(msg, "level ")
-          local parsed_lvl = nil
-		      local date = time()
-          local source = -1
-          if s ~= nil then
-            local source_str = string.sub(msg,e+1, at_s-1)
-            if npc_to_id[source_str] then
-              source =  npc_to_id[source_str]
-            end
-          elseif drowned_s then
-            source = -2
-          end
-          if lvl_e ~= nil then
-            parsed_lvl = string.sub(msg, lvl_e+1)
-          end
+	C_Timer.After(10.0, function()
+		local _, a = string.split("[", msg)
+		local death_name, rest = string.split("]", a)
+		local s, e = string.find(msg, "has been slain by a ")
+		local drowned_s, e = string.find(msg, "drowned ")
+		local at_s, at_e = string.find(msg, " in ")
+		local lvl_s, lvl_e = string.find(msg, "level ")
+		local parsed_lvl = nil
+		local date = time()
+		local source = -1
+		if s ~= nil then
+			local source_str = string.sub(msg, e + 1, at_s - 1)
+			if npc_to_id[source_str] then
+				source = npc_to_id[source_str]
+			end
+		elseif drowned_s then
+			source = -2
+		end
+		if lvl_e ~= nil then
+			parsed_lvl = string.sub(msg, lvl_e + 1)
+		end
 
-          if source and death_name and parsed_lvl then
-            local _player_data = PlayerData(death_name, nil, source, nil, nil, tonumber(parsed_lvl), nil, nil, nil, date, nil)
-            if bliz_alert_cache[_player_data["name"]] == nil then
-              createEntryDirect(_player_data)
-            end
-          end
-        end)
+		if source and death_name and parsed_lvl then
+			local _player_data =
+				PlayerData(death_name, nil, source, nil, nil, tonumber(parsed_lvl), nil, nil, nil, date, nil)
+			if bliz_alert_cache[_player_data["name"]] == nil then
+				createEntryDirect(_player_data)
+			end
+		end
+	end)
 end
 
 onBlizzardChat(practice_str)
@@ -1112,10 +1114,10 @@ local function handleEvent(self, event, ...)
 	if event == "CHAT_MSG_CHANNEL" then
 		local _, channel_name = string.split(" ", arg[4])
 		if channel_name ~= death_alerts_channel then
-      if channel_name == "HardcoreDeaths" then
-        onBlizzardChat(arg[1])
-        return
-      end
+			if channel_name == "HardcoreDeaths" then
+				onBlizzardChat(arg[1])
+				return
+			end
 			return
 		end
 		local command, msg, _doublechecksum = string.split(COMM_COMMAND_DELIM, arg[1])
