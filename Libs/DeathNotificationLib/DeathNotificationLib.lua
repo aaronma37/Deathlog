@@ -1078,7 +1078,7 @@ local function onBlizzardChat(msg)
 		local _, a = string.split("[", msg)
 		local death_name, rest = string.split("]", a)
 		local s, e = string.find(msg, "has been slain by a ")
-		local drowned_s, e = string.find(msg, "drowned ")
+		local drowned_s, drowned_e = string.find(msg, "drowned ")
 		local at_s, at_e = string.find(msg, " in ")
 		local lvl_s, lvl_e = string.find(msg, "level ")
 		local parsed_lvl = nil
@@ -1105,9 +1105,6 @@ local function onBlizzardChat(msg)
 		end
 	end)
 end
-
-onBlizzardChat(practice_str)
--- onBlizzardChat(practice_str_2)
 
 local function handleEvent(self, event, ...)
 	local arg = { ... }
