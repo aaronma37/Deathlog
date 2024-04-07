@@ -201,18 +201,21 @@ local subtitle_metadata = {
 		60,
 		function(_entry)
 			local class_id = _entry.player_data["class_id"]
-			local class_str, _, _ = GetClassInfo(class_id)
-			if class_id then
-				if deathlog_id_to_class_tbl[class_id] then
-					if RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()] then
-						return "|c"
-							.. RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()].colorStr
-							.. class_str
-							.. "|r"
-					end
-				end
-			end
-			return class_str or ""
+      if class_id then
+        local class_str, _, _ = GetClassInfo(class_id)
+        if class_id then
+          if deathlog_id_to_class_tbl[class_id] then
+            if RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()] then
+              return "|c"
+                .. RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()].colorStr
+                .. class_str
+                .. "|r"
+            end
+          end
+        end
+        return class_str or ""
+      end
+			return ""
 		end,
 	},
 	["Race"] = {

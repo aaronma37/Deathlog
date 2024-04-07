@@ -148,6 +148,7 @@ local subtitle_data = {
 		"Class",
 		60,
 		function(_entry, _server_name)
+      if _entry["class_id"] ==nil then return "" end
 			local class_id = _entry["class_id"]
 			local class_str, _, _ = GetClassInfo(class_id)
 			if class_id then
@@ -167,6 +168,7 @@ local subtitle_data = {
 		"Race",
 		60,
 		function(_entry, _server_name)
+      if _entry["race_id"] == nil then return "" end
 			local race_info = C_CreatureInfo.GetRaceInfo(_entry["race_id"])
 			if race_info then
 				return race_info.raceName or ""

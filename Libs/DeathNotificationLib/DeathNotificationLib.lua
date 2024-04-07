@@ -29,6 +29,8 @@ local COMM_COMMANDS = {
 	["GUILD_DEATH_NOTIFICATION"] = "4",
 	["REQUEST_DUEL_TO_DEATH"] = "5",
 }
+local practice_str = "[Syphonage] drowned to death in Mist's Edge! They were level 18"
+-- local practice_str_2 = "[Syphonage] has been slain by a Defias Rogue Wizard in Mirror Lake! They were level 13"
 local COMM_QUERY = "Q"
 local comm_query_lock = nil
 local comm_query_lock_out = nil
@@ -48,6 +50,7 @@ local last_attack_source = nil
 local recent_msg = ""
 local entry_cache = {}
 local entry_cache_secure = {}
+local bliz_alert_cache = {}
 local attached_db = nil
 local attached_db_map = nil
 
@@ -195,6 +198,18 @@ local hook_on_entry_functions_secure = {}
 function DeathNotificationLib_HookOnNewEntrySecure(fun)
 	hook_on_entry_functions_secure[#hook_on_entry_functions_secure + 1] = fun
 end
+
+DeathNotificationLib_HookOnNewEntrySecure(function(_player_data)
+  if _player_data["name"] ~= nil then
+    bliz_alert_cache[_player_data["name"]] = 1
+  end
+end)
+
+DeathNotificationLib_HookOnNewEntry(function(_player_data)
+  if _player_data["name"] ~= nil then
+    bliz_alert_cache[_player_data["name"]] = 1
+  end
+end)
 
 function DeathNotificationLib_attachDB(db, db_map)
 	attached_db = db
@@ -764,7 +779,7 @@ local function deathlogReceiveGuildMessage(sender, data)
 	death_ping_lru_cache_tbl[checksum]["self_report"] = 1
 	death_ping_lru_cache_tbl[checksum]["in_guild"] = 1
 	table.insert(broadcast_death_ping_queue, checksum) -- Must be added to queue to be broadcasted to network
-	local delay = 3.5 -- seconds; wait for last words
+	local delay = 2 -- seconds; wait for last words
 	C_Timer.After(delay, function()
 		if shouldCreateEntry(checksum) then
 			createEntry(checksum)
@@ -800,7 +815,7 @@ local function deathlogReceiveChannelMessageChecksum(sender, checksum)
 	end
 
 	death_ping_lru_cache_tbl[checksum]["peer_report"] = death_ping_lru_cache_tbl[checksum]["peer_report"] + 1
-	local delay = 3.5 -- seconds; wait for last words
+	local delay = 2 -- seconds; wait for last words
 	C_Timer.After(delay, function()
 		if shouldCreateEntry(checksum) then
 			createEntry(checksum)
@@ -857,7 +872,7 @@ local function deathlogReceiveChannelMessage(sender, data)
 	end
 
 	death_ping_lru_cache_tbl[checksum]["self_report"] = 1
-	local delay = 5.0 -- seconds; wait for last words
+	local delay = 3.5 -- seconds; wait for last words
 	C_Timer.After(delay, function()
 		if shouldCreateEntry(checksum) then
 			createEntry(checksum)
@@ -926,9 +941,11 @@ local function deathlogJoinChannel()
 	end)
 	local channel_num = GetChannelName(death_alerts_channel)
 
+    SetCVar("hardcoreDeathChatType", 1);
 	for i = 1, 10 do
 		if _G["ChatFrame" .. i] then
 			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], death_alerts_channel)
+			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], "HardcoreDeaths")
 		end
 	end
 
@@ -1055,11 +1072,50 @@ if tocversion >= 11404 then
 	-- death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD_DEATHS") -- NOTE: This was removed in 11502
 end
 
+local function onBlizzardChat(msg)
+        C_Timer.After(10.0, function()
+          local _, a = string.split("[", msg)
+          local death_name, rest = string.split("]", a)
+          local s,e = string.find(msg,"has been slain by a ")
+          local drowned_s,e = string.find(msg,"drowned ")
+          local at_s,at_e = string.find(msg," in ")
+          local lvl_s, lvl_e = string.find(msg, "level ")
+          local parsed_lvl = nil
+		      local date = time()
+          local source = -1
+          if s ~= nil then
+            local source_str = string.sub(msg,e+1, at_s-1)
+            if npc_to_id[source_str] then
+              source =  npc_to_id[source_str]
+            end
+          elseif drowned_s then
+            source = -2
+          end
+          if lvl_e ~= nil then
+            parsed_lvl = string.sub(msg, lvl_e+1)
+          end
+
+          if source and death_name and parsed_lvl then
+            local _player_data = PlayerData(death_name, nil, source, nil, nil, tonumber(parsed_lvl), nil, nil, nil, date, nil)
+            if bliz_alert_cache[_player_data["name"]] == nil then
+              createEntryDirect(_player_data)
+            end
+          end
+        end)
+end
+
+onBlizzardChat(practice_str)
+-- onBlizzardChat(practice_str_2)
+
 local function handleEvent(self, event, ...)
 	local arg = { ... }
 	if event == "CHAT_MSG_CHANNEL" then
 		local _, channel_name = string.split(" ", arg[4])
 		if channel_name ~= death_alerts_channel then
+      if channel_name == "HardcoreDeaths" then
+        onBlizzardChat(arg[1])
+        return
+      end
 			return
 		end
 		local command, msg, _doublechecksum = string.split(COMM_COMMAND_DELIM, arg[1])
