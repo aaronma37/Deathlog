@@ -942,11 +942,10 @@ local function deathlogJoinChannel()
 	end)
 	local channel_num = GetChannelName(death_alerts_channel)
 
-	SetCVar("hardcoreDeathChatType", 1)
+	SetCVar("hardcoreDeathAlertType", 2)
 	for i = 1, 10 do
 		if _G["ChatFrame" .. i] then
 			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], death_alerts_channel)
-			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], "HardcoreDeaths")
 		end
 	end
 
@@ -1069,14 +1068,18 @@ death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_PARTY")
 death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_ADDON") -- enable again for queries
 death_notification_lib_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 death_notification_lib_event_handler:RegisterEvent("DUEL_TO_THE_DEATH_REQUESTED")
+death_notification_lib_event_handler:RegisterEvent("HARDCORE_DEATHS")
 if tocversion >= 11404 then
 	-- death_notification_lib_event_handler:RegisterEvent("CHAT_MSG_GUILD_DEATHS") -- NOTE: This was removed in 11502
 end
 
 local function onBlizzardChat(msg)
+  _G["RaidWarningFrameSlot1"]:SetText("")
 	C_Timer.After(10.0, function()
 		local _, a = string.split("[", msg)
+    if a == nil then return end
 		local death_name, rest = string.split("]", a)
+    if rest == nil then return end
 		local s, e = string.find(msg, "has been slain by a ")
 		local drowned_s, drowned_e = string.find(msg, "drowned ")
 		local at_s, at_e = string.find(msg, " in ")
@@ -1111,10 +1114,6 @@ local function handleEvent(self, event, ...)
 	if event == "CHAT_MSG_CHANNEL" then
 		local _, channel_name = string.split(" ", arg[4])
 		if channel_name ~= death_alerts_channel then
-			if channel_name == "HardcoreDeaths" then
-				onBlizzardChat(arg[1])
-				return
-			end
 			return
 		end
 		local command, msg, _doublechecksum = string.split(COMM_COMMAND_DELIM, arg[1])
@@ -1287,6 +1286,8 @@ local function handleEvent(self, event, ...)
 		C_Timer.After(5.0, function()
 			deathlogJoinChannel()
 		end)
+	elseif event == "HARDCORE_DEATHS" then
+    onBlizzardChat(arg[1])
 	elseif event == "DUEL_TO_THE_DEATH_REQUESTED" then
 		deathlog_last_duel_to_death_player = arg[1]
 
