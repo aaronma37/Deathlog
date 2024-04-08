@@ -250,6 +250,7 @@ local subtitle_metadata = {
 		"ClassLogo1",
 		20,
 		function(_entry)
+      if _entry.player_data["class_id"] == nil then return "" end
 			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
 			if class_str then
 				local msg = "|TInterface\\WorldStateFrame\\ICONS-CLASSES:16:16:0:0:64:64:"
@@ -272,6 +273,7 @@ local subtitle_metadata = {
 		"ClassLogo2",
 		20,
 		function(_entry)
+      if _entry.player_data["class_id"] == nil then return "" end
 			local class_str, _, _ = GetClassInfo(_entry.player_data["class_id"])
 			if class_str then
 				local msg = "|TInterface\\ARENAENEMYFRAME\\UI-CLASSES-CIRCLES:16:16:0:0:64:64:"
