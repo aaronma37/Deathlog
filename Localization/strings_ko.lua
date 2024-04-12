@@ -70,6 +70,7 @@ deathlog_strings_ko = {
 		{ 389, "RAGEFIRECHASM", "성난불길 협곡" },
 		{ 429, "DIREMAUL", "혈투의 전장" },
 		{ 469, "BLACKWINGLAIR", "검은날개 둥지" },
+		{ 509, "Interface\\AddOns\\Deathlog\\Media\\RUINSOFAHNQIRAJ", "안퀴라즈 폐허" },
 	},
 	instance_map = {
 		["그림자송곳니 성채"] = 33,
