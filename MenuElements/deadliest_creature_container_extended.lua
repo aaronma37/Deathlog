@@ -556,7 +556,7 @@ function deadliest_creatures_container.updateMenuElement(
 	else
 		for k, v in ipairs(most_deadly_units) do
 			if
-				filter(id_to_npc[v[1]] or environment_damage[v[1]])
+				filter(d_id_to_npc[v[1]] or environment_damage[v[1]])
 				and lvlFunction(_stats["all"]["all"]["all"][v[1]]["avg_lvl"])
 			then
 				filtered_most_deadly_units[#filtered_most_deadly_units + 1] = v
@@ -588,8 +588,8 @@ function deadliest_creatures_container.updateMenuElement(
 				deadliest_creatures_textures[i]:SetBackgroundWidth(
 					deadliest_creatures_container:GetWidth() * filtered_most_deadly_units[idx][2] / max_kills
 				)
-				if id_to_npc[filtered_most_deadly_units[idx][1]] ~= nil then
-					deadliest_creatures_textures[i]:SetCreatureName(id_to_npc[filtered_most_deadly_units[idx][1]])
+				if d_id_to_npc[filtered_most_deadly_units[idx][1]] ~= nil then
+					deadliest_creatures_textures[i]:SetCreatureName(d_id_to_npc[filtered_most_deadly_units[idx][1]])
 				elseif environment_damage[filtered_most_deadly_units[idx][1]] ~= nil then
 					deadliest_creatures_textures[i]:SetCreatureName(
 						environment_damage[filtered_most_deadly_units[idx][1]]
@@ -599,7 +599,7 @@ function deadliest_creatures_container.updateMenuElement(
 				if valid_map then
 					deadliest_creatures_textures[i]:SetScript("OnMouseDown", function()
 						local c_id = filtered_most_deadly_units[idx][1]
-						local c_name = id_to_npc[filtered_most_deadly_units[idx][1]]
+						local c_name = d_id_to_npc[filtered_most_deadly_units[idx][1]]
 						updateFun(c_id, c_name, function(name)
 							if name == nil then
 								return false
