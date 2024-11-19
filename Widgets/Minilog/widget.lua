@@ -591,8 +591,7 @@ local function DeathFrameDropdown(frame, level, menuList)
 	end
 
 	local function openSettings()
-		InterfaceOptionsFrame_Show()
-		InterfaceOptionsFrame_OpenToCategory("minilog")
+		Settings.OpenToCategory("Deathlog")
 	end
 
 	if level == 1 then
