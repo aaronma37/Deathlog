@@ -5,6 +5,7 @@ local timer_handle = nil
 
 local corpse_word = Deathlog_L.corpse_word
 local of_word = Deathlog_L.of_word
+local attempted_queries = {}
 
 local function checkForEntryAndSetTooltip()
 	if timer_handle then
@@ -19,6 +20,14 @@ local function checkForEntryAndSetTooltip()
 				if c == of_word then
 					local realmName = GetRealmName()
 					local _entry = deathlog_data[realmName][deathlog_data_map[realmName][_name]]
+					if _entry == nil and attempted_queries[_name] == nil then
+						attempted_queries[_name] = 1
+						DeathNotificationLib_queryGuild(_name)
+						C_Timer.After(0.2, function()
+							checkForEntryAndSetTooltip()
+						end)
+						return
+					end
 					deathlog_setTooltipFromEntry(_entry)
 					GameTooltip:Show()
 				end
