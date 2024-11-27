@@ -1,14 +1,14 @@
-## Interface: 11502
+## Interface: 11505
 ## Title: Deathlog
 ## Notes: Only for Hardcore on classic era servers.
 ## Author: Yazpad
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.1.14
+## Version: 0.1.15
 
 
 ## DefaultState: enabled
-## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs, dev_class_data, deathlog_watchlist_entries
+## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs, dev_class_data, deathlog_watchlist_entries, deathlog_record_econ_stats
 ## SavedVariablesPerCharacter:
 
 Localization/strings_cn.lua

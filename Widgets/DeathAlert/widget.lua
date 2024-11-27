@@ -114,6 +114,22 @@ function Deathlog_DeathAlertFakeDeath()
 	Deathlog_DeathAlertPlay(fake_entry)
 end
 
+local _guild_members = {}
+local function _refreshGuildList()
+	local numTotal, numOnline, numOnlineAndMobile = GetNumGuildMembers()
+	for i = 1, numTotal, 1 do
+		local name, rankName, rankIndex, level, classDisplayName, zone, _public_note, _officer_note, isOnline, status, class, achievementPoints, achievementRank, isMobile, canSoR, repStanding, GUID =
+			GetGuildRosterInfo(i)
+		local _short_name, _ = string.split("-", name)
+		if _short_name then
+			_guild_members[_short_name] = 1
+		end
+	end
+end
+local guild_timer = C_Timer.NewTicker(10, function()
+	_refreshGuildList()
+end)
+
 function Deathlog_DeathAlertPlay(entry)
 	if deathlog_settings[widget_name]["enable"] == false then
 		return
@@ -142,7 +158,8 @@ function Deathlog_DeathAlertPlay(entry)
 
 	if deathlog_settings[widget_name]["guild_only"] then
 		local guildName, guildRankName, guildRankIndex = GetGuildInfo("player")
-		if entry["guild"] ~= guildName then
+
+		if entry["guild"] ~= guildName or _guild_members[entry["name"]] ~= nil then
 			return
 		end
 	end
