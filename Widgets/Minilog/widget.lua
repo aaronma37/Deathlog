@@ -239,6 +239,13 @@ local subtitle_metadata = {
 			return _entry.player_data["level"] or ""
 		end,
 	},
+	["Guild"] = {
+		"Guild",
+		40,
+		function(_entry)
+			return _entry.player_data["guild"] or ""
+		end,
+	},
 	["LastWords"] = {
 		"LastWords",
 		100,

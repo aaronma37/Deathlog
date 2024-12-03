@@ -935,6 +935,7 @@ StaticPopupDialogs["CHAT_CHANNEL_PASSWORD"] = nil
 local remaining_attempts = 5
 local function deathlogJoinChannel()
 	LeaveChannelByName(death_alerts_channel)
+	JoinChannelByName("HardcoreDeaths")
 
 	local delay = 3.0
 	C_Timer.After(delay, function()
@@ -1075,6 +1076,7 @@ end
 
 local function onBlizzardChat(msg)
   _G["RaidWarningFrameSlot1"]:SetText("")
+  _G["RaidWarningFrameSlot2"]:SetText("")
 	C_Timer.After(10.0, function()
 		local _, a = string.split("[", msg)
     if a == nil then return end
