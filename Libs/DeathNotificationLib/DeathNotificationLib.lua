@@ -942,7 +942,15 @@ local function deathlogJoinChannel()
 	end)
 	local channel_num = GetChannelName(death_alerts_channel)
 
-	SetCVar("hardcoreDeathAlertType", 2)
+	local show_death_alert = deathlog_settings and deathlog_settings["DeathAlert"] and deathlog_settings["DeathAlert"]["enable"]
+	local guild_only = deathlog_settings and deathlog_settings["DeathAlert"] and deathlog_settings["DeathAlert"]["guild_only"]
+
+	local alert_level = 0
+	if show_death_alert then
+		alert_level = guild_only and 1 or 2
+	end
+	SetCVar("hardcoreDeathAlertType", alert_level)
+
 	for i = 1, 10 do
 		if _G["ChatFrame" .. i] then
 			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], death_alerts_channel)
