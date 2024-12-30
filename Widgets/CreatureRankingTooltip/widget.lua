@@ -8,18 +8,21 @@ local creature_avg_lvl = {}
 function Deathlog_activateCreatureRankingTooltip()
 	if loaded_crt == false then
 		GameTooltip:HookScript("OnTooltipSetUnit", function()
+			local a, id = GameTooltip:GetUnit()
+			if UnitIsPlayer(id) then
+				return
+			end
+
 			if deathlog_settings[widget_name]["enable_crt"] then
 				if creature_ranking then
-					local a, _ = GameTooltip:GetUnit()
 					local rank = creature_ranking[a]
 					if rank then
-						GameTooltip:AddLine("#" .. rank .. " deadliest in Azeroth", 0.6, 0.6, 0.6, 0.6, true)
+						GameTooltip:AddLine("#" .. rank .. " deadliest mob in Azeroth", 0.6, 0.6, 0.6, 0.6, true)
 					end
 				end
 			end
 
 			if deathlog_settings[widget_name]["by_zone"] then
-				local a, _ = GameTooltip:GetUnit()
 				local _zone = C_Map.GetBestMapForUnit("player")
 				local instance_id = nil
 				local zone_name = ""
@@ -39,7 +42,7 @@ function Deathlog_activateCreatureRankingTooltip()
 					local rank = creature_ranking_by_zone[_zone][source_id]
 					if rank then
 						GameTooltip:AddLine(
-							"#" .. rank .. " deadliest in " .. zone_name .. ".",
+							"#" .. rank .. " deadliest mob in " .. zone_name .. ".",
 							0.6,
 							0.6,
 							0.6,
@@ -51,7 +54,6 @@ function Deathlog_activateCreatureRankingTooltip()
 			end
 
 			if deathlog_settings[widget_name]["enable_avg_lvl"] then
-				local a, _ = GameTooltip:GetUnit()
 				if creature_avg_lvl[a] then
 					GameTooltip:AddLine(
 						"Avg. victim lvl. " .. string.format("%.1f", creature_avg_lvl[a]),
