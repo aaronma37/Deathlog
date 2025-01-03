@@ -73,7 +73,7 @@ deathlog_class_colors = {}
 for k, _ in pairs(deathlog_class_tbl) do
 	deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)]
 end
-deathlog_class_colors["Shaman"]:SetRGBA(36 / 255, 89 / 255, 255 / 255, 1)
+deathlog_class_colors["Shaman"] = CreateColor(36 / 255, 89 / 255, 255 / 255)
 
 deathlog_race_tbl = {
 	["Human"] = 1,
