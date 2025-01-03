@@ -73,7 +73,7 @@ deathlog_class_colors = {}
 for k, _ in pairs(deathlog_class_tbl) do
 	deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)]
 end
-deathlog_class_colors["Shaman"]:SetRGBA(36 / 255, 89 / 255, 255 / 255, 1)
+deathlog_class_colors["Shaman"] = CreateColor(36 / 255, 89 / 255, 255 / 255)
 
 deathlog_race_tbl = {
 	["Human"] = 1,
@@ -889,3 +889,100 @@ function deathlog_decode_pvp_source(source_id)
 
 	return ""
 end
+
+deathlog_record_econ_stats = deathlog_record_econ_stats or {}
+
+local record_econ_handler = nil
+local record_econ_timer = nil
+local record_econ_start_time = GetServerTime()
+local logged_already = {}
+
+-- Only enable recording if guild opts in, e.g. :M:Hardcore:
+local function registerRecorders()
+	local guild_info_text = GetGuildInfoText()
+	if guild_info_text then
+		local _, g, k = string.split(":", guild_info_text)
+		if g and g == "M" and k then
+			record_econ_handler = CreateFrame("Frame")
+			local start_gold = GetMoney()
+			local _v = IsAddOnLoaded(k)
+			if _v == false then
+				deathlog_record_econ_stats[GetServerTime() .. "general"] = UnitName("player")
+					.. ": Logged without "
+					.. k
+					.. "."
+				record_econ_handler:RegisterEvent("MAIL_SHOW") -- Using mailbox
+				record_econ_handler:RegisterEvent("MAIL_INBOX_UPDATE") -- Using mailbox
+				record_econ_handler:RegisterEvent("CHAT_MSG_LOOT") -- Using mailbox
+				record_econ_handler:RegisterEvent("TRADE_SHOW") -- Trade opened
+				record_econ_handler:RegisterEvent("AUCTION_BIDDER_LIST_UPDATE") -- Using Auction house
+
+				TradeFrameTradeButton:SetScript("OnClick", function()
+					local _item_name, _, _, _, _enchantment_name, _ = GetTradePlayerItemInfo(7)
+					if _item_name and _enchantment_name then
+						local _target_trader = TradeFrameRecipientNameText:GetText()
+						deathlog_record_econ_stats[GetServerTime() .. "Ench"] = UnitName("player")
+							.. ": Received enchantment for "
+							.. _item_name
+							.. ","
+							.. _enchantment_name
+							.. ", from: "
+							.. (_target_trader or "unknown")
+					end
+					AcceptTrade()
+				end)
+
+				record_econ_handler:SetScript("OnEvent", function(self, event, arg)
+					if event == "MAIL_SHOW" then
+						deathlog_record_econ_stats[GetServerTime() .. "mail"] = UnitName("player") .. ": Opened mail"
+					elseif event == "MAIL_INBOX_UPDATE" then
+						for _mail_idx = 1, 8 do
+							local _, _, _sender_name, _desc = GetInboxHeaderInfo(_mail_idx)
+							if _sender_name and _desc then
+								if
+									_sender_name == "Alliance Auction House"
+									or _sender_name == "Horde Auction House"
+								then
+									if logged_already[_sender_name .. _desc] == nil then
+										logged_already[_sender_name .. _desc] = 1
+										deathlog_record_econ_stats[GetServerTime() .. _sender_name .. _mail_idx] = UnitName(
+											"player"
+										) .. ": Inbox has " .. _desc
+									end
+								end
+							end
+						end
+					elseif event == "CHAT_MSG_LOOT" then
+						deathlog_record_econ_stats[GetServerTime() .. "gained"] = UnitName("player") .. ": " .. arg
+					elseif event == "TRADE_SHOW" then
+						deathlog_record_econ_stats[GetServerTime() .. "trade"] = UnitName("player") .. ": Traded"
+					elseif event == "AUCTION_BIDDER_LIST_UPDATE" then
+						deathlog_record_econ_stats[GetServerTime() .. "AH"] = UnitName("player") .. ": Used AH"
+					end
+				end)
+
+				C_Timer.NewTicker(5, function()
+					deathlog_record_econ_stats[record_econ_start_time .. "session_stats"] = UnitName("player")
+						.. ": Duration: "
+						.. (GetServerTime() - record_econ_start_time)
+						.. "s. Gold Difference: "
+						.. (GetMoney() - start_gold)
+						.. "c"
+				end)
+			end
+		end
+	end
+end
+
+local attempts = 0
+C_Timer.NewTicker(1, function(self)
+	local guild_info_text = GetGuildInfoText()
+	if guild_info_text ~= nil and guild_info_text ~= "" then
+		registerRecorders()
+		self:Cancel()
+	end
+	attempts = attempts + 1
+	if attempts > 10 then
+		self:Cancel()
+	end
+end)

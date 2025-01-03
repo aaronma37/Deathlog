@@ -160,7 +160,7 @@ function Deathlog_DeathAlertPlay(entry)
 	if deathlog_settings[widget_name]["guild_only"] then
 		local guildName, guildRankName, guildRankIndex = GetGuildInfo("player")
 
-		if entry["guild"] ~= guildName or _guild_members[entry["name"]] ~= nil then
+		if entry["guild"] ~= guildName or _guild_members[entry["name"]] == nil then
 			return
 		end
 	end
@@ -256,7 +256,7 @@ function Deathlog_DeathAlertPlay(entry)
 		)
 	else
 		msg = msg:gsub("%<name>", _deathlog_watchlist_icon .. entry["name"])
-		
+
 		msg = msg:gsub("%<class>", class)
 		msg = msg:gsub("%<race>", race)
 		msg = msg:gsub("%<source>", source_name)

@@ -212,6 +212,21 @@ local options = {
 				deathlog_settings["deathless_logging"] = not deathlog_settings["deathless_logging"]
 			end,
 		},
+		show_addonless_deaths = {
+			type = "toggle",
+			name = "Allow addonless death logging",
+			desc = "Toggle addonless death logging.  Addonless deaths use blizzard notifications to log deaths from those who are not using the addon.",
+			width = 1.3,
+			get = function()
+				if deathlog_settings["addonless_logging"] == nil then
+					deathlog_settings["addonless_logging"] = false
+				end
+				return deathlog_settings["addonless_logging"]
+			end,
+			set = function()
+				deathlog_settings["addonless_logging"] = not deathlog_settings["addonless_logging"]
+			end,
+		},
 		show_minimap_button = {
 			type = "toggle",
 			name = "Show minimap button",

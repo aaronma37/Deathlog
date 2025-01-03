@@ -935,7 +935,7 @@ StaticPopupDialogs["CHAT_CHANNEL_PASSWORD"] = nil
 local remaining_attempts = 5
 local function deathlogJoinChannel()
 	LeaveChannelByName(death_alerts_channel)
-	JoinChannelByName("HardcoreDeaths")
+	-- JoinChannelByName("HardcoreDeaths")
 
 	local delay = 3.0
 	C_Timer.After(delay, function()
@@ -1075,40 +1075,46 @@ if tocversion >= 11404 then
 end
 
 local function onBlizzardChat(msg)
-  _G["RaidWarningFrameSlot1"]:SetText("")
-  _G["RaidWarningFrameSlot2"]:SetText("")
-	C_Timer.After(10.0, function()
-		local _, a = string.split("[", msg)
-    if a == nil then return end
-		local death_name, rest = string.split("]", a)
-    if rest == nil then return end
-		local s, e = string.find(msg, "has been slain by a ")
-		local drowned_s, drowned_e = string.find(msg, "drowned ")
-		local at_s, at_e = string.find(msg, " in ")
-		local lvl_s, lvl_e = string.find(msg, "level ")
-		local parsed_lvl = nil
-		local date = time()
-		local source = -1
-		if s ~= nil then
-			local source_str = string.sub(msg, e + 1, at_s - 1)
-			if npc_to_id[source_str] then
-				source = npc_to_id[source_str]
+	_G["RaidWarningFrameSlot1"]:SetText("")
+	_G["RaidWarningFrameSlot2"]:SetText("")
+	if deathlog_settings and deathlog_settings["addonless_logging"] == true then
+		C_Timer.After(10.0, function()
+			local _, a = string.split("[", msg)
+			if a == nil then
+				return
 			end
-		elseif drowned_s then
-			source = -2
-		end
-		if lvl_e ~= nil then
-			parsed_lvl = string.sub(msg, lvl_e + 1)
-		end
+			local death_name, rest = string.split("]", a)
+			if rest == nil then
+				return
+			end
+			local s, e = string.find(msg, "has been slain by a ")
+			local drowned_s, drowned_e = string.find(msg, "drowned ")
+			local at_s, at_e = string.find(msg, " in ")
+			local lvl_s, lvl_e = string.find(msg, "level ")
+			local parsed_lvl = nil
+			local date = time()
+			local source = -1
+			if s ~= nil then
+				local source_str = string.sub(msg, e + 1, at_s - 1)
+				if npc_to_id[source_str] then
+					source = npc_to_id[source_str]
+				end
+			elseif drowned_s then
+				source = -2
+			end
+			if lvl_e ~= nil then
+				parsed_lvl = string.sub(msg, lvl_e + 1)
+			end
 
-		if source and death_name and parsed_lvl then
-			local _player_data =
-				PlayerData(death_name, nil, source, nil, nil, tonumber(parsed_lvl), nil, nil, nil, date, nil)
-			if bliz_alert_cache[_player_data["name"]] == nil then
-				createEntryDirect(_player_data)
+			if source and death_name and parsed_lvl then
+				local _player_data =
+					PlayerData(death_name, nil, source, nil, nil, tonumber(parsed_lvl), nil, nil, nil, date, nil)
+				if bliz_alert_cache[_player_data["name"]] == nil then
+					createEntryDirect(_player_data)
+				end
 			end
-		end
-	end)
+		end)
+	end
 end
 
 local function handleEvent(self, event, ...)
@@ -1289,7 +1295,7 @@ local function handleEvent(self, event, ...)
 			deathlogJoinChannel()
 		end)
 	elseif event == "HARDCORE_DEATHS" then
-    onBlizzardChat(arg[1])
+		onBlizzardChat(arg[1])
 	elseif event == "DUEL_TO_THE_DEATH_REQUESTED" then
 		deathlog_last_duel_to_death_player = arg[1]
 
