@@ -209,8 +209,8 @@ function Deathlog_DeathAlertPlay(entry)
 	local msg = deathlog_settings[widget_name]["message"]
 	local source_name = ""
 	if entry["source_id"] then
-		if id_to_npc[entry["source_id"]] then
-			source_name = id_to_npc[entry["source_id"]]
+		if d_id_to_npc[entry["source_id"]] then
+			source_name = d_id_to_npc[entry["source_id"]]
 		end
 	end
 	if entry["source_id"] == -2 then

@@ -185,7 +185,7 @@ local subtitle_metadata = {
 			if _entry.player_data["source_id"] == nil then
 				return ""
 			end
-			local _source = id_to_npc[_entry.player_data["source_id"]]
+			local _source = d_id_to_npc[_entry.player_data["source_id"]]
 				or environment_damage[_entry.player_data["source_id"]]
 				or deathlog_decode_pvp_source(_entry.player_data["source_id"])
 				or ""
@@ -1299,7 +1299,7 @@ options = {
 				end
 				idx = math.random(1, 100)
 				local some_source_id = -2
-				for k, v in pairs(id_to_npc) do
+				for k, v in pairs(d_id_to_npc) do
 					idx = idx - 1
 					some_source_id = k
 					if idx < 1 then
