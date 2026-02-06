@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -25,8 +25,6 @@ average_class_container.configure_for = "map"
 local class_font = Deathlog_L.class_font
 
 local class_tbl = deathlog_class_tbl
-local race_tbl = deathlog_race_tbl
-local zone_tbl = deathlog_zone_tbl
 
 local average_class_subtitles = {
 	{ "Class", 20, "LEFT", 60 },
@@ -81,14 +79,9 @@ end
 function average_class_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
 	average_class_container:Show()
 	local entry_data = {}
-	local map_id = current_map_id
+	local map_id = deathlog_normalize_map_id_for_stats(current_map_id)
 	local _stats = stats_tbl["stats"]
-	if map_id == 1414 or map_id == 1415 then
-		return
-	end
-	if map_id == 947 then
-		map_id = "all"
-	end
+	-- Container zones (continents, Outland) now have aggregated stats
 	if average_class_container.configure_for == "map" and _stats["all"][map_id] == nil then
 		return
 	end

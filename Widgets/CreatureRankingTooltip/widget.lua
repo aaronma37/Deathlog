@@ -13,7 +13,7 @@ function Deathlog_activateCreatureRankingTooltip()
 					local a, _ = GameTooltip:GetUnit()
 					local rank = creature_ranking[a]
 					if rank then
-						GameTooltip:AddLine("#" .. rank .. " deadliest in Azeroth", 0.6, 0.6, 0.6, 0.6, true)
+						GameTooltip:AddLine("#" .. rank .. " deadliest in Azeroth", 0.6, 0.6, 0.6, true)
 					end
 				end
 			end
@@ -32,7 +32,7 @@ function Deathlog_activateCreatureRankingTooltip()
 					end
 				else
 					local _, _, _, _, _, _, _, _instance_id, _, _ = GetInstanceInfo()
-					zone_name = (deathlog_id_to_instance_tbl[_instance_id] or _instance_id)
+					zone_name = (id_to_instance[_instance_id] or _instance_id)
 				end
 				if creature_ranking_by_zone[_zone] then
 					local source_id = npc_to_id[a]
@@ -40,7 +40,6 @@ function Deathlog_activateCreatureRankingTooltip()
 					if rank then
 						GameTooltip:AddLine(
 							"#" .. rank .. " deadliest in " .. zone_name .. ".",
-							0.6,
 							0.6,
 							0.6,
 							0.6,
@@ -55,7 +54,6 @@ function Deathlog_activateCreatureRankingTooltip()
 				if creature_avg_lvl[a] then
 					GameTooltip:AddLine(
 						"Avg. victim lvl. " .. string.format("%.1f", creature_avg_lvl[a]),
-						0.6,
 						0.6,
 						0.6,
 						0.6,

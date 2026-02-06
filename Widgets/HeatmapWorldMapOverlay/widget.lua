@@ -71,10 +71,14 @@ local function updateWMOHeatmap(map_id)
 			[3] = 0.025,
 		},
 	}
-	if map_id ~= 947 and map_id ~= nil then
+	local should_hide = deathlog_should_hide_heatmap and deathlog_should_hide_heatmap(map_id)
+	if not should_hide and map_id ~= nil and precomputed_heatmap_intensity[map_id] ~= nil then
 		for x, v2 in pairs(precomputed_heatmap_intensity[map_id]) do
 			for y, intensity in pairs(v2) do
-				heatmap_wm_overlay_frame.heatmap[x][y].intensity = intensity
+				-- Skip out-of-bounds coordinates (heatmap array is 1-100)
+				if x >= 1 and x <= granularity and y >= 1 and y <= granularity then
+					heatmap_wm_overlay_frame.heatmap[x][y].intensity = intensity
+				end
 			end
 		end
 	end
@@ -82,7 +86,7 @@ local function updateWMOHeatmap(map_id)
 	for i = 1, granularity do
 		for j = 1, granularity do
 			local alpha = heatmap_wm_overlay_frame.heatmap[i][j].intensity * 4
-			if map_id == 947 then
+			if should_hide then
 				alpha = 0
 			end
 			if alpha > 0.6 then

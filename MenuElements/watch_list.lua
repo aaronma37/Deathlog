@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -23,14 +23,6 @@ local _watch_list_height = 600
 local current_map_id = nil
 local max_rows = 25
 local page_number = 1
-local environment_damage = {
-	[-2] = "Drowning",
-	[-3] = "Falling",
-	[-4] = "Fatigue",
-	[-5] = "Fire",
-	[-6] = "Lava",
-	[-7] = "Slime",
-}
 
 local selected_entry = 1
 local edit_box_type = nil
@@ -41,15 +33,18 @@ local deathlog_tabcontainer = nil
 
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl
-local zone_tbl = deathlog_zone_tbl
-local instance_tbl = deathlog_instance_tbl
 
 local deathlog_watch_list = nil
 
 deathlog_watchlist_entries = deathlog_watchlist_entries or {}
 
+local function EntryData(name, note)
+	return { ["Name"] = name, ["Note"] = note or "" }
+end
+
 local function isDead(_name)
-	return deathlog_data_map[GetRealmName()][_name]
+	local realmData = deathlog_data_map[GetRealmName()]
+	return realmData and realmData[_name]
 end
 
 local subtitle_data = {
@@ -149,29 +144,13 @@ local function refreshFontData()
 		i = i + 1
 	end
 	setFontData(i, {})
-end
+	i = i + 1
 
-local function DDMenu(frame, level, menuList)
-	local info = UIDropDownMenu_CreateInfo()
-	local function addDescription()
-		local name = font_strings[selected_entry]["Name"]
-		if deathlog_watchlist_entries[name] == nil then
-			deathlog_watchlist_entries[name] = EntryData(name, "")
+	for j = i, max_rows do
+		for _, v in ipairs(subtitle_data) do
+			font_strings[j][v[1]]:SetText("")
 		end
-		refreshFontData()
-	end
-
-	local function removePlayer()
-		local name = font_strings[selected_entry]["Name"]
-		deathlog_watchlist_entries[name] = nil
-		refreshFontData()
-	end
-
-	if level == 1 then
-		info.text, info.hasArrow, info.func, info.disabled = "Add Description", false, addDescription, false
-		UIDropDownMenu_AddButton(info)
-		info.text, info.hasArrow, info.func, info.disabled = "Remove Player", false, removePlayer, false
-		UIDropDownMenu_AddButton(info)
+		font_strings[j].name = nil
 	end
 end
 
@@ -422,17 +401,10 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 		end)
 
 		_entry:SetScript("OnMouseDown", function(self, button)
+			selected_entry = i
 			if button == "RightButton" then
-				selected_entry = i
-				if font_strings[i]["Name"] == nil then
-					return
-				end
-				local dropDown = CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
-				-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
-				UIDropDownMenu_Initialize(dropDown, DDMenu, "MENU")
-				ToggleDropDownMenu(1, nil, dropDown, "cursor", 3, -3)
+				return
 			else
-				selected_entry = i
 				if font_strings[i]["Name"]:GetText() == "" or font_strings[i]["Name"]:GetText() == nil then
 					return
 				end

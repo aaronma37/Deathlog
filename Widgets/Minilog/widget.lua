@@ -1,9 +1,9 @@
+local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
 local ace_refresh_timer_handle = nil
 local entry_cache = {}
 local font_handle = nil
 
 local main_font = Deathlog_L.main_font
-local deathlog_instance_tbl = Deathlog_L.instance_tbl
 
 local tmap = {
 	["Warrior"] = { 0, 0.25, 0, 0.25 },
@@ -27,6 +27,10 @@ local rmap = {
 	["Troll"] = { 0.5, 0.75, 0.25, 0.5 },
 	["Orc"] = { 0.75, 1, 0.25, 0.5 },
 }
+if GetExpansionLevel and GetExpansionLevel() >= 1 then
+	rmap["Blood Elf"] = { 0, 0.25, 0.5, 0.75 }
+	rmap["Draenei"] = { 0.25, 0.5, 0.5, 0.75 }
+end
 
 local presets = {
 	["Hardcore (legacy)"] = "Hardcore (legacy)",
@@ -107,14 +111,6 @@ death_log_icon_frame:HookScript("OnHide", function(self, button)
 	gold_ring_tex:Hide()
 end)
 
-local environment_damage = {
-	[-2] = "Drowning",
-	[-3] = "Falling",
-	[-4] = "Fatigue",
-	[-5] = "Fire",
-	[-6] = "Lava",
-	[-7] = "Slime",
-}
 local WorldMapButton = WorldMapFrame:GetCanvas()
 local death_tomb_frame = CreateFrame("frame", nil, WorldMapButton)
 death_tomb_frame:SetAllPoints()
@@ -138,6 +134,9 @@ death_log_frame.frame:SetMovable(false)
 death_log_frame.frame:EnableMouse(false)
 death_log_frame:SetTitle("Deathlog")
 death_log_frame.titletext:SetFont(Deathlog_L.mini_log_font, 19, "THICK")
+
+Deathlog_createInfoButton(death_log_frame, true, 28, -2)
+
 local subtitle_metadata = {
 	["ColoredName"] = {
 		"Name",
@@ -166,7 +165,7 @@ local subtitle_metadata = {
 				return mapinfo.name or ""
 			end
 			if _entry.player_data["instance_id"] then
-				return deathlog_id_to_instance_tbl[_entry.player_data["instance_id"]] or nil
+				return id_to_instance[_entry.player_data["instance_id"]] or nil
 			end
 			return ""
 		end,
@@ -185,13 +184,22 @@ local subtitle_metadata = {
 			if _entry.player_data["source_id"] == nil then
 				return ""
 			end
+			local _pvp_source_name = _entry.player_data["extra_data"] and _entry.player_data["extra_data"]["pvp_source_name"]
 			local _source = id_to_npc[_entry.player_data["source_id"]]
-				or environment_damage[_entry.player_data["source_id"]]
-				or deathlog_decode_pvp_source(_entry.player_data["source_id"])
+				or deathlog_environment_damage[_entry.player_data["source_id"]]
+				or deathlog_decode_pvp_source(_entry.player_data["source_id"], _pvp_source_name)
 				or ""
 
-			if _source == "" and deathlogPredictSource then
-				_source = deathlogPredictSource(_entry.player_data["map_pos"], _entry.player_data["map_id"]) or ""
+			if _source == "" then
+				if _entry.player_data["predicted_source"] then
+					_source = _entry.player_data["predicted_source"]
+				elseif deathlogPredictSource then
+					local predicted = deathlogPredictSource(_entry.player_data["map_pos"], _entry.player_data["map_id"])
+					if predicted then
+						_entry.player_data["predicted_source"] = predicted
+						_source = predicted
+					end
+				end
 			end
 			return _source
 		end,
@@ -403,6 +411,12 @@ local function setupRowEntries()
 			end
 		end
 
+		local function whisperPlayer()
+			if death_tomb_frame.clicked_name then
+				ChatFrame_OpenChat("/w " .. death_tomb_frame.clicked_name .. " ")
+			end
+		end
+
 		local function checkSpoof()
 			if death_tomb_frame.clicked_name then
 				C_FriendList.SendWho(death_tomb_frame.clicked_name)
@@ -410,6 +424,8 @@ local function setupRowEntries()
 		end
 
 		if level == 1 then
+			info.text, info.hasArrow, info.func, info.disabled = "Whisper player", false, whisperPlayer, false
+			UIDropDownMenu_AddButton(info)
 			info.text, info.hasArrow, info.func, info.disabled = "Show death location", false, openWorldMap, false
 			UIDropDownMenu_AddButton(info)
 			info.text, info.hasArrow, info.func, info.disabled = "Block user", false, blockUser, false
@@ -1312,7 +1328,7 @@ options = {
 				local instance_id = nil
 				if idx == 1 then
 					idx = math.random(1, 10)
-					for k, v in pairs(deathlog_id_to_instance_tbl) do
+					for k, v in pairs(id_to_instance) do
 						idx = idx - 1
 						instance_id = k
 						if idx < 1 then
@@ -1321,9 +1337,14 @@ options = {
 					end
 				else
 					idx = math.random(1, 10)
-					for k, v in pairs(deathlog_zone_tbl) do
-						idx = idx - 1
-						map_id = v
+					for _, zones in pairs(zone_to_id) do
+						for k, v in pairs(zones) do
+							idx = idx - 1
+							map_id = v
+							if idx < 1 then
+								break
+							end
+						end
 						if idx < 1 then
 							break
 						end
@@ -1343,16 +1364,23 @@ options = {
 
 				-- pvp tests
 				local pvp_r = math.random(0, 3)
+				local pvp_source_name = nil
 				if pvp_r == 1 then
-					fake_player_data["source_id"] = deathlog_encode_pvp_source("target")
+					fake_player_data["source_id"], pvp_source_name = deathlog_encode_pvp_source("target")
 				elseif pvp_r == 2 then
-					fake_player_data["source_id"] = deathlog_encode_pvp_source(deathlog_last_attack_player)
+					fake_player_data["source_id"], pvp_source_name = deathlog_encode_pvp_source(deathlog_last_attack_player)
 				elseif pvp_r == 3 and UnitIsPlayer("target") then
 					deathlog_refresh_last_attack_info(UnitName("target"))
 					deathlog_last_duel_to_death_player = deathlog_last_attack_player
-					fake_player_data["source_id"] = deathlog_encode_pvp_source(deathlog_last_attack_player)
+					fake_player_data["source_id"], pvp_source_name = deathlog_encode_pvp_source(deathlog_last_attack_player)
 					deathlog_last_duel_to_death_player = nil
 					deathlog_clear_last_attack_info()
+				end
+
+				if pvp_source_name and math.random(0, 100) < 50 then
+					fake_player_data["extra_data"] = {
+						["pvp_source_name"] = pvp_source_name,
+					}
 				end
 
 				deathlog_widget_minilog_createEntry(fake_player_data)

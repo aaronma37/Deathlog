@@ -1,0 +1,86 @@
+-- Auto-generated zone map data. Do not edit manually.
+-- Version: bd8505fb
+zone_to_id_de = {}
+
+
+do
+  zone_to_id_de[0] = {
+    ["Azeroth"] = 947,
+    ["Durotar"] = 1411,
+    ["Mulgore"] = 1412,
+    ["Das Brachland"] = 1413,
+    ["Kalimdor"] = 1414,
+    ["Östliche Königreiche"] = 1415,
+    ["Alteracgebirge"] = 1416,
+    ["Arathihochland"] = 1417,
+    ["Ödland"] = 1418,
+    ["Verwüstete Lande"] = 1419,
+    ["Tirisfal"] = 1420,
+    ["Silberwald"] = 1421,
+    ["Westliche Pestländer"] = 1422,
+    ["Östliche Pestländer"] = 1423,
+    ["Vorgebirge des Hügellands"] = 1424,
+    ["Hinterland"] = 1425,
+    ["Dun Morogh"] = 1426,
+    ["Sengende Schlucht"] = 1427,
+    ["Brennende Steppe"] = 1428,
+    ["Wald von Elwynn"] = 1429,
+    ["Gebirgspass der Totenwinde"] = 1430,
+    ["Dämmerwald"] = 1431,
+    ["Loch Modan"] = 1432,
+    ["Rotkammgebirge"] = 1433,
+    ["Schlingendorntal"] = 1434,
+    ["Sümpfe des Elends"] = 1435,
+    ["Westfall"] = 1436,
+    ["Sumpfland"] = 1437,
+    ["Teldrassil"] = 1438,
+    ["Dunkelküste"] = 1439,
+    ["Eschental"] = 1440,
+    ["Tausend Nadeln"] = 1441,
+    ["Steinkrallengebirge"] = 1442,
+    ["Desolace"] = 1443,
+    ["Feralas"] = 1444,
+    ["Düstermarschen"] = 1445,
+    ["Tanaris"] = 1446,
+    ["Azshara"] = 1447,
+    ["Teufelswald"] = 1448,
+    ["Krater von Un'Goro"] = 1449,
+    ["Mondlichtung"] = 1450,
+    ["Silithus"] = 1451,
+    ["Winterquell"] = 1452,
+    ["Sturmwind"] = 1453,
+    ["Orgrimmar"] = 1454,
+    ["Eisenschmiede"] = 1455,
+    ["Donnerfels"] = 1456,
+    ["Darnassus"] = 1457,
+    ["Unterstadt"] = 1458,
+    ["Alteractal"] = 1459,
+    ["Kriegshymnenschlucht"] = 1460,
+    ["Arathibecken"] = 1461,
+  }
+end
+
+if GetExpansionLevel and GetExpansionLevel() >= 1 then
+do
+  zone_to_id_de[1] = {
+    ["Kosmisch"] = 946,
+    ["Immersangwald"] = 1941,
+    ["Geisterlande"] = 1942,
+    ["Azurmythosinsel"] = 1943,
+    ["Höllenfeuerhalbinsel"] = 1944,
+    ["Scherbenwelt"] = 1945,
+    ["Zangarmarschen"] = 1946,
+    ["Die Exodar"] = 1947,
+    ["Schattenmondtal"] = 1948,
+    ["Schergrat"] = 1949,
+    ["Blutmythosinsel"] = 1950,
+    ["Nagrand"] = 1951,
+    ["Wälder von Terokkar"] = 1952,
+    ["Nethersturm"] = 1953,
+    ["Silbermond"] = 1954,
+    ["Shattrath"] = 1955,
+    ["Auge des Sturms"] = 1956,
+    ["Insel von Quel'Danas"] = 1957,
+  }
+end
+end

@@ -1,2 +1,4 @@
 scrape_deathlog.py
 !collected_data/
+.vscode/
+playground

@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -18,14 +18,6 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 local deadliest_creatures_container = CreateFrame("Frame")
-local environment_damage = {
-	[-2] = "Drowning",
-	[-3] = "Falling",
-	[-4] = "Fatigue",
-	[-5] = "Fire",
-	[-6] = "Lava",
-	[-7] = "Slime",
-}
 deadliest_creatures_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 local function createDeadliestCreaturesEntry()
 	local frame = CreateFrame("Frame")
@@ -129,7 +121,7 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 	deadliest_creatures_container.right:Show()
 	local _stats = stats_tbl["stats"]
 	local valid_map = C_Map.GetMapInfo(current_map_id)
-	if valid_map then
+	if valid_map and valid_map.mapType < 4 then
 		deadliest_creatures_container.heading_description:Show()
 	else
 		deadliest_creatures_container.heading_description:Hide()
@@ -138,10 +130,7 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 	for i = 1, 10 do
 		deadliest_creatures_textures[i]:Hide()
 	end
-	local map_id = current_map_id
-	if map_id == 947 then
-		map_id = "all"
-	end
+	local map_id = deathlog_normalize_map_id_for_stats(current_map_id)
 	local most_deadly_units = deathlogGetOrdered(_stats, { "all", map_id, "all", nil })
 	if most_deadly_units and #most_deadly_units > 0 then
 		local max_kills = most_deadly_units[1][2]
@@ -168,7 +157,7 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 					deadliest_creatures_container:GetWidth() * most_deadly_units[i][2] / max_kills
 				)
 				deadliest_creatures_textures[i]:SetCreatureName(
-					id_to_npc[most_deadly_units[i][1]] or environment_damage[most_deadly_units[i][1]]
+					id_to_npc[most_deadly_units[i][1]] or deathlog_environment_damage[most_deadly_units[i][1]]
 				)
 				deadliest_creatures_textures[i]:SetNumKills(most_deadly_units[i][2])
 				if valid_map then

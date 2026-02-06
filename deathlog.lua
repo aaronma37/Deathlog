@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Deathlog.
 
@@ -263,11 +263,82 @@ local options = {
 				deathlog_settings["colored_tooltips"] = not deathlog_settings["colored_tooltips"]
 			end,
 		},
+		prediction_radius = {
+			type = "range",
+			name = "Source prediction radius",
+			desc = "Search radius (in map cells) when predicting the death source from heatmap data. Higher values may find matches further away but could be less accurate.",
+			width = 1.5,
+			min = 0,
+			max = 20,
+			step = 1,
+			get = function()
+				if deathlog_settings["prediction_radius"] == nil then
+					deathlog_settings["prediction_radius"] = 5
+				end
+				return deathlog_settings["prediction_radius"]
+			end,
+			set = function(_, val)
+				deathlog_settings["prediction_radius"] = val
+			end,
+		},
 	},
 }
 
 LibStub("AceConfig-3.0"):RegisterOptionsTable(addonName, options)
 optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addonName, "Deathlog", nil)
+
+-- Deduplication window in seconds - deaths of the same player within this window are considered duplicates
+-- This works alongside DeathNotificationLib's dedup mechanisms (bliz_alert_cache, tarnished_soul_cache)
+-- but operates at the final entry point to catch duplicates from different sources (addon broadcast vs HARDCORE_DEATHS)
+local DEATHLOG_DEDUP_WINDOW = 60
+
+-- Calculate entry quality by counting populated fields
+-- Similar to DeathNotificationLib's REPORT_QUALITY but more granular
+local function deathlog_calculate_entry_quality(entry)
+	local count = 0
+	if entry["guild"] and entry["guild"] ~= "" then count = count + 1 end
+	if entry["race_id"] then count = count + 1 end
+	if entry["class_id"] then count = count + 1 end
+	if entry["source_id"] and entry["source_id"] ~= -1 then count = count + 1 end
+	if entry["map_id"] then count = count + 1 end
+	if entry["map_pos"] then count = count + 1 end
+	if entry["instance_id"] then count = count + 1 end
+	if entry["last_words"] and entry["last_words"] ~= "" then count = count + 1 end
+	return count
+end
+
+-- Merge two entries, preferring non-nil/non-empty values
+-- Returns a new merged entry
+local function deathlog_merge_entries(entry_a, entry_b)
+	local merged = {}
+	local fields = {"name", "guild", "source_id", "race_id", "class_id", "level", "instance_id", "map_id", "map_pos", "date", "last_words", "extra_data", "predicted_source"}
+	for _, field in ipairs(fields) do
+		local val_a = entry_a[field]
+		local val_b = entry_b[field]
+		-- Prefer non-nil, non-empty values; for source_id prefer non -1
+		if field == "source_id" then
+			if val_a and val_a ~= -1 then
+				merged[field] = val_a
+			elseif val_b and val_b ~= -1 then
+				merged[field] = val_b
+			else
+				merged[field] = val_a or val_b
+			end
+		elseif field == "guild" or field == "last_words" or field == "map_pos" then
+			-- For string fields, prefer non-empty
+			if val_a and val_a ~= "" then
+				merged[field] = val_a
+			elseif val_b and val_b ~= "" then
+				merged[field] = val_b
+			else
+				merged[field] = val_a or val_b
+			end
+		else
+			merged[field] = val_a or val_b
+		end
+	end
+	return merged
+end
 
 local function newEntry(_player_data, _checksum, num_peer_checks, in_guild)
 	local realmName = GetRealmName()
@@ -289,7 +360,7 @@ local function newEntry(_player_data, _checksum, num_peer_checks, in_guild)
 
 	local function deathlog_modified_fletcher16(_player_data)
 		local function deathlog_fletcher16(name, guild, level, source)
-			local data = name .. (guild or "") .. level .. source
+			local data = name .. (guild or "") .. (level or 0) .. (source or -1)
 			local sum1 = 0
 			local sum2 = 0
 			for index = 1, #data do
@@ -306,11 +377,59 @@ local function newEntry(_player_data, _checksum, num_peer_checks, in_guild)
 		)
 	end
 
+	local player_name = _player_data["name"]
+	local current_time = _player_data["date"] or time()
+
+	-- Check for existing entry for this player (deduplication)
+	local existing_checksum = deathlog_data_map[realmName][player_name]
+	if existing_checksum and deathlog_data[realmName][existing_checksum] then
+		local existing_entry = deathlog_data[realmName][existing_checksum]
+		local existing_time = existing_entry["date"] or 0
+		local time_diff = math.abs(current_time - existing_time)
+
+		-- If there's a recent entry for the same player, merge or skip
+		if time_diff <= DEATHLOG_DEDUP_WINDOW then
+			local existing_quality = deathlog_calculate_entry_quality(existing_entry)
+			local new_quality = deathlog_calculate_entry_quality(_player_data)
+
+			if new_quality > existing_quality then
+				-- New entry has more data - merge entries to preserve any unique data from existing
+				_player_data = deathlog_merge_entries(_player_data, existing_entry)
+				-- Remove old entry (will be replaced with merged entry under new checksum)
+				deathlog_data[realmName][existing_checksum] = nil
+			elseif new_quality < existing_quality then
+				-- Existing entry is better - merge any new unique data into existing, skip creating new
+				local merged = deathlog_merge_entries(existing_entry, _player_data)
+				deathlog_data[realmName][existing_checksum] = merged
+				return
+			else
+				-- Equal quality - merge and keep existing checksum, skip new entry
+				local merged = deathlog_merge_entries(existing_entry, _player_data)
+				deathlog_data[realmName][existing_checksum] = merged
+				return
+			end
+		end
+	end
+
 	local modified_checksum = deathlog_modified_fletcher16(_player_data)
+
+	-- Predict source if unknown and store it for future use
+	if _player_data["source_id"] and _player_data["predicted_source"] == nil then
+		local known_source = id_to_npc and id_to_npc[_player_data["source_id"]]
+		local env_source = deathlog_environment_damage and deathlog_environment_damage[_player_data["source_id"]]
+		local pvp_source_name = _player_data["extra_data"] and _player_data["extra_data"]["pvp_source_name"]
+		local pvp_source = deathlog_decode_pvp_source and deathlog_decode_pvp_source(_player_data["source_id"], pvp_source_name)
+		if not known_source and not env_source and (not pvp_source or pvp_source == "") then
+			if deathlogPredictSource then
+				_player_data["predicted_source"] = deathlogPredictSource(_player_data["map_pos"], _player_data["map_id"])
+			end
+		end
+	end
+
 	deathlog_data[realmName][modified_checksum] = _player_data
 	deathlog_widget_minilog_createEntry(_player_data)
 	Deathlog_DeathAlertPlay(_player_data)
-	deathlog_data_map[realmName][_player_data["name"]] = modified_checksum
+	deathlog_data_map[realmName][player_name] = modified_checksum
 end
 
 -- Hook to DeathNotificationLib

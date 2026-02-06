@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -17,8 +17,9 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
 local min_lvl = 0
-local max_lvl = 60
+local max_lvl = MAX_PLAYER_LEVEL
 local AceGUI = LibStub("AceGUI-3.0")
 local max_row_num = 25
 local page_number = 1
@@ -74,14 +75,6 @@ local function createDeadliestCreaturesEntry()
 	return frame
 end
 
-local environment_damage = {
-	[-2] = "Drowning",
-	[-3] = "Falling",
-	[-4] = "Fatigue",
-	[-5] = "Fire",
-	[-6] = "Lava",
-	[-7] = "Slime",
-}
 local deadliest_creatures_textures = {}
 for i = 1, max_row_num do
 	deadliest_creatures_textures[i] = createDeadliestCreaturesEntry()
@@ -200,7 +193,7 @@ function deadliest_creatures_container.updateMenuElement(
 	if metric == nil then
 		metric = "Normalized Score"
 	end
-	local current_map_id = 947
+	local current_map_id = deathlog_ROOT_MAP_ID
 	deadliest_creatures_container.page_str:SetText("Page " .. page_number)
 	deadliest_creatures_container.heading:Show()
 	deadliest_creatures_container.left:Show()
@@ -217,10 +210,7 @@ function deadliest_creatures_container.updateMenuElement(
 	for i = 1, max_row_num do
 		deadliest_creatures_textures[i]:Hide()
 	end
-	local map_id = current_map_id
-	if map_id == 947 then
-		map_id = "all"
-	end
+	local map_id = deathlog_normalize_map_id_for_stats(current_map_id)
 
 	if deadliest_creatures_container.sort_by_text == nil then
 		deadliest_creatures_container.sort_by_text =
@@ -314,14 +304,14 @@ function deadliest_creatures_container.updateMenuElement(
 		local info = UIDropDownMenu_CreateInfo()
 
 		info.text, info.checked, info.func =
-			"", class_id == "all", function()
+			"All", class_id == "all", function()
 				deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, "all")
 			end
 
 		UIDropDownMenu_AddButton(info)
 		for k, v in pairs(deathlog_class_tbl) do
 			info.text, info.checked, info.func =
-				k, metric == k, function()
+				k, class_id == v, function()
 					deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, v)
 				end
 			UIDropDownMenu_AddButton(info)
@@ -334,7 +324,7 @@ function deadliest_creatures_container.updateMenuElement(
 		-20,
 		0
 	)
-	local class_str = ""
+	local class_str = "All"
 	if tonumber(class_id) ~= nil then
 		class_str, _, _ = GetClassInfo(class_id)
 	end
@@ -556,7 +546,7 @@ function deadliest_creatures_container.updateMenuElement(
 	else
 		for k, v in ipairs(most_deadly_units) do
 			if
-				filter(id_to_npc[v[1]] or environment_damage[v[1]])
+				filter(id_to_npc[v[1]] or deathlog_environment_damage[v[1]])
 				and lvlFunction(_stats["all"]["all"]["all"][v[1]]["avg_lvl"])
 			then
 				filtered_most_deadly_units[#filtered_most_deadly_units + 1] = v
@@ -590,16 +580,16 @@ function deadliest_creatures_container.updateMenuElement(
 				)
 				if id_to_npc[filtered_most_deadly_units[idx][1]] ~= nil then
 					deadliest_creatures_textures[i]:SetCreatureName(id_to_npc[filtered_most_deadly_units[idx][1]])
-				elseif environment_damage[filtered_most_deadly_units[idx][1]] ~= nil then
+				elseif deathlog_environment_damage[filtered_most_deadly_units[idx][1]] ~= nil then
 					deadliest_creatures_textures[i]:SetCreatureName(
-						environment_damage[filtered_most_deadly_units[idx][1]]
+						deathlog_environment_damage[filtered_most_deadly_units[idx][1]]
 					)
 				end
 				deadliest_creatures_textures[i]:SetNumKills(filtered_most_deadly_units[idx][2], metric)
 				if valid_map then
 					deadliest_creatures_textures[i]:SetScript("OnMouseDown", function()
 						local c_id = filtered_most_deadly_units[idx][1]
-						local c_name = id_to_npc[filtered_most_deadly_units[idx][1]]
+						local c_name = id_to_npc[c_id] or deathlog_environment_damage[c_id]
 						updateFun(c_id, c_name, function(name)
 							if name == nil then
 								return false

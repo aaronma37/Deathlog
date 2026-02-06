@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -23,14 +23,7 @@ local _menu_height = 600
 local current_map_id = nil
 local max_rows = 25
 local page_number = 1
-local environment_damage = {
-	[-2] = "Drowning",
-	[-3] = "Falling",
-	[-4] = "Fatigue",
-	[-5] = "Fire",
-	[-6] = "Lava",
-	[-7] = "Slime",
-}
+local total_pages = 1
 
 local main_font = Deathlog_L.main_font
 
@@ -38,8 +31,6 @@ local deathlog_tabcontainer = nil
 
 local class_tbl = deathlog_class_tbl
 local race_tbl = deathlog_race_tbl
-local zone_tbl = deathlog_zone_tbl
-local instance_tbl = Deathlog_L.instance_map
 
 local deathlog_menu = nil
 
@@ -110,7 +101,15 @@ local function WPDropDownDemo_Menu(frame, level, menuList)
 		end
 	end
 
+	local function whisperPlayer()
+		if death_tomb_frame.clicked_name then
+			ChatFrame_OpenChat("/w " .. death_tomb_frame.clicked_name .. " ")
+		end
+	end
+
 	if level == 1 then
+		info.text, info.hasArrow, info.func, info.disabled = "Whisper player", false, whisperPlayer, false
+		UIDropDownMenu_AddButton(info)
 		info.text, info.hasArrow, info.func, info.disabled = "Show death location", false, openWorldMap, false
 		UIDropDownMenu_AddButton(info)
 		info.text, info.hasArrow, info.func, info.disabled = "Block user", false, blockUser, false
@@ -193,7 +192,7 @@ local subtitle_data = {
 		function(_entry, _server_name)
 			if _entry["map_id"] == nil then
 				if _entry["instance_id"] ~= nil then
-					return deathlog_id_to_instance_tbl[_entry["instance_id"]] or _entry["instance_id"]
+					return id_to_instance[_entry["instance_id"]] or _entry["instance_id"]
 				else
 					return "-----------"
 				end
@@ -209,13 +208,22 @@ local subtitle_data = {
 		"Death Source",
 		140,
 		function(_entry, _server_name)
+			local _pvp_source_name = _entry["extra_data"] and _entry["extra_data"]["pvp_source_name"]
 			local _source = id_to_npc[_entry["source_id"]]
-				or environment_damage[_entry["source_id"]]
-				or deathlog_decode_pvp_source(_entry["source_id"])
+				or deathlog_environment_damage[_entry["source_id"]]
+				or deathlog_decode_pvp_source(_entry["source_id"], _pvp_source_name)
 				or ""
 
-			if _source == "" and deathlogPredictSource then
-				_source = deathlogPredictSource(_entry["map_pos"], _entry["map_id"]) or ""
+			if _source == "" then
+				if _entry["predicted_source"] then
+					_source = _entry["predicted_source"]
+				elseif deathlogPredictSource then
+					local predicted = deathlogPredictSource(_entry["map_pos"], _entry["map_id"])
+					if predicted then
+						_entry["predicted_source"] = predicted
+						_source = predicted
+					end
+				end
 			end
 			return _source
 		end,
@@ -287,11 +295,23 @@ for i = 1, max_rows do
 	row_backgrounds[i]:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
 end
 
-local function clearDeathlogMenuLogData()
+local function clearDeathlogMenuLogData(skipPageReset)
+	if not skipPageReset then
+		page_number = 1
+		if font_container.page_str then
+			font_container.page_str:SetText("Page " .. page_number)
+		end
+	end
 	for i, v in ipairs(font_strings) do
 		for _, col in ipairs(subtitle_data) do
 			v[col[1]]:SetText("")
 		end
+	end
+	-- Hide pagination when clearing (will be shown again if data is available)
+	if not skipPageReset then
+		if font_container.page_str then font_container.page_str:Hide() end
+		if font_container.prev_button then font_container.prev_button:Hide() end
+		if font_container.next_button then font_container.next_button:Hide() end
 	end
 end
 
@@ -316,6 +336,37 @@ local function setDeathlogMenuLogData(data)
 			font_strings[i].map_id_coords_y = y
 		end
 	end
+
+	-- Update pagination visibility based on data
+	total_pages = math.max(1, math.ceil(#ordered / max_rows))
+	if font_container.page_str then
+		if #ordered == 0 or total_pages <= 1 then
+			-- Hide pagination entirely if no data or only one page
+			font_container.page_str:Hide()
+			if font_container.prev_button then font_container.prev_button:Hide() end
+			if font_container.next_button then font_container.next_button:Hide() end
+		else
+			font_container.page_str:SetText("Page " .. page_number .. " / " .. total_pages)
+			font_container.page_str:Show()
+			-- Show/hide prev button based on current page
+			if font_container.prev_button then
+				if page_number <= 1 then
+					font_container.prev_button:Hide()
+				else
+					font_container.prev_button:Show()
+				end
+			end
+			-- Show/hide next button based on current page
+			if font_container.next_button then
+				if page_number >= total_pages then
+					font_container.next_button:Hide()
+				else
+					font_container.next_button:Show()
+				end
+			end
+		end
+	end
+
 	if #ordered == 1 then
 		deathlog_menu:SetStatusText(
 			#ordered
@@ -423,24 +474,43 @@ local function drawLogTab(container)
 		local info = UIDropDownMenu_CreateInfo()
 
 		info.text, info.checked, info.func =
-			"", font_container.server_dd.val == "", function()
+			"All", font_container.server_dd.val == "", function()
 				font_container.server_dd.val = ""
-				UIDropDownMenu_SetText(font_container.server_dd, font_container.server_dd.val)
+				UIDropDownMenu_SetText(font_container.server_dd, "All")
 			end
 		UIDropDownMenu_AddButton(info)
 
-		for server_name, _ in pairs(_deathlog_data) do
+		-- Track which servers we've added to avoid duplicates
+		local added_servers = {}
+		
+		-- Always add current realm first
+		local current_realm = GetRealmName()
+		if current_realm and current_realm ~= "" then
 			info.text, info.checked, info.func =
-				server_name, font_container.server_dd.val == server_name, function()
-					font_container.server_dd.val = server_name
+				current_realm, font_container.server_dd.val == current_realm, function()
+					font_container.server_dd.val = current_realm
 					UIDropDownMenu_SetText(font_container.server_dd, font_container.server_dd.val)
 				end
 			UIDropDownMenu_AddButton(info)
+			added_servers[current_realm] = true
+		end
+
+		-- Add other servers from death data
+		for server_name, _ in pairs(_deathlog_data) do
+			if not added_servers[server_name] then
+				info.text, info.checked, info.func =
+					server_name, font_container.server_dd.val == server_name, function()
+						font_container.server_dd.val = server_name
+						UIDropDownMenu_SetText(font_container.server_dd, font_container.server_dd.val)
+					end
+				UIDropDownMenu_AddButton(info)
+				added_servers[server_name] = true
+			end
 		end
 	end
 
 	font_container.server_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", -5, -20)
-	UIDropDownMenu_SetText(font_container.server_dd, font_container.server_dd.val)
+	UIDropDownMenu_SetText(font_container.server_dd, font_container.server_dd.val ~= "" and font_container.server_dd.val or "All")
 	UIDropDownMenu_SetWidth(font_container.server_dd, 80)
 	UIDropDownMenu_Initialize(font_container.server_dd, serverDD)
 	UIDropDownMenu_JustifyText(font_container.server_dd, "LEFT")
@@ -484,9 +554,9 @@ local function drawLogTab(container)
 		end
 
 		info.text, info.checked, info.func =
-			"", font_container.race_dd.val == "", function()
+			"All", font_container.race_dd.val == "", function()
 				font_container.race_dd.val = ""
-				UIDropDownMenu_SetText(font_container.race_dd, font_container.race_dd.val)
+				UIDropDownMenu_SetText(font_container.race_dd, "All")
 				setFilter()
 			end
 		UIDropDownMenu_AddButton(info)
@@ -503,7 +573,7 @@ local function drawLogTab(container)
 	end
 
 	font_container.race_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 90, -20)
-	UIDropDownMenu_SetText(font_container.race_dd, font_container.race_dd.val)
+	UIDropDownMenu_SetText(font_container.race_dd, font_container.race_dd.val ~= "" and font_container.race_dd.val or "All")
 	UIDropDownMenu_SetWidth(font_container.race_dd, 80)
 	UIDropDownMenu_Initialize(font_container.race_dd, raceDD)
 	UIDropDownMenu_JustifyText(font_container.race_dd, "LEFT")
@@ -547,9 +617,9 @@ local function drawLogTab(container)
 		end
 
 		info.text, info.checked, info.func =
-			"", font_container.class_dd.val == "", function()
+			"All", font_container.class_dd.val == "", function()
 				font_container.class_dd.val = ""
-				UIDropDownMenu_SetText(font_container.class_dd, font_container.class_dd.val)
+				UIDropDownMenu_SetText(font_container.class_dd, "All")
 				setFilter()
 			end
 		UIDropDownMenu_AddButton(info)
@@ -566,7 +636,7 @@ local function drawLogTab(container)
 	end
 
 	font_container.class_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 185, -20)
-	UIDropDownMenu_SetText(font_container.class_dd, font_container.class_dd.val)
+	UIDropDownMenu_SetText(font_container.class_dd, font_container.class_dd.val ~= "" and font_container.class_dd.val or "All")
 	UIDropDownMenu_SetWidth(font_container.class_dd, 80)
 	UIDropDownMenu_Initialize(font_container.class_dd, classDD)
 	UIDropDownMenu_JustifyText(font_container.class_dd, "LEFT")
@@ -587,6 +657,30 @@ local function drawLogTab(container)
 		font_container.zone_dd.val = ""
 	end
 
+	-- Helper: get zone IDs from a category that exist in a specific expansion
+	local function getZoneCategoryForExpansion(category_name, expansion_id)
+		local category_ids = zone_categories and zone_categories[category_name]
+		if not category_ids then return {} end
+		
+		local expansion_zones = zone_to_id[expansion_id]
+		if not expansion_zones then return {} end
+		
+		-- Build reverse lookup: zone_id -> true for this expansion
+		local expansion_zone_ids = {}
+		for _, zone_id in pairs(expansion_zones) do
+			expansion_zone_ids[zone_id] = true
+		end
+		
+		-- Filter category IDs to only those in this expansion
+		local filtered = {}
+		for _, zone_id in ipairs(category_ids) do
+			if expansion_zone_ids[zone_id] then
+				table.insert(filtered, zone_id)
+			end
+		end
+		return filtered
+	end
+
 	local function zoneDD(frame, level, menuList)
 		local info = UIDropDownMenu_CreateInfo()
 
@@ -594,14 +688,19 @@ local function drawLogTab(container)
 			local key = font_container.zone_dd.val
 			if key ~= "" then
 				zone_filter = function(_, _entry)
-					if
-						(zone_tbl[key] and zone_tbl[key] == tonumber(_entry["map_id"]))
-						or (instance_tbl[key] and instance_tbl[key] == tonumber(_entry["instance_id"]))
-					then
-						return true
-					else
-						return false
+					-- Look up zone in all expansions
+					for _, zones in pairs(zone_to_id) do
+						if zones[key] and zones[key] == tonumber(_entry["map_id"]) then
+							return true
+						end
 					end
+					-- Look up instance in all expansions
+					for _, instances in pairs(instance_to_id) do
+						if instances[key] and instances[key] == tonumber(_entry["instance_id"]) then
+							return true
+						end
+					end
+					return false
 				end
 				clearDeathlogMenuLogData()
 				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
@@ -612,37 +711,117 @@ local function drawLogTab(container)
 			end
 		end
 
-		info.text, info.checked, info.func =
-			"", font_container.zone_dd.val == "", function()
-				font_container.zone_dd.val = ""
-				UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
-				setFilter()
-			end
-		UIDropDownMenu_AddButton(info)
-
-		for zone_name, _ in pairs(zone_tbl) do
+		if level == 1 or level == nil then
+			-- "All" option at top level
 			info.text, info.checked, info.func =
-				zone_name, font_container.zone_dd.val == zone_name, function()
-					font_container.zone_dd.val = zone_name
-					UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
+				"All", font_container.zone_dd.val == "", function()
+					font_container.zone_dd.val = ""
+					UIDropDownMenu_SetText(font_container.zone_dd, "All")
 					setFilter()
 				end
-			UIDropDownMenu_AddButton(info)
-		end
+			UIDropDownMenu_AddButton(info, level)
 
-		-- for zone_name, _ in pairs(instance_tbl) do
-		-- 	info.text, info.checked, info.func =
-		-- 		zone_name, font_container.zone_dd.val == zone_name, function()
-		-- 			font_container.zone_dd.val = zone_name
-		-- 			UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
-		-- 			setFilter()
-		-- 		end
-		-- 	UIDropDownMenu_AddButton(info)
-		-- end
+			-- Expansion submenus (sorted by expansion_id)
+			local expansion_names = Deathlog_L.expansion_names or { [0] = "Classic", [1] = "The Burning Crusade" }
+			local sorted_expansion_ids = {}
+			for expansion_id, _ in pairs(zone_to_id) do
+				table.insert(sorted_expansion_ids, expansion_id)
+			end
+			table.sort(sorted_expansion_ids)
+			for _, expansion_id in ipairs(sorted_expansion_ids) do
+				info = UIDropDownMenu_CreateInfo()
+				info.text = expansion_names[expansion_id] or ("Expansion " .. expansion_id)
+				info.hasArrow = true
+				info.notCheckable = true
+				info.menuList = { type = "expansion", id = expansion_id }
+				UIDropDownMenu_AddButton(info, level)
+			end
+		elseif level == 2 then
+			-- Continent submenus for the selected expansion (from zone_categories)
+			local expansion_id = menuList and menuList.id
+			if zone_categories then
+				-- Sort category names for consistent order
+				local sorted_categories = {}
+				for category_name, _ in pairs(zone_categories) do
+					local filtered_zones = getZoneCategoryForExpansion(category_name, expansion_id)
+					if #filtered_zones > 0 then
+						table.insert(sorted_categories, { name = category_name, zones = filtered_zones })
+					end
+				end
+				table.sort(sorted_categories, function(a, b) return a.name < b.name end)
+				
+				for _, category in ipairs(sorted_categories) do
+					info = UIDropDownMenu_CreateInfo()
+					info.text = category.name
+					info.hasArrow = true
+					info.notCheckable = true
+					info.menuList = { type = "continent", expansion_id = expansion_id, category_name = category.name, zones = category.zones }
+					UIDropDownMenu_AddButton(info, level)
+				end
+			end
+			
+			-- Fallback if no categories or empty: show all zones directly
+			if not zone_categories then
+				local zones = zone_to_id[expansion_id]
+				if zones then
+					local sorted_zones = {}
+					for zone_name, zone_id in pairs(zones) do
+						table.insert(sorted_zones, { name = zone_name, id = zone_id })
+					end
+					table.sort(sorted_zones, function(a, b) return a.name < b.name end)
+					for _, zone in ipairs(sorted_zones) do
+						info = UIDropDownMenu_CreateInfo()
+						info.text = zone.name
+						info.checked = font_container.zone_dd.val == zone.name
+						info.func = function()
+							font_container.zone_dd.val = zone.name
+							UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
+							setFilter()
+							CloseDropDownMenus()
+						end
+						UIDropDownMenu_AddButton(info, level)
+					end
+				end
+			end
+		elseif level == 3 then
+			-- Zones for selected continent/category
+			local category_zones = menuList and menuList.zones
+			local expansion_id = menuList and menuList.expansion_id
+			if category_zones and expansion_id then
+				local zones = zone_to_id[expansion_id]
+				if zones then
+					-- Build lookup of zone IDs in this category
+					local category_zone_ids = {}
+					for _, zone_id in ipairs(category_zones) do
+						category_zone_ids[zone_id] = true
+					end
+					-- Collect zones that belong to this category
+					local sorted_zones = {}
+					for zone_name, zone_id in pairs(zones) do
+						if category_zone_ids[zone_id] then
+							table.insert(sorted_zones, { name = zone_name, id = zone_id })
+						end
+					end
+					table.sort(sorted_zones, function(a, b) return a.name < b.name end)
+					for _, zone in ipairs(sorted_zones) do
+						info = UIDropDownMenu_CreateInfo()
+						info.text = zone.name
+						info.checked = font_container.zone_dd.val == zone.name
+						info.func = function()
+							font_container.zone_dd.val = zone.name
+							UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
+							setFilter()
+							CloseDropDownMenus()
+						end
+						UIDropDownMenu_AddButton(info, level)
+					end
+				end
+			end
+		end
 	end
 
 	font_container.zone_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 280, -20)
-	UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
+	UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val ~= "" and font_container.zone_dd.val or "All")
 	UIDropDownMenu_SetWidth(font_container.zone_dd, 80)
 	UIDropDownMenu_Initialize(font_container.zone_dd, zoneDD)
 	UIDropDownMenu_JustifyText(font_container.zone_dd, "LEFT")
@@ -663,21 +842,50 @@ local function drawLogTab(container)
 		font_container.instance_dd.val = ""
 	end
 
-	local function zoneDD(frame, level, menuList)
+	-- Helper: get instance IDs from a category that exist in a specific expansion
+	local function getInstanceCategoryForExpansion(category_name, expansion_id)
+		local category_ids = instance_categories and instance_categories[category_name]
+		if not category_ids then return {} end
+		
+		local expansion_instances = instance_to_id[expansion_id]
+		if not expansion_instances then return {} end
+		
+		-- Build reverse lookup: instance_id -> true for this expansion
+		local expansion_instance_ids = {}
+		for _, instance_id in pairs(expansion_instances) do
+			expansion_instance_ids[instance_id] = true
+		end
+		
+		-- Filter category IDs to only those in this expansion
+		local filtered = {}
+		for _, instance_id in ipairs(category_ids) do
+			if expansion_instance_ids[instance_id] then
+				table.insert(filtered, instance_id)
+			end
+		end
+		return filtered
+	end
+
+	local function instanceDD(frame, level, menuList)
 		local info = UIDropDownMenu_CreateInfo()
 
 		local function setFilter()
 			local key = font_container.instance_dd.val
 			if key ~= "" then
 				zone_filter = function(_, _entry)
-					if
-						(zone_tbl[key] and zone_tbl[key] == tonumber(_entry["map_id"]))
-						or (instance_tbl[key] and instance_tbl[key] == tonumber(_entry["instance_id"]))
-					then
-						return true
-					else
-						return false
+					-- Look up zone in all expansions
+					for _, zones in pairs(zone_to_id) do
+						if zones[key] and zones[key] == tonumber(_entry["map_id"]) then
+							return true
+						end
 					end
+					-- Look up instance in all expansions
+					for _, instances in pairs(instance_to_id) do
+						if instances[key] and instances[key] == tonumber(_entry["instance_id"]) then
+							return true
+						end
+					end
+					return false
 				end
 				clearDeathlogMenuLogData()
 				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
@@ -688,29 +896,114 @@ local function drawLogTab(container)
 			end
 		end
 
-		info.text, info.checked, info.func =
-			"", font_container.instance_dd.val == "", function()
-				font_container.instance_dd.val = ""
-				UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
-				setFilter()
-			end
-		UIDropDownMenu_AddButton(info)
-
-		for zone_name, _ in pairs(instance_tbl) do
+		if level == 1 or level == nil then
+			-- "All" option at top level
 			info.text, info.checked, info.func =
-				zone_name, font_container.instance_dd.val == zone_name, function()
-					font_container.instance_dd.val = zone_name
-					UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
+				"All", font_container.instance_dd.val == "", function()
+					font_container.instance_dd.val = ""
+					UIDropDownMenu_SetText(font_container.instance_dd, "All")
 					setFilter()
 				end
-			UIDropDownMenu_AddButton(info)
+			UIDropDownMenu_AddButton(info, level)
+
+			-- Expansion submenus (sorted by expansion_id)
+			local expansion_names = Deathlog_L.expansion_names or { [0] = "Classic", [1] = "The Burning Crusade" }
+			local sorted_expansion_ids = {}
+			for expansion_id, _ in pairs(instance_to_id) do
+				table.insert(sorted_expansion_ids, expansion_id)
+			end
+			table.sort(sorted_expansion_ids)
+			for _, expansion_id in ipairs(sorted_expansion_ids) do
+				info = UIDropDownMenu_CreateInfo()
+				info.text = expansion_names[expansion_id] or ("Expansion " .. expansion_id)
+				info.hasArrow = true
+				info.notCheckable = true
+				info.menuList = { type = "expansion", id = expansion_id }
+				UIDropDownMenu_AddButton(info, level)
+			end
+		elseif level == 2 then
+			-- Instance type submenus for the selected expansion (from instance_categories)
+			local expansion_id = menuList and menuList.id
+			if instance_categories then
+				-- Use consistent category order: Dungeon, Raid, Battleground, Arena
+				local category_order = { "Dungeon", "Raid", "Battleground", "Arena" }
+				for _, category_name in ipairs(category_order) do
+					local filtered_instances = getInstanceCategoryForExpansion(category_name, expansion_id)
+					if #filtered_instances > 0 then
+						info = UIDropDownMenu_CreateInfo()
+						info.text = category_name
+						info.hasArrow = true
+						info.notCheckable = true
+						info.menuList = { type = "instance_type", expansion_id = expansion_id, category_name = category_name, instances = filtered_instances }
+						UIDropDownMenu_AddButton(info, level)
+					end
+				end
+			end
+			
+			-- Fallback if no categories: show all instances directly
+			if not instance_categories then
+				local instances = instance_to_id[expansion_id]
+				if instances then
+					local sorted_instances = {}
+					for instance_name, instance_id in pairs(instances) do
+						table.insert(sorted_instances, { name = instance_name, id = instance_id })
+					end
+					table.sort(sorted_instances, function(a, b) return a.name < b.name end)
+					for _, instance in ipairs(sorted_instances) do
+						info = UIDropDownMenu_CreateInfo()
+						info.text = instance.name
+						info.checked = font_container.instance_dd.val == instance.name
+						info.func = function()
+							font_container.instance_dd.val = instance.name
+							UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
+							setFilter()
+							CloseDropDownMenus()
+						end
+						UIDropDownMenu_AddButton(info, level)
+					end
+				end
+			end
+		elseif level == 3 then
+			-- Instances for selected type/category
+			local category_instances = menuList and menuList.instances
+			local expansion_id = menuList and menuList.expansion_id
+			if category_instances and expansion_id then
+				local instances = instance_to_id[expansion_id]
+				if instances then
+					-- Build lookup of instance IDs in this category
+					local category_instance_ids = {}
+					for _, inst_id in ipairs(category_instances) do
+						category_instance_ids[inst_id] = true
+					end
+					-- Collect instances that belong to this category
+					local sorted_instances = {}
+					for instance_name, instance_id in pairs(instances) do
+						if category_instance_ids[instance_id] then
+							table.insert(sorted_instances, { name = instance_name, id = instance_id })
+						end
+					end
+					table.sort(sorted_instances, function(a, b) return a.name < b.name end)
+					for _, instance in ipairs(sorted_instances) do
+						info = UIDropDownMenu_CreateInfo()
+						info.text = instance.name
+						info.checked = font_container.instance_dd.val == instance.name
+						info.func = function()
+							font_container.instance_dd.val = instance.name
+							UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
+							setFilter()
+							CloseDropDownMenus()
+						end
+						UIDropDownMenu_AddButton(info, level)
+					end
+				end
+			end
 		end
 	end
 
 	font_container.instance_dd:SetPoint("TOPLEFT", scroll_container.frame, "TOPLEFT", 375, -20)
-	UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
+	UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val ~= "" and font_container.instance_dd.val or "All")
 	UIDropDownMenu_SetWidth(font_container.instance_dd, 80)
-	UIDropDownMenu_Initialize(font_container.instance_dd, zoneDD)
+	UIDropDownMenu_Initialize(font_container.instance_dd, instanceDD)
 	UIDropDownMenu_JustifyText(font_container.instance_dd, "LEFT")
 
 	if font_container.instance_dd.text == nil then
@@ -720,7 +1013,7 @@ local function drawLogTab(container)
 	font_container.instance_dd.text:SetPoint("LEFT", font_container.instance_dd, "LEFT", 20, 20)
 	font_container.instance_dd.text:SetFont(Deathlog_L.menu_font, 12, "")
 	font_container.instance_dd.text:SetTextColor(255 / 255, 215 / 255, 0)
-	font_container.instance_dd.text:SetText("Dungeon")
+	font_container.instance_dd.text:SetText("Instance")
 	font_container.instance_dd.text:Show()
 
 	-- Min lvl search
@@ -743,7 +1036,7 @@ local function drawLogTab(container)
 		local text = font_container.min_level_box:GetText()
 		if #text > 0 then
 			min_level_filter = function(_, _entry)
-				if tonumber(text) ~= nil and tonumber(text) < _entry["level"] then
+				if tonumber(text) ~= nil and _entry["level"] >= tonumber(text) then
 					return true
 				end
 				return false
@@ -783,7 +1076,7 @@ local function drawLogTab(container)
 		local text = font_container.max_level_box:GetText()
 		if #text > 0 then
 			max_level_filter = function(_, _entry)
-				if tonumber(text) ~= nil and tonumber(text) < _entry["level"] then
+				if tonumber(text) ~= nil and _entry["level"] <= tonumber(text) then
 					return true
 				end
 				return false
@@ -823,7 +1116,7 @@ local function drawLogTab(container)
 		local text = font_container.player_search_box:GetText()
 		if #text > 0 then
 			name_filter = function(_, _entry)
-				if string.find(string.lower(_entry["name"]), string.lower(text)) then
+				if string.find(string.lower(_entry["name"] or ""), string.lower(text)) then
 					return true
 				else
 					return false
@@ -864,7 +1157,7 @@ local function drawLogTab(container)
 		local text = font_container.guild_search_box:GetText()
 		if #text > 0 then
 			guild_filter = function(_, _entry)
-				if string.find(string.lower(_entry["guild"]), string.lower(text)) then
+				if string.find(string.lower(_entry["guild"] or ""), string.lower(text)) then
 					return true
 				else
 					return false
@@ -1030,19 +1323,29 @@ local function drawLogTab(container)
 
 			if click_type == "LeftButton" then
 			elseif click_type == "RightButton" then
-				local dropDown = CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
-				-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
-				UIDropDownMenu_Initialize(dropDown, WPDropDownDemo_Menu, "MENU")
-				ToggleDropDownMenu(1, nil, dropDown, "cursor", 3, -3)
-				if font_strings[i] and font_strings[i].map_id and font_strings[i].map_id_coords_x then
-					death_tomb_frame.map_id = font_strings[i].map_id
-					death_tomb_frame.coordinates = { font_strings[i].map_id_coords_x, font_strings[i].map_id_coords_y }
-					death_tomb_frame.clicked_name = font_strings[i].Name:GetText()
+				-- Only show context menu if this row has data
+				local nameText = font_strings[i] and font_strings[i]["Name"] and font_strings[i]["Name"]:GetText()
+				if nameText and strtrim(nameText) ~= "" then
+					local dropDown = CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
+					-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
+					UIDropDownMenu_Initialize(dropDown, WPDropDownDemo_Menu, "MENU")
+					ToggleDropDownMenu(1, nil, dropDown, "cursor", 3, -3)
+					if font_strings[i].map_id and font_strings[i].map_id_coords_x then
+						death_tomb_frame.map_id = font_strings[i].map_id
+						death_tomb_frame.coordinates = { font_strings[i].map_id_coords_x, font_strings[i].map_id_coords_y }
+						death_tomb_frame.clicked_name = nameText
+					end
 				end
 			end
 		end)
 
 		_entry:SetCallback("OnEnter", function(widget)
+			-- Only show tooltip if this row has data
+			local nameText = font_strings[i] and font_strings[i]["Name"] and font_strings[i]["Name"]:GetText()
+			if not (nameText and strtrim(nameText) ~= "") then
+				return
+			end
+
 			GameTooltip_SetDefaultAnchor(GameTooltip, WorldFrame)
 			local _name = ""
 			local _level = ""
@@ -1112,13 +1415,11 @@ local function drawLogTab(container)
 	end
 
 	font_container.prev_button:SetScript("OnClick", function()
-		page_number = page_number - 1
-		if page_number < 1 then
-			page_number = 1
+		if page_number > 1 then
+			page_number = page_number - 1
+			clearDeathlogMenuLogData(true)
+			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
 		end
-		clearDeathlogMenuLogData()
-		font_container.page_str:SetText("Page " .. page_number)
-		setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
 	end)
 
 	if font_container.next_button == nil then
@@ -1132,10 +1433,11 @@ local function drawLogTab(container)
 	end
 
 	font_container.next_button:SetScript("OnClick", function()
-		page_number = page_number + 1
-		clearDeathlogMenuLogData()
-		font_container.page_str:SetText("Page " .. page_number)
-		setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+		if page_number < total_pages then
+			page_number = page_number + 1
+			clearDeathlogMenuLogData(true)
+			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+		end
 	end)
 
 	deathlog_group.frame:HookScript("OnHide", function()
@@ -1227,10 +1529,11 @@ local function drawCreatureStatisticsTab(container)
 			deaths_by_creature = _stats["all"]["all"]["all"][creature_id]["num_entries"]
 		end
 		local all_deaths = _stats["all"]["all"]["all"]["all"]["num_entries"]
+		local creature_name = id_to_npc[creature_id] or deathlog_environment_damage[creature_id] or "Unknown"
 		description_label:SetText(
 			string.format("%.2f", deaths_by_creature / all_deaths * 100)
 				.. "% of all deaths are caused by "
-				.. id_to_npc[creature_id]
+				.. creature_name
 				.. "."
 		)
 	end
@@ -1296,10 +1599,7 @@ local function drawStatisticsTab(container)
 	description_label.label:SetJustifyH("CENTER")
 	scroll_frame:AddChild(description_label)
 	local function modifyDescription(map_id, zone)
-		local mid = map_id
-		if mid == 947 then
-			mid = "all"
-		end
+		local mid = deathlog_normalize_map_id_for_stats(map_id)
 		local deaths_in_zone = 0
 		if _stats["all"][mid] then
 			deaths_in_zone = _stats["all"][mid]["all"]["all"]["num_entries"]
@@ -1309,6 +1609,18 @@ local function drawStatisticsTab(container)
 			string.format("%.2f", deaths_in_zone / all_deaths * 100) .. "% of all deaths occur in " .. zone .. "."
 		)
 	end
+
+	-- Create "no data" message frame
+	local no_data_frame = CreateFrame("Frame", nil, scroll_frame.frame)
+	no_data_frame:SetSize(300, 100)
+	no_data_frame:SetPoint("TOPRIGHT", scroll_frame.frame, "TOPRIGHT", -80, -250)
+	no_data_frame:Hide()
+
+	local no_data_text = no_data_frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	no_data_text:SetPoint("CENTER", no_data_frame, "CENTER", 0, 0)
+	no_data_text:SetFont(Deathlog_L.menu_font, 16, "")
+	no_data_text:SetTextColor(0.6, 0.6, 0.6, 1)
+	no_data_text:SetText("No death data available\nfor this zone yet.")
 
 	local stats_menu_elements = {
 		Deathlog_MapContainer(),
@@ -1329,17 +1641,36 @@ local function drawStatisticsTab(container)
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
-		for _, v in ipairs(stats_menu_elements) do
-			v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+
+		-- Check if data exists for this zone
+		local mid = deathlog_normalize_map_id_for_stats(map_id)
+		local has_data = _stats and _stats["all"] and _stats["all"][mid]
+
+		if has_data then
+			-- Show stats elements, hide no data message
+			no_data_frame:Hide()
+			for _, v in ipairs(stats_menu_elements) do
+				v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+			end
+		else
+			-- Hide stats elements (except map), show no data message
+			stats_menu_elements[1].updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+			for i = 2, #stats_menu_elements do
+				stats_menu_elements[i]:Hide()
+			end
+			no_data_frame:Show()
 		end
 	end
 
-	setMapRegion(947, "Azeroth")
+	setMapRegion(deathlog_ROOT_MAP_ID, deathlog_ROOT_MAP_NAME)
 
 	scroll_frame.frame:HookScript("OnHide", function()
 		for _, v in ipairs(stats_menu_elements) do
 			v:Hide()
 		end
+		no_data_frame:Hide()
+		-- Clear the map highlight overlay when switching tabs
+		Deathlog_MapContainer_clearHighlight()
 	end)
 end
 
@@ -1417,6 +1748,18 @@ local function drawInstanceStatisticsTab(container)
 		title_label:SetText("Death Statistics - " .. zone)
 	end
 
+	-- Create "no data" message frame
+	local no_data_frame = CreateFrame("Frame", nil, scroll_frame.frame)
+	no_data_frame:SetSize(300, 100)
+	no_data_frame:SetPoint("TOPRIGHT", scroll_frame.frame, "TOPRIGHT", -80, -250)
+	no_data_frame:Hide()
+
+	local no_data_text = no_data_frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	no_data_text:SetPoint("CENTER", no_data_frame, "CENTER", 0, 0)
+	no_data_text:SetFont(Deathlog_L.menu_font, 16, "")
+	no_data_text:SetTextColor(0.6, 0.6, 0.6, 1)
+	no_data_text:SetText("No death data available\nfor this instance yet.")
+
 	local stats_menu_elements = {
 		Deathlog_InstanceContainer(),
 		Deathlog_DeadliestCreatureContainer(),
@@ -1434,8 +1777,26 @@ local function drawInstanceStatisticsTab(container)
 			["stats"] = _stats,
 			["log_normal_params"] = _log_normal_params,
 		}
-		for _, v in ipairs(stats_menu_elements) do
-			v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+
+		-- Check if data exists for this instance
+		local has_data = _stats and _stats["all"] and _stats["all"][map_id]
+
+		if has_data then
+			-- Show stats elements, hide no data message
+			no_data_frame:Hide()
+			for i, v in ipairs(stats_menu_elements) do
+				v.updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+				if i > 1 then
+					v:Show()
+				end
+			end
+		else
+			-- Hide stats elements (except instance selector), show no data message
+			stats_menu_elements[1].updateMenuElement(scroll_frame, map_id, stats_tbl, setMapRegion)
+			for i = 2, #stats_menu_elements do
+				stats_menu_elements[i]:Hide()
+			end
+			no_data_frame:Show()
 		end
 	end
 
@@ -1445,6 +1806,7 @@ local function drawInstanceStatisticsTab(container)
 		for _, v in ipairs(stats_menu_elements) do
 			v:Hide()
 		end
+		no_data_frame:Hide()
 	end)
 end
 
@@ -1454,7 +1816,7 @@ local function createDeathlogMenu()
 	tinsert(UISpecialFrames, "AceDeathlogMenu")
 
 	ace_deathlog_menu:SetTitle("Deathlog")
-	ace_deathlog_menu:SetVersion(GetAddOnMetadata("Deathlog", "Version"))
+	ace_deathlog_menu:SetVersion(C_AddOns.GetAddOnMetadata("Deathlog", "Version"))
 	ace_deathlog_menu:SetStatusText("")
 	ace_deathlog_menu:SetLayout("Flow")
 	ace_deathlog_menu:SetHeight(_menu_height)
@@ -1483,6 +1845,8 @@ local function createDeathlogMenu()
 		ace_deathlog_menu.exit_button_x:SetTexture("Interface/Buttons/UI-StopButton.PNG")
 		ace_deathlog_menu.exit_button_x:SetVertexColor(1, 1, 1, 0.8)
 	end
+
+	Deathlog_createInfoButton(ace_deathlog_menu)
 
 	deathlog_tabcontainer = AceGUI:Create("DeathlogTabGroup") -- "InlineGroup" is also good
 	local tab_table = Deathlog_L.tab_table

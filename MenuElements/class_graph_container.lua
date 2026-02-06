@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -18,12 +18,11 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 
+local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
 local graph_lines = {}
 local graph_container = CreateFrame("frame")
 
 local class_tbl = deathlog_class_tbl
-local race_tbl = deathlog_race_tbl
-local zone_tbl = deathlog_zone_tbl
 
 function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, setMapRegion, model)
 	if model == nil then
@@ -36,7 +35,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 	graph_container:SetParent(scroll_frame.frame)
 	graph_container.height = 140
 	graph_container.width = 400
-	graph_container.offsetx = 25
+	graph_container.offsetx = 50
 	graph_container.zoomy = 8
 	graph_container.offsety = -30
 	graph_container:SetPoint("TOPLEFT", 590, -70)
@@ -50,7 +49,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		graph_container.heading:SetFont(Deathlog_L.class_font, 18, "")
 		graph_container.heading:SetJustifyV("TOP")
 		graph_container.heading:SetTextColor(0.9, 0.9, 0.9)
-		graph_container.heading:SetPoint("TOP", graph_container, "TOP", 25, 0)
+		graph_container.heading:SetPoint("TOP", graph_container, "TOP", 50, 0)
 		graph_container.heading:Show()
 	end
 
@@ -137,7 +136,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		end
 		for k, v in pairs(class_tbl) do
 			if class_log_normal_params and class_log_normal_params[v][1] then
-				for i = 1, 60 do
+				for i = 1, MAX_PLAYER_LEVEL do
 					y_values[v][i] = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 					if y_values[v][i] > max_y then
 						max_y = y_values[v][i]
@@ -161,11 +160,12 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 			)
 		end
 
-		for i = 1, 6 do
+		local steps = MAX_PLAYER_LEVEL / 10
+		for i = 1, steps do
 			createLine(
 				"x_tick_" .. i .. "0",
-				{ graph_container.offsetx + graph_container.width * i / 6, graph_container.offsety },
-				{ graph_container.offsetx + graph_container.width * i / 6, graph_container.offsety + 5 },
+				{ graph_container.offsetx + graph_container.width * i / steps, graph_container.offsety },
+				{ graph_container.offsetx + graph_container.width * i / steps, graph_container.offsety + 5 },
 				nil,
 				{ i .. "0", -5, -11 }
 			)
@@ -173,7 +173,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 
 		local class_colors = deathlog_class_colors
 		if class_log_normal_params then
-			for i = 2, 60 do
+			for i = 2, MAX_PLAYER_LEVEL do
 				for k, v in pairs(class_tbl) do
 					local alpha = 0.2
 					if class_id == v then
@@ -183,10 +183,10 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 						local y1 = logNormal(i - 1, class_log_normal_params[v][1], class_log_normal_params[v][2])
 						local y2 = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 						createLine(k .. i, {
-							graph_container.offsetx + (i - 2) / 60 * graph_container.width,
+							graph_container.offsetx + (i - 2) / MAX_PLAYER_LEVEL * graph_container.width,
 							y1 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 						}, {
-							graph_container.offsetx + (i - 1) / 60 * graph_container.width,
+							graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
 							y2 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 						}, class_colors[k], nil, alpha)
 					else
@@ -223,7 +223,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		end
 		for k, v in pairs(class_tbl) do
 			if class_log_normal_params and class_log_normal_params[v][1] then
-				for i = 1, 60 do
+				for i = 1, MAX_PLAYER_LEVEL do
 					y_values[v][i] = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 					if y_values[v][i] > max_y then
 						max_y = y_values[v][i]
@@ -243,11 +243,12 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 			)
 		end
 
-		for i = 1, 6 do
+		local steps = MAX_PLAYER_LEVEL / 10
+		for i = 1, steps do
 			createLine(
 				"cdf_x_tick_" .. i .. "0",
-				{ graph_container.offsetx + graph_container.width * i / 6, _offsety },
-				{ graph_container.offsetx + graph_container.width * i / 6, _offsety + 5 },
+				{ graph_container.offsetx + graph_container.width * i / steps, _offsety },
+				{ graph_container.offsetx + graph_container.width * i / steps, _offsety + 5 },
 				nil,
 				{ i .. "0", -5, -11 }
 			)
@@ -257,7 +258,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 			local class_colors = deathlog_class_colors
 			if class_log_normal_params then
 				local cdf = {}
-				for i = 2, 60 do
+				for i = 2, MAX_PLAYER_LEVEL do
 					for k, v in pairs(class_tbl) do
 						if cdf[v] == nil then
 							cdf[v] =
@@ -269,10 +270,10 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 						end
 						if class_log_normal_params[v][1] then
 							createLine("cdf" .. k .. i, {
-								graph_container.offsetx + (i - 1) / 60 * graph_container.width,
+								graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
 								(1 - cdf[v][i - 1]) * graph_container.height + _offsety,
 							}, {
-								graph_container.offsetx + i / 60 * graph_container.width,
+								graph_container.offsetx + i / MAX_PLAYER_LEVEL * graph_container.width,
 								(1 - cdf[v][i]) * graph_container.height + _offsety,
 							}, class_colors[k], nil, alpha)
 						else
@@ -285,18 +286,28 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 			end
 		elseif model == "Kaplan-Meier" then
 			local class_colors = deathlog_class_colors
-			for i = 2, 60 do
+			for i = 2, MAX_PLAYER_LEVEL do
 				for k, v in pairs(class_tbl) do
 					local alpha = 0.2
 					if class_id == v then
 						alpha = 1
 					end
+					-- Get values with fallback for TBC levels beyond precomputed data
+					local km_prev = kaplan_meier[v][i - 1]
+					local km_curr = kaplan_meier[v][i]
+					-- If data missing, extrapolate from last known value
+					if km_prev == nil then
+						km_prev = kaplan_meier[v][60] or 0
+					end
+					if km_curr == nil then
+						km_curr = kaplan_meier[v][60] or 0
+					end
 					createLine("cdf" .. k .. i, {
-						graph_container.offsetx + (i - 1) / 60 * graph_container.width,
-						kaplan_meier[v][i - 1] * graph_container.height + _offsety,
+						graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
+						km_prev * graph_container.height + _offsety,
 					}, {
-						graph_container.offsetx + i / 60 * graph_container.width,
-						kaplan_meier[v][i] * graph_container.height + _offsety,
+						graph_container.offsetx + i / MAX_PLAYER_LEVEL * graph_container.width,
+						km_curr * graph_container.height + _offsety,
 					}, class_colors[k], nil, alpha)
 				end
 			end
@@ -311,7 +322,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 		graph_container.cdf_heading:SetFont(Deathlog_L.class_font, 18, "")
 		graph_container.cdf_heading:SetJustifyV("TOP")
 		graph_container.cdf_heading:SetTextColor(0.9, 0.9, 0.9)
-		graph_container.cdf_heading:SetPoint("TOP", graph_container, "TOP", 25, -210)
+		graph_container.cdf_heading:SetPoint("TOP", graph_container, "TOP", 50, -210)
 		graph_container.cdf_heading:Show()
 	end
 
@@ -369,6 +380,10 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 	end)
 
 	graph_container:SetScript("OnShow", function()
+		graph_container.heading:Show()
+		graph_container.left:Show()
+		graph_container.right:Show()
+
 		graph_container.cdf_heading:Show()
 		graph_container.cdf_left:Show()
 		graph_container.cdf_right:Show()

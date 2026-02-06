@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -18,12 +18,11 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 
+local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
 local graph_lines = {}
 local graph_container = CreateFrame("frame")
 
 local class_tbl = deathlog_class_tbl
-local race_tbl = deathlog_race_tbl
-local zone_tbl = deathlog_zone_tbl
 
 function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
 	local _log_normal_params = stats_tbl["log_normal_params"]
@@ -142,7 +141,12 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 		y_values[v] = {}
 	end
 	local max_y = 0
+	local MIN_SIGMA = 0.05 -- Minimum sigma to prevent near-infinite PDF spikes
 	local function logNormal(x, mean, sigma)
+		-- Enforce minimum sigma to handle degenerate distributions (e.g., all deaths at level 60)
+		if sigma < MIN_SIGMA then
+			sigma = MIN_SIGMA
+		end
 		local d1 = (x * sigma * sqrt(2 * 3.14))
 		if d1 > 0 then
 			return (1 / d1) * exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
@@ -155,11 +159,13 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 			and _log_normal_params[current_map_id][v]
 			and _log_normal_params[current_map_id][v][1]
 		then
-			for i = 1, 60 do
+			for i = 1, MAX_PLAYER_LEVEL do
+				local variance = _log_normal_params[current_map_id][v][2]
+				local sigma = sqrt(variance)
 				y_values[v][i] = logNormal(
 					i,
 					_log_normal_params[current_map_id][v][1],
-					sqrt(_log_normal_params[current_map_id][v][2])
+					sigma
 				)
 				if y_values[v][i] > max_y and _log_normal_params[current_map_id][v][3] > 2 then
 					max_y = y_values[v][i]
@@ -183,11 +189,12 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 		)
 	end
 
-	for i = 1, 6 do
+	local steps = MAX_PLAYER_LEVEL / 10
+	for i = 1, steps do
 		createLine(
 			"x_tick_" .. i .. "0",
-			{ graph_container.offsetx + graph_container.width * i / 6, graph_container.offsety },
-			{ graph_container.offsetx + graph_container.width * i / 6, graph_container.offsety + 5 },
+			{ graph_container.offsetx + graph_container.width * i / steps, graph_container.offsety },
+			{ graph_container.offsetx + graph_container.width * i / steps, graph_container.offsety + 5 },
 			nil,
 			{ i .. "0", -5, -11 }
 		)
@@ -195,11 +202,11 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 
 	local class_colors = deathlog_class_colors
 	if _log_normal_params[current_map_id] then
-		for i = 2, 60 do
+		for i = 2, MAX_PLAYER_LEVEL do
 			for k, v in pairs(class_tbl) do
 				if _log_normal_params[current_map_id][v] and _log_normal_params[current_map_id][v][1] then
 					-- level_num[v][i] = level_num[v][i] / total[v]
-					-- createLine(k..i, {25+(i-2)/60*375,level_num[v][i-1]*100*8}, {25+(i-1)/60*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
+					-- createLine(k..i, {25+(i-2)/MAX_PLAYER_LEVEL*375,level_num[v][i-1]*100*8}, {25+(i-1)/MAX_PLAYER_LEVEL*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
 					local y1 = logNormal(
 						i - 1,
 						_log_normal_params[current_map_id][v][1],
@@ -211,10 +218,10 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 						sqrt(_log_normal_params[current_map_id][v][2])
 					)
 					createLine(k .. i, {
-						graph_container.offsetx + (i - 2) / 60 * graph_container.width,
+						graph_container.offsetx + (i - 2) / MAX_PLAYER_LEVEL * graph_container.width,
 						y1 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 					}, {
-						graph_container.offsetx + (i - 1) / 60 * graph_container.width,
+						graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
 						y2 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 					}, class_colors[k])
 

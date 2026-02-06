@@ -1,6 +1,6 @@
 --
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -20,14 +20,173 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --
 --
 
-deathlog_instance_tbl = Deathlog_L.instance_tbl
+local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
 
-deathlog_id_to_instance_tbl = {}
-for k, v in pairs(deathlog_instance_tbl) do
-	deathlog_id_to_instance_tbl[v[1]] = v[3]
+-- Top-level map IDs
+deathlog_AZEROTH_ID = 947
+deathlog_EASTERN_KINGDOMS_ID = 1415
+deathlog_KALIMDOR_ID = 1414
+
+deathlog_ROOT_MAP_ID = deathlog_AZEROTH_ID
+deathlog_ROOT_MAP_NAME = "Azeroth"
+
+-- Zones that do not show heatmaps
+local no_heatmap_zones = {}
+
+-- Container zones (continents and world-level maps that aggregate child zone stats)
+-- Use as a set: container_zone_set[map_id] = true
+local container_zone_set = {
+	[947] = true,  -- Azeroth
+	[1414] = true, -- Kalimdor
+	[1415] = true, -- Eastern Kingdoms
+}
+
+-- Zone parent mapping: zone_id -> parent_id
+-- This defines the zone hierarchy for stats aggregation
+local zone_parent_map = {
+	-- Azeroth contains continents
+	[1414] = 947, -- Kalimdor -> Azeroth
+	[1415] = 947, -- Eastern Kingdoms -> Azeroth
+	
+	-- Eastern Kingdoms zones
+	[1416] = 1415, -- Alterac Mountains
+	[1417] = 1415, -- Arathi Highlands
+	[1418] = 1415, -- Badlands
+	[1419] = 1415, -- Blasted Lands
+	[1420] = 1415, -- Tirisfal Glades
+	[1421] = 1415, -- Silverpine Forest
+	[1422] = 1415, -- Western Plaguelands
+	[1423] = 1415, -- Eastern Plaguelands
+	[1424] = 1415, -- Hillsbrad Foothills
+	[1425] = 1415, -- The Hinterlands
+	[1426] = 1415, -- Dun Morogh
+	[1427] = 1415, -- Searing Gorge
+	[1428] = 1415, -- Burning Steppes
+	[1429] = 1415, -- Elwynn Forest
+	[1430] = 1415, -- Deadwind Pass
+	[1431] = 1415, -- Duskwood
+	[1432] = 1415, -- Loch Modan
+	[1433] = 1415, -- Redridge Mountains
+	[1434] = 1415, -- Stranglethorn Vale
+	[1435] = 1415, -- Swamp of Sorrows
+	[1436] = 1415, -- Westfall
+	[1437] = 1415, -- Wetlands
+	[1453] = 1415, -- Stormwind City
+	[1455] = 1415, -- Ironforge
+	[1458] = 1415, -- Undercity
+	
+	-- Kalimdor zones
+	[1411] = 1414, -- Durotar
+	[1412] = 1414, -- Mulgore
+	[1413] = 1414, -- The Barrens
+	[1438] = 1414, -- Teldrassil
+	[1439] = 1414, -- Darkshore
+	[1440] = 1414, -- Ashenvale
+	[1441] = 1414, -- Thousand Needles
+	[1442] = 1414, -- Stonetalon Mountains
+	[1443] = 1414, -- Desolace
+	[1444] = 1414, -- Feralas
+	[1445] = 1414, -- Dustwallow Marsh
+	[1446] = 1414, -- Tanaris
+	[1447] = 1414, -- Azshara
+	[1448] = 1414, -- Felwood
+	[1449] = 1414, -- Un'Goro Crater
+	[1450] = 1414, -- Moonglade
+	[1451] = 1414, -- Silithus
+	[1452] = 1414, -- Winterspring
+	[1454] = 1414, -- Orgrimmar
+	[1456] = 1414, -- Thunder Bluff
+	[1457] = 1414, -- Darnassus
+	
+	-- PvP zones in Azeroth
+	[1459] = 1415, -- Alterac Valley (in Alterac Mountains area)
+	[1460] = 1414, -- Warsong Gulch (in Ashenvale/Barrens area)
+	[1461] = 1415, -- Arathi Basin (in Arathi Highlands)
+}
+
+-- TBC zones and hierarchy (add if expansion is available)
+if GetExpansionLevel and GetExpansionLevel() >= 1 then
+	deathlog_WORLD_MAP_ID = 946
+	deathlog_OUTLAND_ID = 1945
+
+	deathlog_ROOT_MAP_ID = deathlog_WORLD_MAP_ID
+	deathlog_ROOT_MAP_NAME = "Cosmos"
+
+	no_heatmap_zones[946] = true  -- Cosmos
+
+	container_zone_set[946] = true  -- Cosmos
+	container_zone_set[1945] = true -- Outland
+
+	-- In TBC, Cosmos becomes the top-level, containing both Azeroth and Outland
+	zone_parent_map[947] = 946   -- Azeroth -> Cosmos
+	zone_parent_map[1945] = 946  -- Outland -> Cosmos
+	
+	-- TBC starting zones attached to existing continents
+	zone_parent_map[1941] = 1415 -- Eversong Woods (attached to EK)
+	zone_parent_map[1942] = 1415 -- Ghostlands (attached to EK)
+	zone_parent_map[1943] = 1414 -- Azuremyst Isle (attached to Kalimdor)
+	zone_parent_map[1950] = 1414 -- Bloodmyst Isle (attached to Kalimdor)
+	zone_parent_map[1954] = 1415 -- Silvermoon City (attached to EK)
+	zone_parent_map[1947] = 1414 -- The Exodar (attached to Kalimdor)
+	
+	-- Outland zones parent to Outland
+	zone_parent_map[1944] = 1945 -- Hellfire Peninsula
+	zone_parent_map[1946] = 1945 -- Zangarmarsh
+	zone_parent_map[1948] = 1945 -- Shadowmoon Valley
+	zone_parent_map[1949] = 1945 -- Blade's Edge Mountains
+	zone_parent_map[1951] = 1945 -- Nagrand
+	zone_parent_map[1952] = 1945 -- Terokkar Forest
+	zone_parent_map[1953] = 1945 -- Netherstorm
+	zone_parent_map[1955] = 1945 -- Shattrath City
+	zone_parent_map[1957] = 1945 -- Isle of Quel'Danas
 end
 
-deathlog_zone_tbl = Deathlog_L.deathlog_zone_tbl
+-- Get all ancestor zone IDs for a given zone (including the zone itself)
+-- Returns a table of zone IDs from the zone up to the Cosmos
+function deathlog_get_zone_ancestors(map_id)
+	local ancestors = {}
+	local current = map_id
+	
+	while current ~= nil do
+		table.insert(ancestors, current)
+		current = zone_parent_map[current]
+	end
+	
+	-- Always include "all" as the top-level aggregator
+	table.insert(ancestors, "all")
+	
+	return ancestors
+end
+
+-- Check if a zone is a "container" zone (continent or world-level)
+-- These zones aggregate stats from their children
+function deathlog_is_container_zone(map_id)
+	return container_zone_set[map_id] == true
+end
+
+-- Check if a zone should NOT show a heatmap (only Cosmos)
+-- Continents can show aggregated heatmaps from child zones
+function deathlog_should_hide_heatmap(map_id)
+	return no_heatmap_zones[map_id] == true
+end
+
+-- Normalize a map_id for stats lookup
+-- Root Map always shows "all" stats
+function deathlog_normalize_map_id_for_stats(map_id)
+	if map_id == nil then
+		return "all"
+	end
+	-- For Root Map, include all data
+	if map_id == deathlog_ROOT_MAP_ID then
+		return "all"
+	end
+	return map_id
+end
+
+-- Check if viewing a container zone that should show aggregated stats
+function deathlog_should_show_container_stats(map_id)
+	return container_zone_set[map_id] == true
+end
 
 deathlog_class_tbl = {
 	["Warrior"] = 1,
@@ -60,20 +219,13 @@ deathlog_pvp_flag = {
 	DUEL_TO_DEATH = 2,
 }
 
-local environment_damage = {
-	[-2] = "Drowning",
-	[-3] = "Falling",
-	[-4] = "Fatigue",
-	[-5] = "Fire",
-	[-6] = "Lava",
-	[-7] = "Slime",
-}
-
 deathlog_class_colors = {}
 for k, _ in pairs(deathlog_class_tbl) do
 	deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)]
 end
-deathlog_class_colors["Shaman"] = CreateColor(36 / 255, 89 / 255, 255 / 255)
+-- deathlog_class_colors["Shaman"] = CreateColor(0 / 255, 112 / 255, 221 / 255)
+-- RAID_CLASS_COLORS["SHAMAN"]:SetRGB(0 / 255, 112 / 255, 221 / 255)
+-- RAID_CLASS_COLORS["SHAMAN"].colorStr = 'ff0070dd'
 
 deathlog_race_tbl = {
 	["Human"] = 1,
@@ -85,6 +237,10 @@ deathlog_race_tbl = {
 	["Gnome"] = 7,
 	["Troll"] = 8,
 }
+if GetExpansionLevel and GetExpansionLevel() >= 1 then
+	deathlog_race_tbl["Blood Elf"] = 10
+	deathlog_race_tbl["Draenei"] = 11
+end
 -- sort function from stack overflow
 local function spairs(t, order)
 	local keys = {}
@@ -125,34 +281,95 @@ function deathlogPredictSource(entry_map_pos, entry_map_id)
 	if xx == nil or tonumber(entry_map_id) == nil then
 		return nil
 	end
-	local pos = { x = xx, y = yy }
-	local cont, cont_pos = C_Map.GetWorldPosFromMapPos(tonumber(entry_map_id), pos)
-	if cont == nil then
-		return nil
-	end
-	for map_id = 1424, 1465 do
-		local m, v = C_Map.GetMapPosFromWorldPos(cont, cont_pos, map_id)
-		if m ~= nil then
-			local x = ceil(v.x * 100)
-			local y = ceil(v.y * 100)
-			if x > 0 and x < 100 and y > 0 and y < 100 then
-				if precomputed_heatmap_intensity[map_id] and precomputed_heatmap_intensity[map_id][x] then
-					if precomputed_heatmap_intensity[map_id][x][y] then
-						for k, v in pairs(precomputed_heatmap_creature_subset[map_id]) do
-							if v[x] and v[x][y] then
-								if id_to_npc[k] then
-									return id_to_npc[k] .. "*"
-								end
-								if environment_damage[k] then
-									return environment_damage[k] .. "*"
-								end
+
+	-- Helper function to check a specific coordinate
+	local function checkCoordinate(map_id, x, y)
+		if x > 0 and x < 100 and y > 0 and y < 100 then
+			if precomputed_heatmap_intensity[map_id] and precomputed_heatmap_intensity[map_id][x] then
+				if precomputed_heatmap_intensity[map_id][x][y] then
+					for k, v in pairs(precomputed_heatmap_creature_subset[map_id]) do
+						if v[x] and v[x][y] then
+							if id_to_npc[k] then
+								return id_to_npc[k] .. "*"
+							end
+							if deathlog_environment_damage[k] then
+								return deathlog_environment_damage[k] .. "*"
 							end
 						end
 					end
 				end
 			end
 		end
+		return nil
 	end
+
+	-- Helper function to search around a position on a specific map
+	local function searchAroundPosition(map_id, base_x, base_y, search_radius)
+		-- Check exact position first
+		local result = checkCoordinate(map_id, base_x, base_y)
+		if result then
+			return result
+		end
+
+		-- Search expanding rings around the position
+		for radius = 1, search_radius do
+			for dx = -radius, radius do
+				for dy = -radius, radius do
+					if abs(dx) == radius or abs(dy) == radius then
+						result = checkCoordinate(map_id, base_x + dx, base_y + dy)
+						if result then
+							return result
+						end
+					end
+				end
+			end
+		end
+		return nil
+	end
+
+	local search_radius = (deathlog_settings and deathlog_settings["prediction_radius"]) or 5
+	local map_id = tonumber(entry_map_id)
+
+	-- First, try the entry's map directly
+	local base_x = floor(tonumber(xx) * 100 + 0.5)
+	local base_y = floor(tonumber(yy) * 100 + 0.5)
+
+	local result = searchAroundPosition(map_id, base_x, base_y, search_radius)
+	if result then
+		return result
+	end
+
+	-- If not found, try parent maps with coordinate conversion
+	local pos = { x = tonumber(xx), y = tonumber(yy) }
+	local cont, cont_pos = C_Map.GetWorldPosFromMapPos(map_id, pos)
+	if cont == nil then
+		return nil
+	end
+
+	-- Traverse up the map hierarchy
+	local current_map_id = map_id
+	local max_depth = 5  -- Prevent infinite loops
+	for _ = 1, max_depth do
+		local map_info = C_Map.GetMapInfo(current_map_id)
+		if map_info == nil or map_info.parentMapID == nil or map_info.parentMapID == 0 then
+			break
+		end
+
+		local parent_map_id = map_info.parentMapID
+		local m, parent_pos = C_Map.GetMapPosFromWorldPos(cont, cont_pos, parent_map_id)
+		if m ~= nil then
+			local parent_x = floor(parent_pos.x * 100 + 0.5)
+			local parent_y = floor(parent_pos.y * 100 + 0.5)
+
+			result = searchAroundPosition(parent_map_id, parent_x, parent_y, search_radius)
+			if result then
+				return result
+			end
+		end
+
+		current_map_id = parent_map_id
+	end
+
 	return nil
 end
 
@@ -245,7 +462,7 @@ local function calculateCDF(ln_mean, ln_std_dev)
 	end
 	cdf = {}
 	cdf[1] = logNormal(1, ln_mean, sqrt(ln_std_dev))
-	for i = 2, 60 do
+	for i = 2, MAX_PLAYER_LEVEL do
 		cdf[i] = cdf[i - 1] + logNormal(i, ln_mean, sqrt(ln_std_dev))
 	end
 	return cdf
@@ -274,7 +491,7 @@ function Deathlog_CalculateCDF2(ln_mean, ln_sig)
 
 	local cdf = {}
 
-	for i = 1, 60 do
+	for i = 1, MAX_PLAYER_LEVEL do
 		local err_term = erf((math.log(i) - ln_mean) / (sqrt(2) * ln_sig))
 		cdf[i] = (1 / 2) * (1 + err_term)
 	end
@@ -386,30 +603,38 @@ local function updateEntry(stats_leaf, entry)
 end
 
 local function updateStats(stats, server_name, entry)
-	local map_id = entry["map_id"] or entry["instance_id"] or "all"
-
+	local entry_map_id = entry["map_id"] or entry["instance_id"] or "all"
+	
+	-- Get all zones this entry should contribute to (zone + all ancestors)
+	local zones_to_update = deathlog_get_zone_ancestors(entry_map_id)
+	
+	-- Always update "all" stats
 	updateEntry(stats["all"]["all"]["all"]["all"], entry)
-
 	updateEntry(stats[server_name]["all"]["all"]["all"], entry)
-
-	updateEntry(stats["all"][map_id]["all"]["all"], entry)
-	updateEntry(stats[server_name][map_id]["all"]["all"], entry)
-
 	updateEntry(stats["all"]["all"][entry["class_id"]]["all"], entry)
-	updateEntry(stats["all"][map_id][entry["class_id"]]["all"], entry)
-	updateEntry(stats[server_name][map_id][entry["class_id"]]["all"], entry)
-
 	updateEntry(stats["all"]["all"]["all"][entry["source_id"]], entry)
 	updateEntry(stats["all"]["all"][entry["class_id"]][entry["source_id"]], entry)
-	updateEntry(stats["all"][map_id][entry["class_id"]][entry["source_id"]], entry)
-	updateEntry(stats["all"][map_id]["all"][entry["source_id"]], entry)
-	updateEntry(stats[server_name][map_id][entry["class_id"]][entry["source_id"]], entry)
+	
+	-- Update stats for each zone in the hierarchy
+	for _, zone_id in ipairs(zones_to_update) do
+		if zone_id ~= "all" then -- "all" already updated above
+			updateEntry(stats["all"][zone_id]["all"]["all"], entry)
+			updateEntry(stats[server_name][zone_id]["all"]["all"], entry)
+			updateEntry(stats["all"][zone_id][entry["class_id"]]["all"], entry)
+			updateEntry(stats["all"][zone_id][entry["class_id"]][entry["source_id"]], entry)
+			updateEntry(stats["all"][zone_id]["all"][entry["source_id"]], entry)
+			updateEntry(stats[server_name][zone_id][entry["class_id"]][entry["source_id"]], entry)
+		end
+	end
 end
 
 local function instantiateIfMissing(_stats, server_name, entry, _metadata_list)
-	local map_id = entry["map_id"] or entry["instance_id"] or "all"
+	local entry_map_id = entry["map_id"] or entry["instance_id"] or "all"
 	local class_id = entry["class_id"] or "all"
 	local source_id = entry["source_id"] or "all"
+	
+	-- Get all zones this entry should contribute to
+	local zones_to_update = deathlog_get_zone_ancestors(entry_map_id)
 
 	if _stats[server_name] == nil then
 		_stats[server_name] = {
@@ -421,36 +646,52 @@ local function instantiateIfMissing(_stats, server_name, entry, _metadata_list)
 		}
 	end
 
-	if _stats["all"][map_id] == nil then
-		_stats["all"][map_id] = {
-			["all"] = {
-				["all"] = generate_player_metadata(_metadata_list),
-			},
-		}
+	-- Ensure stats structures exist for all zones in hierarchy
+	for _, zone_id in ipairs(zones_to_update) do
+		if zone_id ~= "all" then
+			if _stats["all"][zone_id] == nil then
+				_stats["all"][zone_id] = {
+					["all"] = {
+						["all"] = generate_player_metadata(_metadata_list),
+					},
+				}
+			end
+
+			if _stats[server_name][zone_id] == nil then
+				_stats[server_name][zone_id] = {
+					["all"] = {
+						["all"] = generate_player_metadata(_metadata_list),
+					},
+				}
+			end
+
+			if _stats["all"][zone_id][class_id] == nil then
+				_stats["all"][zone_id][class_id] = {
+					["all"] = generate_player_metadata(_metadata_list),
+				}
+			end
+
+			if _stats[server_name][zone_id][class_id] == nil then
+				_stats[server_name][zone_id][class_id] = {
+					["all"] = generate_player_metadata(_metadata_list),
+				}
+			end
+
+			if _stats["all"][zone_id][class_id][source_id] == nil then
+				_stats["all"][zone_id][class_id][source_id] = generate_player_metadata(_metadata_list)
+			end
+			if _stats["all"][zone_id]["all"][source_id] == nil then
+				_stats["all"][zone_id]["all"][source_id] = generate_player_metadata(_metadata_list)
+			end
+			if _stats[server_name][zone_id][class_id][source_id] == nil then
+				_stats[server_name][zone_id][class_id][source_id] = generate_player_metadata(_metadata_list)
+			end
+		end
 	end
 
-	if _stats[server_name][map_id] == nil then
-		_stats[server_name][map_id] = {
-			["all"] = {
-				["all"] = generate_player_metadata(_metadata_list),
-			},
-		}
-	end
-
+	-- Always ensure "all" level structures exist
 	if _stats["all"]["all"][class_id] == nil then
 		_stats["all"]["all"][class_id] = {
-			["all"] = generate_player_metadata(_metadata_list),
-		}
-	end
-
-	if _stats["all"][map_id][class_id] == nil then
-		_stats["all"][map_id][class_id] = {
-			["all"] = generate_player_metadata(_metadata_list),
-		}
-	end
-
-	if _stats[server_name][map_id][class_id] == nil then
-		_stats[server_name][map_id][class_id] = {
 			["all"] = generate_player_metadata(_metadata_list),
 		}
 	end
@@ -460,15 +701,6 @@ local function instantiateIfMissing(_stats, server_name, entry, _metadata_list)
 	end
 	if _stats["all"]["all"][class_id][source_id] == nil then
 		_stats["all"]["all"][class_id][source_id] = generate_player_metadata(_metadata_list)
-	end
-	if _stats["all"][map_id][class_id][source_id] == nil then
-		_stats["all"][map_id][class_id][source_id] = generate_player_metadata(_metadata_list)
-	end
-	if _stats["all"][map_id]["all"][source_id] == nil then
-		_stats["all"][map_id]["all"][source_id] = generate_player_metadata(_metadata_list)
-	end
-	if _stats[server_name][map_id][class_id][source_id] == nil then
-		_stats[server_name][map_id][class_id][source_id] = generate_player_metadata(_metadata_list)
 	end
 end
 
@@ -549,9 +781,24 @@ end
 
 local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
 	local function filter_by_map_function(servername, entry)
-		if map_id == 947 then
+		-- For Root Map, include all data
+		if map_id == deathlog_ROOT_MAP_ID then
 			return true
 		end
+		-- For container zones (continents, Outland), check if entry's zone is a descendant
+		if deathlog_is_container_zone(map_id) then
+			local entry_map = entry["map_id"] or entry["instance_id"]
+			if entry_map then
+				local ancestors = deathlog_get_zone_ancestors(entry_map)
+				for _, ancestor_id in ipairs(ancestors) do
+					if ancestor_id == map_id then
+						return true
+					end
+				end
+			end
+			return false
+		end
+		-- For regular zones, exact match
 		if entry["map_id"] == map_id or entry["instance_id"] == map_id then
 			return true
 		end
@@ -613,12 +860,16 @@ end
 
 function deathlog_calculateLogNormalParameters(_deathlog_data)
 	local log_normal_params = {}
-	for _, v in pairs(deathlog_zone_tbl) do
-		log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
+	for _, zones in pairs(zone_to_id) do
+		for _, v in pairs(zones) do
+			log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
+		end
 	end
 
-	for _, v in pairs(deathlog_instance_tbl) do
-		log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
+	for _, instances in pairs(instance_to_id) do
+		for _, v in pairs(instances) do
+			log_normal_params[v] = calculateLogNormalParametersForMap(_deathlog_data, v)
+		end
 	end
 	return log_normal_params
 end
@@ -645,12 +896,13 @@ function deathlog_setTooltipFromEntry(_entry)
 	end
 	local _name = _entry["name"]
 	local _level = _entry["level"]
-	local _guild = _entry["guild"]
+	local _guild = _entry["guild"] or ""
 	local _race = nil
 	local _class = nil
+	local _pvp_source_name = _entry["extra_data"] and _entry["extra_data"]["pvp_source_name"]
 	local _source = id_to_npc[_entry["source_id"]]
-		or environment_damage[_entry["source_id"]]
-		or deathlog_decode_pvp_source(_entry["source_id"])
+		or deathlog_environment_damage[_entry["source_id"]]
+		or deathlog_decode_pvp_source(_entry["source_id"], _pvp_source_name)
 		or ""
 	local _zone = nil
 	local _loc = _entry["map_pos"]
@@ -683,7 +935,7 @@ function deathlog_setTooltipFromEntry(_entry)
 			_zone = map_info.name
 		end
 	elseif _entry["instance_id"] then
-		_zone = (deathlog_id_to_instance_tbl[_entry["instance_id"]] or _entry["instance_id"])
+		_zone = (id_to_instance[_entry["instance_id"]] or _entry["instance_id"])
 	end
 	deathlog_setTooltip(_name, _level, _guild, _race, _class, _source, _zone, _date, _last_words)
 end
@@ -704,7 +956,7 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 	if string.sub(_name, #_name) == "s" then
 		GameTooltip:AddDoubleLine(
 			_deathlog_watchlist_icon .. _name .. "' " .. Deathlog_L.death_word,
-			"Lvl. " .. _lvl,
+			(_lvl and _lvl ~= "" and ("Lvl. " .. _lvl) or ""),
 			1,
 			1,
 			1,
@@ -715,7 +967,7 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 	else
 		GameTooltip:AddDoubleLine(
 			_deathlog_watchlist_icon .. _name .. "'s " .. Deathlog_L.death_word,
-			"Lvl. " .. _lvl,
+			(_lvl and _lvl ~= "" and ("Lvl. " .. _lvl) or ""),
 			1,
 			1,
 			1,
@@ -728,15 +980,15 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 	if deathlog_settings["minilog"]["tooltip_name"] and _name then
 		GameTooltip:AddLine(Deathlog_L.name_word .. ": " .. _name, 1, 1, 1)
 	end
-	if deathlog_settings["minilog"]["tooltip_guild"] and _guild then
+	if deathlog_settings["minilog"]["tooltip_guild"] and _guild and _guild ~= "" then
 		GameTooltip:AddLine(Deathlog_L.guild_word .. ": " .. _guild, 1, 1, 1)
 	end
 
-	if deathlog_settings["minilog"]["tooltip_race"] and _race then
+	if deathlog_settings["minilog"]["tooltip_race"] and _race and _race ~= "" then
 		GameTooltip:AddLine(Deathlog_L.race_word .. ": " .. _race, 1, 1, 1)
 	end
 
-	if deathlog_settings["minilog"]["tooltip_class"] and _class then
+	if deathlog_settings["minilog"]["tooltip_class"] and _class and _class ~= "" then
 		GameTooltip:AddLine(Deathlog_L.class_word .. ": " .. _class, 1, 1, 1)
 	end
 	if deathlog_settings["colored_tooltips"] == nil or deathlog_settings["colored_tooltips"] == false then
@@ -766,49 +1018,47 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 	end
 end
 
-function deathlog_encode_pvp_source(source_str)
-	local function create_source_id(source, race, class, level)
-		local source_id = 0
+function deathlog_create_pvp_source_id(pvp_flag, race, class, level)
+	local source_id = 0
 
+	source_id = bit.bor(source_id, bit.lshift(pvp_flag, 21))
+	source_id = bit.bor(source_id, bit.lshift(race or 0, 29))
+	source_id = bit.bor(source_id, bit.lshift(class or 0, 37))
+	source_id = bit.bor(source_id, bit.lshift((level and level > 0) and level or 0, 45))
+
+	return source_id
+end
+
+function deathlog_encode_pvp_source(source_str)
+	local function create_result(source, race, class, level, source_name)
 		local pvp_flag = deathlog_pvp_flag.REGULAR
-		if
-			deathlog_last_duel_to_death_player ~= nil
-			and (deathlog_last_duel_to_death_player == source or deathlog_last_duel_to_death_player == UnitName(source))
-		then
+		if deathlog_last_duel_to_death_player ~= nil and (deathlog_last_duel_to_death_player == source or deathlog_last_duel_to_death_player == UnitName(source)) then
 			pvp_flag = deathlog_pvp_flag.DUEL_TO_DEATH
 		end
 
-		source_id = bit.bor(source_id, bit.lshift(pvp_flag, 21))
-		source_id = bit.bor(source_id, bit.lshift(race, 29))
-		source_id = bit.bor(source_id, bit.lshift(class, 37))
-		source_id = bit.bor(source_id, bit.lshift(level, 45))
-
-		--as in the current setup the source_id needs to be a number, we can't parse the real player's name over with it... :(
-		return tostring(source_id)
+		return tostring(deathlog_create_pvp_source_id(pvp_flag, race, class, level)), source_name
 	end
 
 	if source_str == nil then
-		return "-1"
+		return "-1", nil
 	end
 
 	if deathlog_last_attack_player ~= nil and deathlog_last_attack_player == source_str then
-		return create_source_id(
-			source_str,
-			deathlog_last_attack_race,
-			deathlog_last_attack_class,
-			deathlog_last_attack_level
-		)
+		return create_result(source_str, deathlog_last_attack_race, deathlog_last_attack_class, deathlog_last_attack_level, source_str)
 	end
 
 	local source_str_safe = nil
+	local source_name = nil
 	if UnitIsPlayer(source_str) then
 		source_str_safe = source_str
+		source_name = UnitName(source_str)
 	elseif UnitIsPlayer("target") and UnitName("target") ~= UnitName("player") then
 		source_str_safe = "target"
+		source_name = UnitName("target")
 	end
 
 	if source_str_safe == nil then
-		return "-1"
+		return "-1", nil
 	end
 
 	source_str = source_str_safe
@@ -816,19 +1066,21 @@ function deathlog_encode_pvp_source(source_str)
 	if UnitIsPlayer(source_str) then
 		local _, _, enemyRaceId = UnitRace(source_str)
 		local _, _, enemyClassId = UnitClass(source_str)
-		return create_source_id(source_str, tonumber(enemyRaceId), tonumber(enemyClassId), UnitLevel(source_str))
+		local enemyLevel = UnitLevel(source_str)
+
+		return create_result(source_str, tonumber(enemyRaceId), tonumber(enemyClassId), enemyLevel, source_name)
 	end
 
-	return "-1"
+	return "-1", nil
 end
 
-function deathlog_decode_pvp_source(source_id)
+function deathlog_decode_pvp_source(source_id, player_name)
 	if
 		source_id == nil
 		or source_id == "-1"
 		or source_id == -1
 		or id_to_npc[source_id]
-		or environment_damage[source_id]
+		or deathlog_environment_damage[source_id]
 	then
 		return ""
 	end
@@ -864,9 +1116,9 @@ function deathlog_decode_pvp_source(source_id)
 			enemyLevel = retrievedEnemyLevel
 		end
 
-		local source_name = "PvP"
+		local source_name = player_name and (player_name .. " in PvP") or "PvP"
 		if retrievedPvPFlag == deathlog_pvp_flag.DUEL_TO_DEATH then
-			source_name = "Duel to Death"
+			source_name = player_name and (player_name .. " in a Duel to Death") or "Duel to Death"
 		end
 
 		if enemyClass or enemyRace or enemyLevel then

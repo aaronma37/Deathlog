@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -784,7 +784,10 @@ end
 local overlay_highlight = map_container:CreateTexture(nil, "OVERLAY")
 overlay_highlight:SetDrawLayer("OVERLAY", 6)
 overlay_highlight:SetBlendMode("ADD")
+overlay_highlight:SetPoint("TOPLEFT")  -- Match Blizzard's default anchor
 overlay_highlight:Hide()
+
+map_container.overlay_highlight = overlay_highlight
 
 local this_map_id = nil
 local occupied_by_creature = nil
@@ -799,14 +802,18 @@ function Deathlog_MapContainer_showSkullSet(source_id)
 	if precomputed_heatmap_creature_subset[this_map_id][source_id] == nil then
 		return
 	end
+	-- Guard against heatmap not being initialized yet
+	if map_container.heatmap == nil then
+		return
+	end
 
 	occupied_by_creature = {}
 	for x, v in pairs(precomputed_heatmap_creature_subset[this_map_id][source_id]) do
 		for y, _ in pairs(v) do
-			if occupied_by_creature[x + 1] == nil then
-				occupied_by_creature[x + 1] = { [y + 1] = 1 }
+			if occupied_by_creature[x] == nil then
+				occupied_by_creature[x] = { [y] = 1 }
 			end
-			occupied_by_creature[x + 1][y + 1] = 1
+			occupied_by_creature[x][y] = 1
 		end
 	end
 
@@ -853,6 +860,11 @@ end
 
 function Deathlog_MapContainer_resetSkullSet()
 	occupied_by_creature = nil
+
+	-- Guard against heatmap not being initialized yet
+	if map_container.heatmap == nil then
+		return
+	end
 
 	for i = 1, 100 do
 		for j = 1, 100 do
@@ -1156,10 +1168,14 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 			[3] = 0.025,
 		},
 	}
-	if current_map_id ~= 947 then
+	local should_hide = deathlog_should_hide_heatmap and deathlog_should_hide_heatmap(current_map_id)
+	if not should_hide and precomputed_heatmap_intensity[current_map_id] ~= nil then
 		for x, v2 in pairs(precomputed_heatmap_intensity[current_map_id]) do
 			for y, intensity in pairs(v2) do
-				map_container.heatmap[x][y].intensity = intensity
+				-- Skip out-of-bounds coordinates (heatmap array is 1-100)
+				if x >= 1 and x <= 100 and y >= 1 and y <= 100 then
+					map_container.heatmap[x][y].intensity = intensity
+				end
 			end
 		end
 	end
@@ -1207,6 +1223,12 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	end
 
 	map_container:SetScript("OnUpdate", function()
+		-- Don't show highlights when input is disabled (e.g., creature statistics view)
+		if not map_container.allowInput then
+			overlay_highlight:Hide()
+			return
+		end
+		
 		local x, y = GetCursorPosition()
 		local s = UIParent:GetEffectiveScale()
 		local ratio = GetScreenWidth() / GetScreenHeight()
@@ -1230,44 +1252,77 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		if info ~= nil then
 			local fileDataID, atlasID, texturePercentageX, texturePercentageY, textureX, textureY, scrollChildX, scrollChildY =
 				C_Map.GetMapHighlightInfoAtPosition(current_map_id, l_x, l_y)
-			if fileDataID and textureX > 0 and textureY > 0 then
-				overlay_highlight:SetTexture(fileDataID)
-				overlay_highlight:SetPoint(
-					"TOPLEFT",
-					map_textures[1],
-					"TOPLEFT",
-					scrollChildX * modified_width,
-					-scrollChildY * modified_height
-				)
-				overlay_highlight:SetWidth(textureX * modified_width)
-				overlay_highlight:SetHeight(textureY * modified_height)
+			if (fileDataID and fileDataID > 0) or atlasID then
+				-- Blizzard sets TexCoord for both paths
 				overlay_highlight:SetTexCoord(0, texturePercentageX, 0, texturePercentageY)
+				local width = modified_width;
+				local height = modified_height;
+				overlay_highlight:ClearAllPoints()
+				if atlasID then
+					overlay_highlight:SetAtlas(atlasID, true, "TRILINEAR")
+					local atlasNativeWidth = overlay_highlight:GetWidth()
+					local atlasNativeHeight = overlay_highlight:GetHeight()
+
+					local scale = width / 1024
+
+					local finalWidth = atlasNativeWidth * scale
+					local finalHeight = atlasNativeHeight * scale
+
+					overlay_highlight:SetWidth(finalWidth)
+					overlay_highlight:SetHeight(finalHeight)
+
+					local centerX = (scrollChildX + textureX * 0.5) * width
+					local centerY = -(scrollChildY + textureY * 0.5) * height
+					overlay_highlight:SetPoint("CENTER", map_textures[1], "TOPLEFT", centerX, centerY)
+				else
+					overlay_highlight:SetTexture(fileDataID, nil, nil, "TRILINEAR");
+					textureX = textureX * width;
+					textureY = textureY * height;
+					scrollChildX = scrollChildX * width;
+					scrollChildY = -scrollChildY * height;
+					if textureX > 0 and textureY > 0 then
+						overlay_highlight:SetWidth(textureX);
+						overlay_highlight:SetHeight(textureY);
+						overlay_highlight:SetPoint("TOPLEFT", scrollChildX, scrollChildY);
+					end
+				end
 				overlay_highlight:SetDrawLayer("OVERLAY", 3)
 				overlay_highlight:Show()
+			else
+				overlay_highlight:Hide()
 			end
+		else
+			overlay_highlight:Hide()
 		end
 	end)
 
+	map_container.allowInput = true
 	map_container:SetScript("OnMouseDown", function(self, button)
-		if map_container.tomb_tex then
-			for _, v in ipairs(map_container.tomb_tex) do
-				v:Hide()
-			end
-
-			for _, v in pairs(map_container.heatmap) do
-				for _, v2 in pairs(v) do
-					v2.intensity = 0
-					v2:Hide()
-				end
-			end
+		if not map_container.allowInput then
+			return
 		end
+
 		if button == "RightButton" then
 			info = C_Map.GetMapInfo(current_map_id)
 			if info and info.parentMapID then
 				parent_info = C_Map.GetMapInfo(info.parentMapID)
 				if parent_info then
+					-- Clear heatmap only when navigating
+					if map_container.tomb_tex then
+						for _, v in ipairs(map_container.tomb_tex) do
+							v:Hide()
+						end
+						for _, v in pairs(map_container.heatmap) do
+							for _, v2 in pairs(v) do
+								v2.intensity = 0
+								v2:Hide()
+							end
+						end
+					end
 					setMapRegion(info.parentMapID, parent_info.name)
 					overlay_highlight:Hide()
+				else
+					setMapRegion(current_map_id, info.name)
 				end
 			end
 		end
@@ -1292,6 +1347,18 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 
 			info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 			if info then
+				-- Clear heatmap only when navigating to a valid zone
+				if map_container.tomb_tex then
+					for _, v in ipairs(map_container.tomb_tex) do
+						v:Hide()
+					end
+					for _, v in pairs(map_container.heatmap) do
+						for _, v2 in pairs(v) do
+							v2.intensity = 0
+							v2:Hide()
+						end
+					end
+				end
 				overlay_highlight:Hide()
 				setMapRegion(info.mapID, info.name)
 				Deathlog_MapContainer_resetSkullSet()
@@ -1329,7 +1396,14 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		map_container.heatmap_checkbox:Show()
 		map_container.heatmap_checkbox.label:Show()
 		map_container.map_hint:Show()
+		map_container.allowInput = true
 	end)
+end
+
+function Deathlog_MapContainer_clearHighlight()
+	if overlay_highlight then
+		overlay_highlight:Hide()
+	end
 end
 
 function Deathlog_MapContainer()
