@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -150,14 +150,6 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 		0
 	)
 
-	local idx = 1
-	for i, v in ipairs(deathlog_class_tbl) do
-		if current_instance_id == v[1] then
-			idx = i
-			break
-		end
-	end
-
 	for _, v in ipairs(class_selector_container.class_buttons) do
 		if v.class_id ~= class_id then
 			v.instance_texture:SetDesaturated(1)
@@ -224,13 +216,13 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 	local function dropdownFunctions(frame, level, menuList)
 		local info = UIDropDownMenu_CreateInfo()
 		info.text, info.checked, info.func =
-			"Survival (P(T>t))", model == "Survival (P(T>t))", function()
+			"Survival (P(T>t))", view == "Survival", function()
 				updateFun(class_id, current_class_name, model, "Survival")
 			end
 
 		UIDropDownMenu_AddButton(info)
 		info.text, info.checked, info.func =
-			"Hazard (P(T>t | T=lvl))", model == "Hazard (P(T>t | T=L))", function()
+			"Hazard (P(T>t | T=lvl))", view == "Hazard", function()
 				updateFun(class_id, current_class_name, model, "Hazard")
 			end
 
@@ -238,7 +230,8 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 	end
 
 	class_selector_container.view_dd:SetPoint("TOPLEFT", class_selector_container, "TOPLEFT", 650, -10)
-	UIDropDownMenu_SetText(class_selector_container.view_dd, view)
+	local view_display = view == "Survival" and "Survival (P(T>t))" or "Hazard (P(T>t | T=lvl))"
+	UIDropDownMenu_SetText(class_selector_container.view_dd, view_display)
 	UIDropDownMenu_SetWidth(class_selector_container.view_dd, 130)
 	UIDropDownMenu_Initialize(class_selector_container.view_dd, dropdownFunctions)
 	UIDropDownMenu_JustifyText(class_selector_container.view_dd, "LEFT")

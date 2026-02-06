@@ -1,3 +1,4 @@
+local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
 local AceGUI = LibStub("AceGUI-3.0")
 local widget_name = "DeathAlert"
 local alert_cache = {}
@@ -88,10 +89,10 @@ function Deathlog_DeathAlertFakeDeath()
 	local fake_entry = {
 		["name"] = UnitName("player"),
 		["level"] = UnitLevel("player"),
-		["race_id"] = 3,
+		["race_id"] = math.random(1, 8),
 		-- ["map_id"] = 1429,
 		["instance_id"] = 34, --34,
-		["class_id"] = 9,
+		["class_id"] = math.random(1, 12),
 		["source_id"] = s,
 		["last_words"] = "Sample last words, help!",
 		["guild"] = "Sample Guild",
@@ -99,16 +100,23 @@ function Deathlog_DeathAlertFakeDeath()
 
 	-- pvp tests
 	local pvp_r = math.random(0, 3)
+	local pvp_source_name = nil
 	if pvp_r == 1 then
-		fake_entry["source_id"] = deathlog_encode_pvp_source("target")
+		fake_entry["source_id"], pvp_source_name = deathlog_encode_pvp_source("target")
 	elseif pvp_r == 2 then
-		fake_entry["source_id"] = deathlog_encode_pvp_source(deathlog_last_attack_player)
+		fake_entry["source_id"], pvp_source_name = deathlog_encode_pvp_source(deathlog_last_attack_player)
 	elseif pvp_r == 3 then
 		deathlog_refresh_last_attack_info(UnitName("target"))
 		deathlog_last_duel_to_death_player = deathlog_last_attack_player
-		fake_entry["source_id"] = deathlog_encode_pvp_source(deathlog_last_attack_player)
+		fake_entry["source_id"], pvp_source_name = deathlog_encode_pvp_source(deathlog_last_attack_player)
 		deathlog_last_duel_to_death_player = nil
 		deathlog_clear_last_attack_info()
+	end
+
+	if pvp_source_name and math.random(0, 100) < 50 then
+		fake_entry["extra_data"] = {
+			["pvp_source_name"] = pvp_source_name,
+		}
 	end
 
 	alert_cache[UnitName("player")] = nil
@@ -203,7 +211,7 @@ function Deathlog_DeathAlertPlay(entry)
 			zone = map_info.name
 		end
 	elseif entry["instance_id"] then
-		zone = deathlog_id_to_instance_tbl[entry["instance_id"]] or ""
+		zone = id_to_instance[entry["instance_id"]] or ""
 	end
 
 	local msg = deathlog_settings[widget_name]["message"]
@@ -232,13 +240,22 @@ function Deathlog_DeathAlertPlay(entry)
 		msg = deathlog_settings[widget_name]["slime_message"]
 	end
 
-	local source_name_pvp = deathlog_decode_pvp_source(entry["source_id"])
+	local pvp_source_name = entry["extra_data"] and entry["extra_data"]["pvp_source_name"]
+	local source_name_pvp = deathlog_decode_pvp_source(entry["source_id"], pvp_source_name)
 	if source_name_pvp ~= "" then
 		source_name = source_name_pvp
 	end
 
-	if source_name == "" and deathlogPredictSource then
-		source_name = deathlogPredictSource(entry["map_pos"], entry["map_id"]) or ""
+	if source_name == "" then
+		if entry["predicted_source"] then
+			source_name = entry["predicted_source"]
+		elseif deathlogPredictSource then
+			local predicted = deathlogPredictSource(entry["map_pos"], entry["map_id"])
+			if predicted then
+				entry["predicted_source"] = predicted
+				source_name = predicted
+			end
+		end
 	end
 
 	local _deathlog_watchlist_icon = ""
@@ -250,36 +267,17 @@ function Deathlog_DeathAlertPlay(entry)
 		_deathlog_watchlist_icon = deathlog_watchlist_entries[entry["name"]]["Icon"] .. " "
 	end
 
-	if race == "" and class == "" and zone == "" then
-		death_alert_frame.text:SetText(
-			entry["name"] .. " has been slain\nby " .. source_name .. ", at level " .. entry["level"] .. "."
-		)
-	else
-		msg = msg:gsub("%<name>", _deathlog_watchlist_icon .. entry["name"])
+	msg = msg:gsub("%<name>", _deathlog_watchlist_icon .. entry["name"])
 
-		msg = msg:gsub("%<class>", class)
-		msg = msg:gsub("%<race>", race)
-		msg = msg:gsub("%<source>", source_name)
-		msg = msg:gsub("%<guild>", entry["guild"])
-		msg = msg:gsub("%<level>", entry["level"])
-		msg = msg:gsub("%<zone>", zone)
-		msg = msg:gsub("%<last_words>", entry["last_words"] or "")
-		death_alert_frame.text:SetText(
-			entry["name"]
-				.. " the "
-				.. race
-				.. " "
-				.. class
-				.. " has been slain\nby "
-				.. source_name
-				.. ", at level "
-				.. entry["level"]
-				.. " in "
-				.. zone
-				.. "."
-		)
-		death_alert_frame.text:SetText(msg)
-	end
+	msg = msg:gsub("%<class>", class or "")
+	msg = msg:gsub("%<race>", race or "")
+	msg = msg:gsub("%<source>", source_name or "")
+	msg = msg:gsub("%<guild>", entry["guild"] or "")
+	msg = msg:gsub("%<level>", entry["level"] or "")
+	msg = msg:gsub("%<zone>", zone or "")
+	msg = msg:gsub("%<last_words>", entry["last_words"] or "")
+
+	death_alert_frame.text:SetText(msg)
 
 	if deathlog_settings[widget_name]["style"] == "text_only" then
 		for _, v in pairs(death_alert_frame.textures) do

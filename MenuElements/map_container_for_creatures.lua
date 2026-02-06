@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -25,19 +25,56 @@ wrapped_map_container:SetMovable(false)
 wrapped_map_container.map_container = Deathlog_MapContainer()
 
 function wrapped_map_container.updateMenuElement(scroll_frame, creature_id, stats_tbl, setMapRegion)
+	-- Reset any previous state before updating
+	Deathlog_MapContainer_resetSkullSet()
+	wrapped_map_container.map_container.overlay_highlight:Hide()
+	
 	local _stats = stats_tbl["stats"]
-	local best_map = 947
-	local num = 0
+	local best_map = deathlog_ROOT_MAP_ID
+	local best_subzone_count = 0  -- Track best count among subzones only
+	
+	-- For global death sources (Falling, Drowning, etc. with negative IDs),
+	-- use the zone with the most kills (these are everywhere)
+	local is_global_source = creature_id < 0
+	
+	-- Helper to check if a map is a valid descendant of ROOT_MAP_ID
+	local function is_valid_map(map_id)
+		if map_id == deathlog_ROOT_MAP_ID then return true end
+		local ancestors = deathlog_get_zone_ancestors and deathlog_get_zone_ancestors(map_id) or {}
+		for _, ancestor in ipairs(ancestors) do
+			if ancestor == deathlog_ROOT_MAP_ID then return true end
+		end
+		return false
+	end
+	
 	for map_id, _ in pairs(_stats["all"]) do
 		if
 			map_id ~= "all"
+			and is_valid_map(map_id)
 			and _stats["all"][map_id]["all"][creature_id]
-			and _stats["all"][map_id]["all"][creature_id]["num_entries"] > num
+			and _stats["all"][map_id]["all"][creature_id]["num_entries"] > 0
 		then
-			num = _stats["all"][map_id]["all"][creature_id]["num_entries"]
-			best_map = map_id
+			local count = _stats["all"][map_id]["all"][creature_id]["num_entries"]
+			local is_container = deathlog_is_container_zone and deathlog_is_container_zone(map_id)
+			
+			if is_global_source and not deathlog_should_hide_heatmap(map_id) then
+				-- For global sources, just pick the zone with the most kills
+				if count > best_subzone_count then
+					best_subzone_count = count
+					best_map = map_id
+				end
+			elseif not is_container then
+				-- For regular creatures, only consider subzones
+				-- Pick the subzone with the most kills
+				if count > best_subzone_count then
+					best_subzone_count = count
+					best_map = map_id
+				end
+			end
+			-- Ignore container zones entirely for regular creatures
 		end
 	end
+	
 	wrapped_map_container:SetParent(scroll_frame.frame)
 	wrapped_map_container:Show()
 	wrapped_map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 575, -160)
@@ -50,6 +87,8 @@ function wrapped_map_container.updateMenuElement(scroll_frame, creature_id, stat
 	wrapped_map_container.map_container.darken_checkbox:Hide()
 	wrapped_map_container.map_container.darken_checkbox.label:Hide()
 	wrapped_map_container.map_container.map_hint:Hide()
+	wrapped_map_container.map_container.overlay_highlight:Hide()
+	wrapped_map_container.map_container.allowInput = false
 end
 
 function Deathlog_MapContainerForCreatures()

@@ -1,0 +1,86 @@
+-- Auto-generated zone map data. Do not edit manually.
+-- Version: bd8505fb
+zone_to_id_fr = {}
+
+
+do
+  zone_to_id_fr[0] = {
+    ["Azeroth"] = 947,
+    ["Durotar"] = 1411,
+    ["Mulgore"] = 1412,
+    ["Les Tarides"] = 1413,
+    ["Kalimdor"] = 1414,
+    ["Royaumes de l'est"] = 1415,
+    ["Montagnes d'Alterac"] = 1416,
+    ["Hautes-terres d'Arathi"] = 1417,
+    ["Terres ingrates"] = 1418,
+    ["Terres foudroyées"] = 1419,
+    ["Clairières de Tirisfal"] = 1420,
+    ["Forêt des Pins argentés"] = 1421,
+    ["Maleterres de l'ouest"] = 1422,
+    ["Maleterres de l'est"] = 1423,
+    ["Contreforts de Hautebrande"] = 1424,
+    ["Les Hinterlands"] = 1425,
+    ["Dun Morogh"] = 1426,
+    ["Gorge des Vents brûlants"] = 1427,
+    ["Steppes ardentes"] = 1428,
+    ["Forêt d'Elwynn"] = 1429,
+    ["Défilé de Deuillevent"] = 1430,
+    ["Bois de la Pénombre"] = 1431,
+    ["Loch Modan"] = 1432,
+    ["Les Carmines"] = 1433,
+    ["Vallée de Strangleronce"] = 1434,
+    ["Marais des Chagrins"] = 1435,
+    ["Marche de l'Ouest"] = 1436,
+    ["Les Paluns"] = 1437,
+    ["Teldrassil"] = 1438,
+    ["Sombrivage"] = 1439,
+    ["Orneval"] = 1440,
+    ["Mille pointes"] = 1441,
+    ["Les Serres-Rocheuses"] = 1442,
+    ["Désolace"] = 1443,
+    ["Féralas"] = 1444,
+    ["Marécage d'Âprefange"] = 1445,
+    ["Tanaris"] = 1446,
+    ["Azshara"] = 1447,
+    ["Gangrebois"] = 1448,
+    ["Cratère d'Un'Goro"] = 1449,
+    ["Reflet-de-Lune"] = 1450,
+    ["Silithus"] = 1451,
+    ["Berceau-de-l'Hiver"] = 1452,
+    ["Hurlevent"] = 1453,
+    ["Orgrimmar"] = 1454,
+    ["Forgefer"] = 1455,
+    ["Les Pitons du Tonnerre"] = 1456,
+    ["Darnassus"] = 1457,
+    ["Fossoyeuse"] = 1458,
+    ["Vallée d'Alterac"] = 1459,
+    ["Goulet des Chanteguerres"] = 1460,
+    ["Bassin d'Arathi"] = 1461,
+  }
+end
+
+if GetExpansionLevel and GetExpansionLevel() >= 1 then
+do
+  zone_to_id_fr[1] = {
+    ["Cosmique"] = 946,
+    ["Bois des Chants éternels"] = 1941,
+    ["Terres Fantômes"] = 1942,
+    ["Île de Brume-Azur"] = 1943,
+    ["Péninsule des Flammes infernales"] = 1944,
+    ["Outreterre"] = 1945,
+    ["Marécage de Zangar"] = 1946,
+    ["L’Exodar"] = 1947,
+    ["Vallée d’Ombrelune"] = 1948,
+    ["Les Tranchantes"] = 1949,
+    ["Ile de Brume-Sang"] = 1950,
+    ["Nagrand"] = 1951,
+    ["Forêt de Terokkar"] = 1952,
+    ["Raz-de-Néant"] = 1953,
+    ["Lune-d'argent"] = 1954,
+    ["Shattrath"] = 1955,
+    ["Oeil du cyclone"] = 1956,
+    ["Île de Quel’Danas"] = 1957,
+  }
+end
+end

@@ -379,6 +379,8 @@ local function Constructor()
 	local content = CreateFrame("Frame", nil, frame)
 	content:SetPoint("TOPLEFT", 3, -33)
 	content:SetPoint("BOTTOMRIGHT", 15, 6)
+	content:SetClipsChildren(true)
+	frame:SetClipsChildren(true)
 
 	local widget = {
 		localstatus = {},

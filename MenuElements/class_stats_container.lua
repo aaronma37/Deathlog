@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
 local class_stat_comparison_container = CreateFrame("Frame")
 class_stat_comparison_container:SetSize(100, 100)
 class_stat_comparison_container:Show()
@@ -24,21 +25,17 @@ class_stat_comparison_container:Show()
 local class_font = Deathlog_L.class_font
 
 local class_tbl = deathlog_class_tbl
-local race_tbl = deathlog_race_tbl
-local zone_tbl = deathlog_zone_tbl
 
+local steps = MAX_PLAYER_LEVEL / 10
 local average_class_subtitles = {
 	{ "Class", 20, "LEFT", 60 },
 	{ "# Deaths", 80, "LEFT", 40 },
 	{ "% of all", 150, "LEFT", 50 },
 	{ "Avg. Lvl.", 200, "LEFT", 50 },
-	{ "10", 280 + 0, "LEFT", 50 },
-	{ "20", 280 + 50, "LEFT", 50 },
-	{ "30", 280 + 100, "LEFT", 50 },
-	{ "40", 280 + 150, "LEFT", 50 },
-	{ "50", 280 + 200, "LEFT", 50 },
-	{ "60", 280 + 250, "LEFT", 50 },
 }
+for i = 1, steps do
+	table.insert(average_class_subtitles, { tostring(i * 10), 280 + (i - 1) * 50, "LEFT", 50 })
+end
 
 local average_class_header_font_strings = {}
 for _, v in ipairs(average_class_subtitles) do
@@ -112,15 +109,9 @@ function class_stat_comparison_container.updateMenuElement(
 	local class_log_normal_params = precomputed_log_normal_params["all"]
 	class_stat_comparison_container:Show()
 	local entry_data = {}
-	local map_id = 947
+	local map_id = deathlog_normalize_map_id_for_stats(deathlog_ROOT_MAP_ID)
 	local _stats = stats_tbl["stats"]
 	local _log_normal_params = stats_tbl["log_normal_params"]
-	if map_id == 1414 or map_id == 1415 then
-		return
-	end
-	if map_id == 947 then
-		map_id = "all"
-	end
 	if class_stat_comparison_container.configure_for == "map" and _stats["all"][map_id] == nil then
 		return
 	end
@@ -193,12 +184,9 @@ function class_stat_comparison_container.updateMenuElement(
 			entry_data[class_id]["# Deaths"] = "-"
 			entry_data[class_id]["% of all"] = "-"
 			entry_data[class_id]["Avg. Lvl."] = "-"
-			entry_data[class_id]["10"] = "-"
-			entry_data[class_id]["20"] = "-"
-			entry_data[class_id]["30"] = "-"
-			entry_data[class_id]["40"] = "-"
-			entry_data[class_id]["50"] = "-"
-			entry_data[class_id]["60"] = "-"
+			for i = 1, steps do
+				entry_data[class_id][tostring(i * 10)] = "-"
+			end
 		else
 			local class_str = ""
 			if class_id ~= "all" then
@@ -217,13 +205,13 @@ function class_stat_comparison_container.updateMenuElement(
 			local cdf_values = nil
 			if model == "LogNormal" then
 				if class_id == "all" then
-					for i = 1, 60 do
+					for i = 1, MAX_PLAYER_LEVEL do
 						cdf[i] = 0
 					end
 					for k, v in pairs(deathlog_class_tbl) do
 						local l_cdf =
 							Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
-						for i = 1, 60 do
+						for i = 1, MAX_PLAYER_LEVEL do
 							cdf[i] = cdf[i] + l_cdf[i] / 9
 						end
 					end
@@ -238,20 +226,23 @@ function class_stat_comparison_container.updateMenuElement(
 				end
 			elseif model == "Kaplan-Meier" then
 				if class_id == "all" then
-					for i = 1, 60 do
+					for i = 1, MAX_PLAYER_LEVEL do
 						cdf[i] = 0
 					end
 					for k, v in pairs(deathlog_class_tbl) do
 						local l_cdf = kaplan_meier[v]
-						for i = 1, 60 do
-							cdf[i] = cdf[i] + l_cdf[i] / 9
+						for i = 1, MAX_PLAYER_LEVEL do
+							-- Fallback to level 60 value for TBC levels beyond precomputed data
+							local val = l_cdf[i] or l_cdf[60] or 0
+							cdf[i] = cdf[i] + val / 9
 						end
 					end
 				else
 					cdf = kaplan_meier[class_id]
 				end
 				cdf_values = function(x)
-					return cdf[x]
+					-- Fallback to level 60 value for TBC levels beyond precomputed data
+					return cdf[x] or cdf[60] or 0
 				end
 			end
 
@@ -270,12 +261,9 @@ function class_stat_comparison_container.updateMenuElement(
 			end
 
 			entry_data[class_id]["Avg. Lvl."] = string.format("%.1f", v["all"]["avg_lvl"])
-			entry_data[class_id]["10"] = string.format("%.1f", viewFunction(cdf_values, 10)) .. "%"
-			entry_data[class_id]["20"] = string.format("%.1f", viewFunction(cdf_values, 20)) .. "%"
-			entry_data[class_id]["30"] = string.format("%.1f", viewFunction(cdf_values, 30)) .. "%"
-			entry_data[class_id]["40"] = string.format("%.1f", viewFunction(cdf_values, 40)) .. "%"
-			entry_data[class_id]["50"] = string.format("%.2f", viewFunction(cdf_values, 50)) .. "%"
-			entry_data[class_id]["60"] = string.format("%.2f", viewFunction(cdf_values, 60)) .. "%"
+			for i = 1, steps do
+				entry_data[class_id][tostring(i * 10)] = string.format("%.2f", viewFunction(cdf_values, i * 10)) .. "%"
+			end
 		end
 	end
 

@@ -1,15 +1,15 @@
-## Interface: 11505
+## Interface: 20505, 11508
 ## Title: Deathlog
-## Notes: Only for Hardcore on classic era servers.
-## Author: Yazpad
+## Notes: Only for Hardcore on classic era or Burning Crusade Anniversary servers.
+## Author: Yazpad & Deathwing
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.1.21
+## Version: 0.2.0
 
 
 ## DefaultState: enabled
-## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs, dev_class_data, deathlog_watchlist_entries, deathlog_record_econ_stats
-## SavedVariablesPerCharacter:
+## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, dev_precomputed_general_stats, dev_precomputed_log_normal_params, dev_precomputed_skull_locs, dev_class_data, deathlog_watchlist_entries, deathlog_record_econ_stats, dev_hardcore_deaths_strings, dev_hardcore_deaths_guid_strings, dev_tarnished_shoul_strings, dev_map_bounds, dev_world_map_data
+## SavedVariablesPerCharacter: deathlog_char_data
 
 Localization/strings_cn.lua
 Localization/strings_de.lua
@@ -24,29 +24,66 @@ Localization/localization.lua
 
 embeds.xml
 
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_en.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_en.lua
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_cn.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_cn.lua
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_de.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_de.lua
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_es.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_es.lua
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_fr.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_fr.lua
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_it.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_it.lua
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_ko.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_ko.lua
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_pt.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_pt.lua
-Libs/DeathNotificationLib/NPCs/id_to_npc_classic_ru.lua
-Libs/DeathNotificationLib/NPCs/npc_to_id_classic_ru.lua
+Libs/DeathNotificationLib/Areas/area_to_id_en.lua
+Libs/DeathNotificationLib/Areas/area_to_id_cn.lua
+Libs/DeathNotificationLib/Areas/area_to_id_de.lua
+Libs/DeathNotificationLib/Areas/area_to_id_es.lua
+Libs/DeathNotificationLib/Areas/area_to_id_fr.lua
+Libs/DeathNotificationLib/Areas/area_to_id_it.lua
+Libs/DeathNotificationLib/Areas/area_to_id_ko.lua
+Libs/DeathNotificationLib/Areas/area_to_id_pt.lua
+Libs/DeathNotificationLib/Areas/area_to_id_ru.lua
+Libs/DeathNotificationLib/Instances/instance_categories.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_en.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_cn.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_de.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_es.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_fr.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_it.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_ko.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_pt.lua
+Libs/DeathNotificationLib/Instances/instance_to_id_ru.lua
+Libs/DeathNotificationLib/NPCs/id_to_display_id.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_en.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_cn.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_de.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_es.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_fr.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_it.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_ko.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_pt.lua
+Libs/DeathNotificationLib/NPCs/id_to_npc_ru.lua
+Libs/DeathNotificationLib/NPCs/id_to_quote_de.lua
+Libs/DeathNotificationLib/NPCs/id_to_quote_en.lua
+Libs/DeathNotificationLib/NPCs/id_to_quote_es.lua
+Libs/DeathNotificationLib/NPCs/id_to_quote_fr.lua
+Libs/DeathNotificationLib/NPCs/id_to_quote_it.lua
+Libs/DeathNotificationLib/NPCs/id_to_quote_ko.lua
+Libs/DeathNotificationLib/NPCs/id_to_quote_ru.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_en.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_cn.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_de.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_es.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_fr.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_it.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_ko.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_pt.lua
+Libs/DeathNotificationLib/NPCs/npc_to_id_ru.lua
+Libs/DeathNotificationLib/Zones/zone_categories.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_en.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_cn.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_de.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_es.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_fr.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_it.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_ko.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_pt.lua
+Libs/DeathNotificationLib/Zones/zone_to_id_ru.lua
 Libs/DeathNotificationLib/table_localization.lua
 Libs/DeathNotificationLib/DeathNotificationLib.lua
+Libs/DeathNotificationLib/extract_map_bounds.lua
 
 utils.lua
-id_to_display_id.lua
 
 MenuElements/watch_list.lua
 MenuElements/map_container.lua
@@ -68,8 +105,11 @@ Widgets/HeatmapWorldMapOverlay/widget.lua
 Widgets/CreatureRankingTooltip/widget.lua
 Widgets/CorpseTooltip/widget.lua
 Widgets/DeathAlert/widget.lua
+Widgets/ReportWidget/widget.lua
 
 menu.lua
 
-precomputed_stats.lua
+Data/precomputed_stats_vanilla.lua [AllowLoadGameType vanilla]
+Data/precomputed_stats_tbc.lua [AllowLoadGameType tbc]
+
 deathlog.lua

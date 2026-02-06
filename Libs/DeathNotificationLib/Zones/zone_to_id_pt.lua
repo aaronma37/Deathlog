@@ -1,0 +1,86 @@
+-- Auto-generated zone map data. Do not edit manually.
+-- Version: bd8505fb
+zone_to_id_pt = {}
+
+
+do
+  zone_to_id_pt[0] = {
+    ["Azeroth"] = 947,
+    ["Durotar"] = 1411,
+    ["Mulgore"] = 1412,
+    ["Sertões"] = 1413,
+    ["Kalimdor"] = 1414,
+    ["Reinos do Leste"] = 1415,
+    ["Montanhas de Alterac"] = 1416,
+    ["Planalto Arathi"] = 1417,
+    ["Ermos"] = 1418,
+    ["Barreira do Inferno"] = 1419,
+    ["Clareiras de Tirisfal"] = 1420,
+    ["Floresta de Pinhaprata"] = 1421,
+    ["Terras Pestilentas Ocidentais"] = 1422,
+    ["Terras Pestilentas Orientais"] = 1423,
+    ["Contraforte de Eira dos Montes"] = 1424,
+    ["Terras Agrestes"] = 1425,
+    ["Dun Morogh"] = 1426,
+    ["Garganta Abrasadora"] = 1427,
+    ["Estepes Ardentes"] = 1428,
+    ["Floresta de Elwynn"] = 1429,
+    ["Trilha do Vento Morto"] = 1430,
+    ["Floresta do Crepúsculo"] = 1431,
+    ["Loch Modan"] = 1432,
+    ["Montanhas Cristarrubra"] = 1433,
+    ["Selva do Espinhaço"] = 1434,
+    ["Pântano das Mágoas"] = 1435,
+    ["Cerro Oeste"] = 1436,
+    ["Pantanal"] = 1437,
+    ["Teldrassil"] = 1438,
+    ["Costa Negra"] = 1439,
+    ["Vale Gris"] = 1440,
+    ["Mil Agulhas"] = 1441,
+    ["Cordilheira das Torres de Pedra"] = 1442,
+    ["Desolação"] = 1443,
+    ["Feralas"] = 1444,
+    ["Pântano Vadeoso"] = 1445,
+    ["Tanaris"] = 1446,
+    ["Azshara"] = 1447,
+    ["Selva Maleva"] = 1448,
+    ["Cratera Un'Goro"] = 1449,
+    ["Clareira da Lua"] = 1450,
+    ["Silithus"] = 1451,
+    ["Hibérnia"] = 1452,
+    ["Ventobravo"] = 1453,
+    ["Orgrimmar"] = 1454,
+    ["Altaforja"] = 1455,
+    ["Penhasco do Trovão"] = 1456,
+    ["Darnassus"] = 1457,
+    ["Cidade Baixa"] = 1458,
+    ["Vale Alterac"] = 1459,
+    ["Ravina Brado Guerreiro"] = 1460,
+    ["Bacia Arathi"] = 1461,
+  }
+end
+
+if GetExpansionLevel and GetExpansionLevel() >= 1 then
+do
+  zone_to_id_pt[1] = {
+    ["Região Cósmica"] = 946,
+    ["Floresta do Canto Eterno"] = 1941,
+    ["Terra Fantasma"] = 1942,
+    ["Ilha Névoa Lazúli"] = 1943,
+    ["Península Fogo do Inferno"] = 1944,
+    ["Terralém"] = 1945,
+    ["Pântano Zíngaro"] = 1946,
+    ["A Exodar"] = 1947,
+    ["Vale da Lua Negra"] = 1948,
+    ["Montanhas da Lâmina Afiada"] = 1949,
+    ["Ilha Névoa Rubra"] = 1950,
+    ["Nagrand"] = 1951,
+    ["Mata Terokkar"] = 1952,
+    ["Eternévoa"] = 1953,
+    ["Luaprata"] = 1954,
+    ["Shattrath"] = 1955,
+    ["Olho da Tormenta"] = 1956,
+    ["Ilha de Quel'Danas"] = 1957,
+  }
+end
+end

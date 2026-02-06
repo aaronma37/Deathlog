@@ -1,5 +1,5 @@
 --[[
-Copyright 2023 Yazpad
+Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License (or the Lesser GPL).
 This file is part of Hardcore.
 
@@ -24,17 +24,11 @@ creature_model_container:Hide()
 creature_model_container:SetBackdropColor(0, 0.4, 0, 1)
 creature_model_container:SetMovable(false)
 
-local _, _, _, tocversion = GetBuildInfo()
-
 creature_model_container.modelFrame = CreateFrame("PlayerModel", nil, creature_model_container)
 creature_model_container.modelFrame:SetPoint("TOPLEFT", creature_model_container, "TOPLEFT", 0, 0)
 creature_model_container.modelFrame:SetHeight(500)
 creature_model_container.modelFrame:SetWidth(500)
-if tocversion >= 11404 then
-	creature_model_container.modelFrame:SetCreature(1693)
-else
-	creature_model_container.modelFrame:SetDisplayInfo(1693)
-end
+creature_model_container.modelFrame:SetCreature(1693)
 creature_model_container.modelFrame:SetRotation(0)
 creature_model_container.modelFrame:SetCamDistanceScale(1.5)
 creature_model_container.modelFrame:SetPortraitZoom(0.6)
@@ -50,16 +44,31 @@ creature_model_container.quote:Show()
 
 local animation = CreateFrame("Frame")
 
+-- Environment damage icon textures (same as DeathAlert widget)
+local environment_damage_icons = {
+	[-2] = "Interface\\ICONS\\Ability_Suffocate", -- Drowning
+	[-3] = "Interface\\ICONS\\Spell_Magic_FeatherFall", -- Falling
+	[-4] = "Interface\\ICONS\\Spell_Nature_Sleep", -- Fatigue
+	[-5] = "Interface\\ICONS\\Spell_Fire_Fire", -- Fire
+	[-6] = "Interface\\ICONS\\Spell_Fire_Volcano", -- Lava
+	[-7] = "Interface\\ICONS\\INV_Misc_Slime_01", -- Slime
+}
+
 function creature_model_container.updateMenuElement(scroll_frame, creature_id, stats_tbl, updatefun)
+	-- Initialize environment icon texture if needed
+	if creature_model_container.envIcon == nil then
+		creature_model_container.envIcon = creature_model_container:CreateTexture(nil, "ARTWORK")
+		creature_model_container.envIcon:SetPoint("CENTER", creature_model_container, "CENTER", 0, 20)
+		creature_model_container.envIcon:SetSize(100, 100)
+	end
+
 	if id_to_display_id[creature_id] ~= nil then
-		if tocversion >= 11404 then
-			creature_model_container.modelFrame:SetCreature(creature_id)
-		else
-			creature_model_container.modelFrame:SetDisplayInfo(id_to_display_id[creature_id])
-		end
+		-- Regular creature with model
+		creature_model_container.modelFrame:SetCreature(creature_id)
 		creature_model_container:SetParent(scroll_frame.frame)
 		creature_model_container:Show()
 		creature_model_container.modelFrame:Show()
+		creature_model_container.envIcon:Hide()
 		creature_model_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 620, -45)
 		creature_model_container.modelFrame:SetPoint("TOPLEFT", creature_model_container, "TOPLEFT", 0, 0)
 		creature_model_container:SetWidth(180)
@@ -67,11 +76,21 @@ function creature_model_container.updateMenuElement(scroll_frame, creature_id, s
 		creature_model_container.modelFrame:SetWidth(180)
 		creature_model_container.modelFrame:SetHeight(180)
 		creature_model_container.modelFrame:SetModelDrawLayer("ARTWORK", 1) -- put model at drawLayer of texture
+	elseif environment_damage_icons[creature_id] then
+		-- Environmental damage - show icon instead of model
+		creature_model_container:SetParent(scroll_frame.frame)
+		creature_model_container:Show()
+		creature_model_container.modelFrame:Hide()
+		creature_model_container.envIcon:SetTexture(environment_damage_icons[creature_id])
+		creature_model_container.envIcon:Show()
+		creature_model_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 620, -45)
+		creature_model_container:SetWidth(180)
+		creature_model_container:SetHeight(180)
 	else
 		creature_model_container:Hide()
 	end
-	if Deathlog_L.id_to_quote[creature_id] then
-		creature_model_container.quote:SetText('"' .. Deathlog_L.id_to_quote[creature_id] .. '"')
+	if id_to_quote and id_to_quote[creature_id] then
+		creature_model_container.quote:SetText('"' .. id_to_quote[creature_id] .. '"')
 		creature_model_container.quote:SetParent(creature_model_container.modelFrame)
 
 		creature_model_container.quote:SetPoint("BOTTOM", creature_model_container, "BOTTOM", 0, 25)
