@@ -900,6 +900,29 @@ function _dnl._processSyncEntry(single_payload, tag)
 	stats.entries_received = stats.entries_received + 1
 end
 
+--- Backlog of raw E$ payloads waiting to be processed.
+--- handleSyncEntry pushes {tag, single_payload} tuples here;
+--- a periodic ticker drains them in small batches to avoid
+--- frame spikes when many E$ messages arrive at once.
+---@type table[]  Array of {tag, single_payload}
+local sync_entry_backlog = {}
+
+--- Max entries to process per tick (one tick = 0.05s).
+local SYNC_PROCESS_BATCH = 8
+
+--- Drain up to SYNC_PROCESS_BATCH entries from the backlog.
+local function drainSyncBacklog()
+	local processed = 0
+	while #sync_entry_backlog > 0 and processed < SYNC_PROCESS_BATCH do
+		local item = table.remove(sync_entry_backlog, 1)
+		_dnl._processSyncEntry(item[1], item[2])
+		processed = processed + 1
+	end
+	if #sync_entry_backlog > 0 then
+		C_Timer.After(0.05, drainSyncBacklog)
+	end
+end
+
 ---Handle an incoming entry broadcast on the sync channel.
 ---Both the active requester and any passive listener consume this.
 ---Format: "TAG~encoded_data" or "TAG~entry1;entry2;..."
@@ -920,9 +943,14 @@ function _dnl.handleSyncEntry(sender, payload)
 	if not tag then return end
 
 	-- E$ messages may contain multiple entries separated by ";"
+	-- Push into backlog for batched processing to avoid frame spikes.
 	local entries = { strsplit(";", entry_data) }
+	local was_empty = #sync_entry_backlog == 0
 	for _, single_payload in ipairs(entries) do
-		_dnl._processSyncEntry(single_payload, tag)
+		sync_entry_backlog[#sync_entry_backlog + 1] = { single_payload, tag }
+	end
+	if was_empty and #sync_entry_backlog > 0 then
+		C_Timer.After(0.05, drainSyncBacklog)
 	end
 
 	-- If we're the active requester, reset the response timeout on each entry
@@ -1025,13 +1053,26 @@ function _dnl._startSyncWatermarkTicker()
 		end
 	end
 
-	-- First watermark after a short delay to let the database load
-	C_Timer.After(10, broadcastWatermark)
+	-- Jitter the first watermark (10-40s) so clients that log in at
+	-- the same time don't all broadcast simultaneously.
+	local initial_delay = 10 + math.random() * 30
+	C_Timer.After(initial_delay, broadcastWatermark)
 
-	watermark_ticker = C_Timer.NewTicker(min_interval, broadcastWatermark)
+	-- Jitter ongoing ticks by ±20% to prevent phase-locking.
+	-- C_Timer.NewTicker fires at a fixed rate, so we re-schedule
+	-- ourselves with a randomised delay each time instead.
+	local function scheduleNext()
+		local jittered = min_interval * (0.8 + math.random() * 0.4)
+		watermark_ticker = C_Timer.NewTimer(jittered, function()
+			broadcastWatermark()
+			scheduleNext()
+		end)
+	end
+	C_Timer.After(initial_delay + 1, scheduleNext)
 
 	if _dnl.DEBUG then
-		print("[DNL Sync] Watermark ticker started (interval: " .. min_interval .. "s)")
+		print(string.format("[DNL Sync] Watermark ticker started (base interval: %ds, initial delay: %.0fs)",
+			min_interval, initial_delay))
 	end
 end
 

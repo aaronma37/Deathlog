@@ -427,7 +427,7 @@ local function setupRowEntries()
 		end
 
 		local function blockUser()
-			if not canBlockUser() then
+			if canBlockUser() then
 				local added = C_FriendList.AddIgnore(death_tomb_frame.clicked_name)
 			end
 		end
@@ -440,7 +440,7 @@ local function setupRowEntries()
 		end
 
 		local function whisperPlayer()
-			if not canWhisperPlayer() then
+			if canWhisperPlayer() then
 				ChatFrame_OpenChat("/w " .. death_tomb_frame.clicked_name .. " ")
 			end
 		end
@@ -453,7 +453,7 @@ local function setupRowEntries()
 		end
 
 		local function checkSpoof()
-			if not canCheckSpoof() then
+			if canCheckSpoof() then
 				C_FriendList.SendWho(death_tomb_frame.clicked_name)
 			end
 		end

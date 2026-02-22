@@ -2,6 +2,25 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.4.0] - 2026-02-22
+
+### Bug Fixes
+- Fixed inverted right-click menu conditions — Block User, Whisper Player, and Check Spoof now actually trigger when the option is available (affected both minilog and main search log)
+
+### Improvements
+- Zone and Instance filter dropdowns now skip the expansion submenu layer when only one expansion is present, reducing unnecessary clicks on single-expansion realms
+- CTA widget uses `SOURCE` enum constants instead of raw string keys
+- Removed unused `cta_threshold` setting reference from the CTA widget
+- Minor cleanup: suppressed unused loop variable warning in entry counter init
+- Updated precomputed stats for Vanilla and TBC with latest death data
+
+### DeathNotificationLib V4
+- Added Feign Death guard — Hunters using Feign Death are no longer falsely reported as dead in party/raid death detection
+- Sync entry processing is now batched (8 entries per tick) to prevent frame spikes from large `E$` bursts
+- Watermark broadcast timing jittered (10–40 s initial delay, ±20 % ongoing variance) to avoid client phase-locking
+
+---
+
 ## [0.3.0] - 2026-02-21
 
 ### New: Smarter Death Detection & Enrichment

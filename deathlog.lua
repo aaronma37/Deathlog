@@ -111,7 +111,7 @@ local function initEntryCounters()
 	local total = 0
 	local self_death = 0
 	local blizzard = 0
-	for realmName, entries in pairs(deathlog_data) do
+	for _, entries in pairs(deathlog_data) do
 		if type(entries) == "table" then
 			for _, entry in pairs(entries) do
 				total = total + 1
