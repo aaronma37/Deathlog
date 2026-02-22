@@ -1,7 +1,10 @@
 -- Auto-generated instance categories. Do not edit manually.
 -- Version: bd8505fb
 
-instance_categories = {
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+
+_dnl.D.INSTANCE_CATEGORIES = {
   ["Dungeon"] = { 33, 34, 36, 43, 47, 48, 70, 90, 109, 129, 189, 209, 229, 230, 269, 289, 329, 349, 389, 429, 540, 542, 543, 545, 546, 547, 552, 553, 554, 555, 556, 557, 558, 560, 585 },
   ["Raid"] = { 249, 309, 409, 469, 509, 531, 532, 533, 534, 544, 548, 550, 564, 565, 568, 580 },
   ["Battleground"] = { 30, 489, 529, 566 },

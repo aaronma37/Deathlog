@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-id_to_quote_en = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.en.ID_TO_QUOTE = {
   [6]="Yiieeeee! Me run!",
   [38]="I see those fools at the Abbey sent some fresh meat for us.",
   [40]="You no take candle!",

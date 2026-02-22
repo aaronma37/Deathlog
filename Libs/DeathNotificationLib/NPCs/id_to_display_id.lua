@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-id_to_display_id = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.D.ID_TO_DISPLAY_ID = {
   [3]=987,
   [6]=10913,
   [19]=6074,

@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-id_to_npc_pt = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.pt.ID_TO_NPC = {
   [3]="Comedor de Carne",
   [6]="Kobold Daninho",
   [19]="Recrutador Dito",

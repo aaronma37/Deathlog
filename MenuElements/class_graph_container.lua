@@ -18,7 +18,8 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 
-local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
+local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
+local deathlog_class_colors = DeathNotificationLib.CLASS_COLORS
 local graph_lines = {}
 local graph_container = CreateFrame("frame")
 

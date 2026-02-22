@@ -1,10 +1,13 @@
 -- Auto-generated zone map data. Do not edit manually.
 -- Version: bd8505fb
-zone_to_id_ko = {}
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.ko.ZONE_TO_ID = {}
 
 
 do
-  zone_to_id_ko[0] = {
+  _dnl.L.ko.ZONE_TO_ID[0] = {
     ["아제로스"] = 947,
     ["듀로타"] = 1411,
     ["멀고어"] = 1412,
@@ -62,7 +65,7 @@ end
 
 if GetExpansionLevel and GetExpansionLevel() >= 1 then
 do
-  zone_to_id_ko[1] = {
+  _dnl.L.ko.ZONE_TO_ID[1] = {
     ["우주"] = 946,
     ["영원노래 숲"] = 1941,
     ["유령의 땅"] = 1942,

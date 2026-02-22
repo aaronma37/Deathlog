@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-id_to_quote_ko = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.ko.ID_TO_QUOTE = {
   [1719]="갑자기 사방에서 놈들이 뛰쳐나오다니...",
   [5472]="우어어!!! 나 나이트 엘프 죽일거야!",
   [5955]="내 사랑 토르타! 내가 돌아왔소!",

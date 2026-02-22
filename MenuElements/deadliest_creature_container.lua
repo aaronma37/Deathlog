@@ -17,6 +17,9 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+local id_to_npc = DeathNotificationLib.ID_TO_NPC
+local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
+
 local deadliest_creatures_container = CreateFrame("Frame")
 deadliest_creatures_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 local function createDeadliestCreaturesEntry()
@@ -131,8 +134,17 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 		deadliest_creatures_textures[i]:Hide()
 	end
 	local map_id = deathlog_normalize_map_id_for_stats(current_map_id)
-	local most_deadly_units = deathlogGetOrdered(_stats, { "all", map_id, "all", nil })
-	if most_deadly_units and #most_deadly_units > 0 then
+	local most_deadly_units_raw = deathlogGetOrdered(_stats, { "all", map_id, "all", nil })
+	-- Filter out entries that have no known creature name (PvP-encoded source_ids, source_id=-1, etc.)
+	local most_deadly_units = {}
+	if most_deadly_units_raw then
+		for _, v in ipairs(most_deadly_units_raw) do
+			if id_to_npc[v[1]] or deathlog_environment_damage[v[1]] then
+				most_deadly_units[#most_deadly_units + 1] = v
+			end
+		end
+	end
+	if #most_deadly_units > 0 then
 		local max_kills = most_deadly_units[1][2]
 		for _, v in ipairs(most_deadly_units) do
 			num_recorded_kills = num_recorded_kills + v[2]

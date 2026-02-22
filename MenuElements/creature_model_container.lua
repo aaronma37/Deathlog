@@ -17,6 +17,9 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+local id_to_quote = DeathNotificationLib.ID_TO_QUOTE
+local id_to_display_id = DeathNotificationLib.ID_TO_DISPLAY_ID
+
 local creature_model_container = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
 creature_model_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 creature_model_container:SetSize(500, 500)
@@ -64,7 +67,8 @@ function creature_model_container.updateMenuElement(scroll_frame, creature_id, s
 
 	if id_to_display_id[creature_id] ~= nil then
 		-- Regular creature with model
-		creature_model_container.modelFrame:SetCreature(creature_id)
+		-- Clear previous model first to avoid stale display on uncached creatures
+		creature_model_container.modelFrame:ClearModel()
 		creature_model_container:SetParent(scroll_frame.frame)
 		creature_model_container:Show()
 		creature_model_container.modelFrame:Show()
@@ -76,6 +80,11 @@ function creature_model_container.updateMenuElement(scroll_frame, creature_id, s
 		creature_model_container.modelFrame:SetWidth(180)
 		creature_model_container.modelFrame:SetHeight(180)
 		creature_model_container.modelFrame:SetModelDrawLayer("ARTWORK", 1) -- put model at drawLayer of texture
+		-- Use SetDisplayInfo with the known display ID for reliable loading
+		creature_model_container.modelFrame:SetDisplayInfo(id_to_display_id[creature_id])
+		creature_model_container.modelFrame:SetRotation(0)
+		creature_model_container.modelFrame:SetCamDistanceScale(1.5)
+		creature_model_container.modelFrame:SetPortraitZoom(0.6)
 	elseif environment_damage_icons[creature_id] then
 		-- Environmental damage - show icon instead of model
 		creature_model_container:SetParent(scroll_frame.frame)

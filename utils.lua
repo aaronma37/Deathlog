@@ -19,8 +19,15 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 --
+local id_to_npc = DeathNotificationLib.ID_TO_NPC
+local instance_to_id = DeathNotificationLib.INSTANCE_TO_ID
+local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
+local zone_to_id = DeathNotificationLib.ZONE_TO_ID
+local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
 
-local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
+local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
+
+deathlog_ALL_INSTANCES_ID = -2
 
 -- Top-level map IDs
 deathlog_AZEROTH_ID = 947
@@ -212,21 +219,6 @@ deathlog_id_to_class_tbl = {
 	[11] = "Druid",
 }
 
--- values between 0 and 7
-deathlog_pvp_flag = {
-	NONE = 0,
-	REGULAR = 1,
-	DUEL_TO_DEATH = 2,
-}
-
-deathlog_class_colors = {}
-for k, _ in pairs(deathlog_class_tbl) do
-	deathlog_class_colors[k] = RAID_CLASS_COLORS[string.upper(k)]
-end
--- deathlog_class_colors["Shaman"] = CreateColor(0 / 255, 112 / 255, 221 / 255)
--- RAID_CLASS_COLORS["SHAMAN"]:SetRGB(0 / 255, 112 / 255, 221 / 255)
--- RAID_CLASS_COLORS["SHAMAN"].colorStr = 'ff0070dd'
-
 deathlog_race_tbl = {
 	["Human"] = 1,
 	["Orc"] = 2,
@@ -273,104 +265,10 @@ function deathlogShallowCopy(t)
 	return t2
 end
 
-function deathlogPredictSource(entry_map_pos, entry_map_id)
-	if entry_map_pos == nil then
-		return nil
-	end
-	local xx, yy = strsplit(",", entry_map_pos, 2)
-	if xx == nil or tonumber(entry_map_id) == nil then
-		return nil
-	end
-
-	-- Helper function to check a specific coordinate
-	local function checkCoordinate(map_id, x, y)
-		if x > 0 and x < 100 and y > 0 and y < 100 then
-			if precomputed_heatmap_intensity[map_id] and precomputed_heatmap_intensity[map_id][x] then
-				if precomputed_heatmap_intensity[map_id][x][y] then
-					for k, v in pairs(precomputed_heatmap_creature_subset[map_id]) do
-						if v[x] and v[x][y] then
-							if id_to_npc[k] then
-								return id_to_npc[k] .. "*"
-							end
-							if deathlog_environment_damage[k] then
-								return deathlog_environment_damage[k] .. "*"
-							end
-						end
-					end
-				end
-			end
-		end
-		return nil
-	end
-
-	-- Helper function to search around a position on a specific map
-	local function searchAroundPosition(map_id, base_x, base_y, search_radius)
-		-- Check exact position first
-		local result = checkCoordinate(map_id, base_x, base_y)
-		if result then
-			return result
-		end
-
-		-- Search expanding rings around the position
-		for radius = 1, search_radius do
-			for dx = -radius, radius do
-				for dy = -radius, radius do
-					if abs(dx) == radius or abs(dy) == radius then
-						result = checkCoordinate(map_id, base_x + dx, base_y + dy)
-						if result then
-							return result
-						end
-					end
-				end
-			end
-		end
-		return nil
-	end
-
+function deathlogPredictSource(entry)
 	local search_radius = (deathlog_settings and deathlog_settings["prediction_radius"]) or 5
-	local map_id = tonumber(entry_map_id)
 
-	-- First, try the entry's map directly
-	local base_x = floor(tonumber(xx) * 100 + 0.5)
-	local base_y = floor(tonumber(yy) * 100 + 0.5)
-
-	local result = searchAroundPosition(map_id, base_x, base_y, search_radius)
-	if result then
-		return result
-	end
-
-	-- If not found, try parent maps with coordinate conversion
-	local pos = { x = tonumber(xx), y = tonumber(yy) }
-	local cont, cont_pos = C_Map.GetWorldPosFromMapPos(map_id, pos)
-	if cont == nil then
-		return nil
-	end
-
-	-- Traverse up the map hierarchy
-	local current_map_id = map_id
-	local max_depth = 5  -- Prevent infinite loops
-	for _ = 1, max_depth do
-		local map_info = C_Map.GetMapInfo(current_map_id)
-		if map_info == nil or map_info.parentMapID == nil or map_info.parentMapID == 0 then
-			break
-		end
-
-		local parent_map_id = map_info.parentMapID
-		local m, parent_pos = C_Map.GetMapPosFromWorldPos(cont, cont_pos, parent_map_id)
-		if m ~= nil then
-			local parent_x = floor(parent_pos.x * 100 + 0.5)
-			local parent_y = floor(parent_pos.y * 100 + 0.5)
-
-			result = searchAroundPosition(parent_map_id, parent_x, parent_y, search_radius)
-			if result then
-				return result
-			end
-		end
-
-		current_map_id = parent_map_id
-	end
-
-	return nil
+	return DeathNotificationLib.PredictSource(entry, search_radius)
 end
 
 -- Tue Apr 18 21:36:54 2023
@@ -453,6 +351,25 @@ function deathlogOrderBy(_deathlog, order_function)
 		table.insert(ordered, v)
 	end
 	return ordered
+end
+
+-- Optimized version: sorts by date descending, uses native table.sort (much faster for large datasets)
+function deathlogOrderByFast(_deathlog)
+	local list = {}
+	local n = 0
+	for _, entry_tbl in pairs(_deathlog) do
+		for _, v in pairs(entry_tbl) do
+			n = n + 1
+			list[n] = v
+		end
+	end
+	-- Sort descending by date (newest first) using native table.sort
+	table.sort(list, function(a, b)
+		local date_a = tonumber(a.date) or 0
+		local date_b = tonumber(b.date) or 0
+		return date_a > date_b
+	end)
+	return list
 end
 
 local function calculateCDF(ln_mean, ln_std_dev)
@@ -902,14 +819,26 @@ function deathlog_setTooltipFromEntry(_entry)
 	local _pvp_source_name = _entry["extra_data"] and _entry["extra_data"]["pvp_source_name"]
 	local _source = id_to_npc[_entry["source_id"]]
 		or deathlog_environment_damage[_entry["source_id"]]
-		or deathlog_decode_pvp_source(_entry["source_id"], _pvp_source_name)
+		or DeathNotificationLib.DecodePvPSource(_entry["source_id"], _pvp_source_name)
 		or ""
+	if _source == "" then
+		if _entry["predicted_source"] then
+			_source = _entry["predicted_source"]
+		else
+			local predicted = deathlogPredictSource(_entry)
+			if predicted then
+				_entry["predicted_source"] = predicted
+				_source = predicted
+			end
+		end
+	end
 	local _zone = nil
 	local _loc = _entry["map_pos"]
 	local _date = nil
 	if _entry["date"] then
 		_date = date("%m/%d/%y", _entry["date"])
 	end
+	local _playtime = DeathNotificationLib.FormatPlaytime(_entry["played"])
 	local _last_words = nil
 	if _entry["last_words"] ~= nil and not _entry["last_words"]:match("^%s*$") then
 		_last_words = _entry["last_words"]
@@ -923,9 +852,14 @@ function deathlog_setTooltipFromEntry(_entry)
 	end
 
 	if _entry["class_id"] ~= nil then
-		local class_str, _, _ = GetClassInfo(_entry["class_id"])
+		local class_str = GetClassInfo(_entry["class_id"])
 		if class_str then
-			_class = class_str
+			local color = DeathNotificationLib.CLASS_ID_TO_COLOR[_entry["class_id"]]
+			if color then
+				_class = "|c" .. color.colorStr .. class_str .. "|r"
+			else
+				_class = class_str
+			end
 		end
 	end
 
@@ -937,10 +871,10 @@ function deathlog_setTooltipFromEntry(_entry)
 	elseif _entry["instance_id"] then
 		_zone = (id_to_instance[_entry["instance_id"]] or _entry["instance_id"])
 	end
-	deathlog_setTooltip(_name, _level, _guild, _race, _class, _source, _zone, _date, _last_words)
+	deathlog_setTooltip(_name, _level, _guild, _race, _class, _source, _zone, _date, _playtime, _last_words)
 end
 
-function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone, _date, _last_words)
+function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone, _date, _playtime, _last_words)
 	if _name == nil or _lvl == nil then
 		return
 	end
@@ -1011,135 +945,17 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 		GameTooltip:AddLine(Deathlog_L.date_word .. ": " .. _date, 1, 1, 1)
 	end
 
+	if deathlog_settings["minilog"]["tooltip_playtime"] then
+		if _playtime and _playtime ~= "" then
+			GameTooltip:AddLine(Deathlog_L.playtime_word .. ": " .. _playtime, 1, 1, 1)
+		end
+	end
+
 	if deathlog_settings["minilog"]["tooltip_lastwords"] then
 		if _last_words and _last_words ~= "" then
 			GameTooltip:AddLine(Deathlog_L.last_words_word .. ": " .. _last_words, 1, 1, 0, true)
 		end
 	end
-end
-
-function deathlog_create_pvp_source_id(pvp_flag, race, class, level)
-	local source_id = 0
-
-	source_id = bit.bor(source_id, bit.lshift(pvp_flag, 21))
-	source_id = bit.bor(source_id, bit.lshift(race or 0, 29))
-	source_id = bit.bor(source_id, bit.lshift(class or 0, 37))
-	source_id = bit.bor(source_id, bit.lshift((level and level > 0) and level or 0, 45))
-
-	return source_id
-end
-
-function deathlog_encode_pvp_source(source_str)
-	local function create_result(source, race, class, level, source_name)
-		local pvp_flag = deathlog_pvp_flag.REGULAR
-		if deathlog_last_duel_to_death_player ~= nil and (deathlog_last_duel_to_death_player == source or deathlog_last_duel_to_death_player == UnitName(source)) then
-			pvp_flag = deathlog_pvp_flag.DUEL_TO_DEATH
-		end
-
-		return tostring(deathlog_create_pvp_source_id(pvp_flag, race, class, level)), source_name
-	end
-
-	if source_str == nil then
-		return "-1", nil
-	end
-
-	if deathlog_last_attack_player ~= nil and deathlog_last_attack_player == source_str then
-		return create_result(source_str, deathlog_last_attack_race, deathlog_last_attack_class, deathlog_last_attack_level, source_str)
-	end
-
-	local source_str_safe = nil
-	local source_name = nil
-	if UnitIsPlayer(source_str) then
-		source_str_safe = source_str
-		source_name = UnitName(source_str)
-	elseif UnitIsPlayer("target") and UnitName("target") ~= UnitName("player") then
-		source_str_safe = "target"
-		source_name = UnitName("target")
-	end
-
-	if source_str_safe == nil then
-		return "-1", nil
-	end
-
-	source_str = source_str_safe
-
-	if UnitIsPlayer(source_str) then
-		local _, _, enemyRaceId = UnitRace(source_str)
-		local _, _, enemyClassId = UnitClass(source_str)
-		local enemyLevel = UnitLevel(source_str)
-
-		return create_result(source_str, tonumber(enemyRaceId), tonumber(enemyClassId), enemyLevel, source_name)
-	end
-
-	return "-1", nil
-end
-
-function deathlog_decode_pvp_source(source_id, player_name)
-	if
-		source_id == nil
-		or source_id == "-1"
-		or source_id == -1
-		or id_to_npc[source_id]
-		or deathlog_environment_damage[source_id]
-	then
-		return ""
-	end
-
-	local source_id_num = tonumber(source_id)
-
-	local retrievedPvPFlag = bit.band(bit.rshift(source_id_num, 21), 0x7)
-	if retrievedPvPFlag and retrievedPvPFlag ~= deathlog_pvp_flag.NONE then
-		local retrievedEnemyRace = bit.band(bit.rshift(source_id_num, 29), 0xFF)
-		local retrievedEnemyClass = bit.band(bit.rshift(source_id_num, 37), 0xFF)
-		local retrievedEnemyLevel = bit.band(bit.rshift(source_id_num, 45), 0xFF)
-
-		local enemyClass = ""
-		if retrievedEnemyRace and retrievedEnemyRace > 0 then
-			enemyClass = GetClassInfo(retrievedEnemyClass) or ""
-			if deathlog_class_colors[enemyClass] then
-				enemyClass = "|c" .. deathlog_class_colors[enemyClass]:GenerateHexColor() .. enemyClass .. "|r"
-			end
-		end
-
-		local enemyRace = ""
-		if retrievedEnemyRace and retrievedEnemyRace > 0 then
-			enemyRace = C_CreatureInfo.GetRaceInfo(retrievedEnemyRace)
-			if enemyRace then
-				enemyRace = enemyRace.raceName
-			else
-				enemyRace = ""
-			end
-		end
-
-		local enemyLevel = ""
-		if retrievedEnemyLevel and retrievedEnemyLevel > 0 then
-			enemyLevel = retrievedEnemyLevel
-		end
-
-		local source_name = player_name and (player_name .. " in PvP") or "PvP"
-		if retrievedPvPFlag == deathlog_pvp_flag.DUEL_TO_DEATH then
-			source_name = player_name and (player_name .. " in a Duel to Death") or "Duel to Death"
-		end
-
-		if enemyClass or enemyRace or enemyLevel then
-			local enemyTable = {}
-			if enemyLevel then
-				table.insert(enemyTable, "level " .. enemyLevel)
-			end
-			if enemyRace then
-				table.insert(enemyTable, enemyRace)
-			end
-			if enemyClass then
-				table.insert(enemyTable, enemyClass)
-			end
-
-			source_name = source_name .. " (" .. table.concat(enemyTable, " ") .. ")"
-		end
-
-		return source_name
-	end
-
-	return ""
 end
 
 deathlog_record_econ_stats = deathlog_record_econ_stats or {}

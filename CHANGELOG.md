@@ -2,6 +2,62 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.3.0] - 2026-02-21
+
+### New: Smarter Death Detection & Enrichment
+- **Automatic `/who` enrichment** — Blizzard's death messages only include the player's name; Deathlog now runs a background `/who` lookup to fill in level, class, race, and guild automatically
+- **Party/raid death reporting** — deaths of your group members are captured and broadcast with full details, even if they don't have Deathlog installed
+- **Universal death broadcast parser** — a single `BlizzardParser` built from Blizzard's own `HARDCORE_CAUSEOFDEATH_*` globals replaces the old hand-written per-locale parsers, supporting all 11 client languages out of the box (including positional format arguments and known Blizzard typos)
+
+### New: Background Database Sync
+- Automatically exchange death entries with other Deathlog users over a dedicated addon channel — no setup required
+- Configurable sync window, interval, cooldown, and max entries per session
+- New settings panel: Interface → AddOns → Deathlog → Database Sync
+
+### New: Playtime Tracking
+- Your total `/played` time is now recorded in every death report
+- Displayed in the minilog, search log, tooltips, and death alerts
+- New `<playtime>` substitution tag for death alert messages (e.g., "died after 2d 14h 32m")
+- Tooltip toggle: show or hide playtime (enabled by default)
+- **Privacy opt-out**: disable "Include playtime in death report" in settings
+- Compatible with HardcoreTBC addon's playtime data
+
+### New: Death Alert Overhaul
+- **Group syntax** for context-aware messages:
+  - `(...)` relaxed group — shown if at least one tag inside has a value
+  - `[...]` strict group — shown only if **all** tags inside have values
+  - Example: `<name>( the <race> <class>)[ of <guild>] has been slain by <source>[ at lvl <level>][ in <zone>].`
+- New `<guild>` substitution tag — works in all message types
+- **Real-time input validation** — detects unknown tags, unbalanced groups, nested groups, and empty groups with clear error messages
+- All 9 locales updated with new group-syntax default messages
+
+### New: Data Contribution Prompt
+- One-time popup when you've collected a large database, asking you to share your data
+- Persistent banner in the main menu shows your entry count with contact info
+
+### Improvements
+- Hardcore status info button in the main menu — shows your tracking state, supported realms, and detected addons
+- Server filter dropdown in the search log now actually filters results
+- Right-click menu options properly disabled when not applicable (e.g., "Show death location" grayed out without location data)
+- Minimap button saves its position correctly across reloads
+- Creature ranking tooltip no longer incorrectly fires on player units
+- Corpse tooltip now uses Blizzard's `CORPSE_TOOLTIP` global instead of per-locale word tables
+- PvP killer name captured and stored in `extra_data` for Blizzard-sourced deaths
+- Duplicate entries merged using quality-aware logic — higher-quality reports (self > peer > Blizzard) take priority, unique fields from both are preserved
+- Removed 8 development-only SavedVariables, reducing disk and memory usage
+- Settings panel reordered: Report Widget now appears last
+- Modular DeathNotificationLib architecture (split into focused modules)
+- Updated precomputed stats with latest death data
+- Expansion filter for instance grid (TBC only)
+
+### Bug Fixes
+- Fixed missing heatmap overlays for TBC zones
+- Removed global override that broke Blizzard's `CHAT_CHANNEL_PASSWORD` popup for other addons
+- Raid warning removal for Hardcore deaths now only matches the expected format, avoiding interference with other addons
+- Shaman class color on Classic realms correctly set to 0, 112, 221 without overriding `RAID_CLASS_COLORS` globally
+
+---
+
 ## [0.2.0] - 2026-02-06
 
 ### New: TBC Anniversary / Soul of Iron Support

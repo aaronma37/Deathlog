@@ -17,7 +17,10 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
-local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
+local id_to_npc = DeathNotificationLib.ID_TO_NPC
+local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
+
+local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 local min_lvl = 0
 local max_lvl = MAX_PLAYER_LEVEL
 local AceGUI = LibStub("AceGUI-3.0")
@@ -539,7 +542,8 @@ function deadliest_creatures_container.updateMenuElement(
 
 	if filter == nil then
 		for k, v in ipairs(most_deadly_units) do
-			if v[1] ~= -1 then
+			-- Skip entries without a known creature name (PvP-encoded source_ids, source_id=-1, etc.)
+			if (id_to_npc[v[1]] or deathlog_environment_damage[v[1]]) then
 				filtered_most_deadly_units[#filtered_most_deadly_units + 1] = v
 			end
 		end

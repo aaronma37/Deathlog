@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-npc_to_id_ko = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.ko.NPC_TO_ID = {
   ["굶주린 시체"]=3,
   ["코볼트 졸개"]=6,
   ["퀘스트기버 베니"]=19,

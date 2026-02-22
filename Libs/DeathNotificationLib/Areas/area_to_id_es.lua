@@ -1,7 +1,10 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: bd8505fb
 
-area_to_id_es = {
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+
+_dnl.L.es.AREA_TO_ID = {
   ["Test Dungeon"] = 13,
   ["Valle de Alterac"] = 30,
   ["Mina Ferrohondo"] = 30,
