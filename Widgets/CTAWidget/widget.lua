@@ -6,6 +6,7 @@ death entries to be valuable for the community database.
 
 local CTA_THRESHOLD_DEFAULT = 25000
 local CTA_REMIND_COOLDOWN = 7 * 24 * 3600 -- 7 days in seconds
+local SOURCE = DeathNotificationLib.SOURCE
 
 local BACKDROP_INFO = {
 	bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
@@ -192,15 +193,13 @@ end
 
 local function getValidEntryCount()
 	if not deathlog_entry_counts then return 0 end
-	local self_death = deathlog_entry_counts["self_death"] or 0
-    local peer_broadcast = deathlog_entry_counts["peer_broadcast"] or 0
+	local self_death = deathlog_entry_counts[SOURCE.SELF_DEATH] or 0
+	local peer_broadcast = deathlog_entry_counts[SOURCE.PEER_BROADCAST] or 0
 	return self_death + peer_broadcast
 end
 
 local function isThresholdReached()
-	local threshold = deathlog_settings["cta_threshold"] or CTA_THRESHOLD_DEFAULT
-
-    if getValidEntryCount() < threshold then
+    if getValidEntryCount() < CTA_THRESHOLD_DEFAULT then
 		return false
 	end
 

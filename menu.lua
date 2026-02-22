@@ -124,7 +124,7 @@ local function WPDropDownDemo_Menu(frame, level, menuList)
 	end
 
 	local function blockUser()
-		if not canBlockUser() then
+		if canBlockUser() then
 			local added = C_FriendList.AddIgnore(death_tomb_frame.clicked_name)
 		end
 	end
@@ -137,7 +137,7 @@ local function WPDropDownDemo_Menu(frame, level, menuList)
 	end
 
 	local function whisperPlayer()
-		if not canWhisperPlayer() then
+		if canWhisperPlayer() then
 			ChatFrame_OpenChat("/w " .. death_tomb_frame.clicked_name .. " ")
 		end
 	end
@@ -831,6 +831,15 @@ local function drawLogTab(container)
 			end
 		end
 
+		-- Count how many expansions we have for zones
+		local zone_expansion_count = 0
+		local single_zone_expansion_id = nil
+		for expansion_id, _ in pairs(zone_to_id) do
+			zone_expansion_count = zone_expansion_count + 1
+			single_zone_expansion_id = expansion_id
+		end
+		local skip_zone_expansion_layer = (zone_expansion_count == 1)
+
 		if level == 1 or level == nil then
 			-- "All" option at top level
 			info.text, info.checked, info.func =
@@ -841,69 +850,150 @@ local function drawLogTab(container)
 				end
 			UIDropDownMenu_AddButton(info, level)
 
-			-- Expansion submenus (sorted by expansion_id)
-			local sorted_expansion_ids = {}
-			for expansion_id, _ in pairs(zone_to_id) do
-				table.insert(sorted_expansion_ids, expansion_id)
-			end
-			table.sort(sorted_expansion_ids)
-			for _, expansion_id in ipairs(sorted_expansion_ids) do
-				info = UIDropDownMenu_CreateInfo()
-				info.text = _G["EXPANSION_NAME" .. expansion_id]
-				info.hasArrow = true
-				info.notCheckable = true
-				info.menuList = { type = "expansion", id = expansion_id }
-				UIDropDownMenu_AddButton(info, level)
-			end
-		elseif level == 2 then
-			-- Continent submenus for the selected expansion (from zone_categories)
-			local expansion_id = menuList and menuList.id
-			if zone_categories then
-				-- Sort category names for consistent order
-				local sorted_categories = {}
-				for category_name, _ in pairs(zone_categories) do
-					local filtered_zones = getZoneCategoryForExpansion(category_name, expansion_id)
-					if #filtered_zones > 0 then
-						table.insert(sorted_categories, { name = category_name, zones = filtered_zones })
+			if skip_zone_expansion_layer then
+				-- Only one expansion: show continent submenus directly at level 1
+				if zone_categories then
+					local sorted_categories = {}
+					for category_name, _ in pairs(zone_categories) do
+						local filtered_zones = getZoneCategoryForExpansion(category_name, single_zone_expansion_id)
+						if #filtered_zones > 0 then
+							table.insert(sorted_categories, { name = category_name, zones = filtered_zones })
+						end
+					end
+					table.sort(sorted_categories, function(a, b) return a.name < b.name end)
+
+					for _, category in ipairs(sorted_categories) do
+						info = UIDropDownMenu_CreateInfo()
+						info.text = category.name
+						info.hasArrow = true
+						info.notCheckable = true
+						info.menuList = { type = "continent", expansion_id = single_zone_expansion_id, category_name = category.name, zones = category.zones }
+						UIDropDownMenu_AddButton(info, level)
+					end
+				else
+					-- No categories: show all zones directly
+					local zones = zone_to_id[single_zone_expansion_id]
+					if zones then
+						local sorted_zones = {}
+						for zone_name, zone_id in pairs(zones) do
+							table.insert(sorted_zones, { name = zone_name, id = zone_id })
+						end
+						table.sort(sorted_zones, function(a, b) return a.name < b.name end)
+						for _, zone in ipairs(sorted_zones) do
+							info = UIDropDownMenu_CreateInfo()
+							info.text = zone.name
+							info.checked = font_container.zone_dd.val == zone.name
+							info.func = function()
+								font_container.zone_dd.val = zone.name
+								UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
+								setFilter()
+								CloseDropDownMenus()
+							end
+							UIDropDownMenu_AddButton(info, level)
+						end
 					end
 				end
-				table.sort(sorted_categories, function(a, b) return a.name < b.name end)
-				
-				for _, category in ipairs(sorted_categories) do
+			else
+				-- Multiple expansions: show expansion submenus (sorted by expansion_id)
+				local sorted_expansion_ids = {}
+				for expansion_id, _ in pairs(zone_to_id) do
+					table.insert(sorted_expansion_ids, expansion_id)
+				end
+				table.sort(sorted_expansion_ids)
+				for _, expansion_id in ipairs(sorted_expansion_ids) do
 					info = UIDropDownMenu_CreateInfo()
-					info.text = category.name
+					info.text = _G["EXPANSION_NAME" .. expansion_id]
 					info.hasArrow = true
 					info.notCheckable = true
-					info.menuList = { type = "continent", expansion_id = expansion_id, category_name = category.name, zones = category.zones }
+					info.menuList = { type = "expansion", id = expansion_id }
 					UIDropDownMenu_AddButton(info, level)
 				end
 			end
-			
-			-- Fallback if no categories or empty: show all zones directly
-			if not zone_categories then
-				local zones = zone_to_id[expansion_id]
-				if zones then
-					local sorted_zones = {}
-					for zone_name, zone_id in pairs(zones) do
-						table.insert(sorted_zones, { name = zone_name, id = zone_id })
-					end
-					table.sort(sorted_zones, function(a, b) return a.name < b.name end)
-					for _, zone in ipairs(sorted_zones) do
-						info = UIDropDownMenu_CreateInfo()
-						info.text = zone.name
-						info.checked = font_container.zone_dd.val == zone.name
-						info.func = function()
-							font_container.zone_dd.val = zone.name
-							UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
-							setFilter()
-							CloseDropDownMenus()
+		elseif level == 2 then
+			local menu_type = menuList and menuList.type
+
+			if menu_type == "continent" then
+				-- Coming from either: single-expansion level 1, or multi-expansion level 2
+				-- Show individual zones for selected continent/category
+				local category_zones = menuList.zones
+				local expansion_id = menuList.expansion_id
+				if category_zones and expansion_id then
+					local zones = zone_to_id[expansion_id]
+					if zones then
+						local category_zone_ids = {}
+						for _, zone_id in ipairs(category_zones) do
+							category_zone_ids[zone_id] = true
 						end
+						local sorted_zones = {}
+						for zone_name, zone_id in pairs(zones) do
+							if category_zone_ids[zone_id] then
+								table.insert(sorted_zones, { name = zone_name, id = zone_id })
+							end
+						end
+						table.sort(sorted_zones, function(a, b) return a.name < b.name end)
+						for _, zone in ipairs(sorted_zones) do
+							info = UIDropDownMenu_CreateInfo()
+							info.text = zone.name
+							info.checked = font_container.zone_dd.val == zone.name
+							info.func = function()
+								font_container.zone_dd.val = zone.name
+								UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
+								setFilter()
+								CloseDropDownMenus()
+							end
+							UIDropDownMenu_AddButton(info, level)
+						end
+					end
+				end
+			elseif menu_type == "expansion" then
+				-- Multi-expansion path: show continent submenus
+				local expansion_id = menuList.id
+				if zone_categories then
+					local sorted_categories = {}
+					for category_name, _ in pairs(zone_categories) do
+						local filtered_zones = getZoneCategoryForExpansion(category_name, expansion_id)
+						if #filtered_zones > 0 then
+							table.insert(sorted_categories, { name = category_name, zones = filtered_zones })
+						end
+					end
+					table.sort(sorted_categories, function(a, b) return a.name < b.name end)
+					
+					for _, category in ipairs(sorted_categories) do
+						info = UIDropDownMenu_CreateInfo()
+						info.text = category.name
+						info.hasArrow = true
+						info.notCheckable = true
+						info.menuList = { type = "continent", expansion_id = expansion_id, category_name = category.name, zones = category.zones }
 						UIDropDownMenu_AddButton(info, level)
+					end
+				end
+			
+				-- Fallback if no categories or empty: show all zones directly
+				if not zone_categories then
+					local zones = zone_to_id[expansion_id]
+					if zones then
+						local sorted_zones = {}
+						for zone_name, zone_id in pairs(zones) do
+							table.insert(sorted_zones, { name = zone_name, id = zone_id })
+						end
+						table.sort(sorted_zones, function(a, b) return a.name < b.name end)
+						for _, zone in ipairs(sorted_zones) do
+							info = UIDropDownMenu_CreateInfo()
+							info.text = zone.name
+							info.checked = font_container.zone_dd.val == zone.name
+							info.func = function()
+								font_container.zone_dd.val = zone.name
+								UIDropDownMenu_SetText(font_container.zone_dd, font_container.zone_dd.val)
+								setFilter()
+								CloseDropDownMenus()
+							end
+							UIDropDownMenu_AddButton(info, level)
+						end
 					end
 				end
 			end
 		elseif level == 3 then
-			-- Zones for selected continent/category
+			-- Zones for selected continent/category (multi-expansion path only)
 			local category_zones = menuList and menuList.zones
 			local expansion_id = menuList and menuList.expansion_id
 			if category_zones and expansion_id then
@@ -1015,6 +1105,15 @@ local function drawLogTab(container)
 			end
 		end
 
+		-- Count how many expansions we have
+		local expansion_count = 0
+		local single_expansion_id = nil
+		for expansion_id, _ in pairs(instance_to_id) do
+			expansion_count = expansion_count + 1
+			single_expansion_id = expansion_id
+		end
+		local skip_expansion_layer = (expansion_count == 1)
+
 		if level == 1 or level == nil then
 			-- "All" option at top level
 			info.text, info.checked, info.func =
@@ -1025,59 +1124,135 @@ local function drawLogTab(container)
 				end
 			UIDropDownMenu_AddButton(info, level)
 
-			-- Expansion submenus (sorted by expansion_id)
-			local sorted_expansion_ids = {}
-			for expansion_id, _ in pairs(instance_to_id) do
-				table.insert(sorted_expansion_ids, expansion_id)
-			end
-			table.sort(sorted_expansion_ids)
-			for _, expansion_id in ipairs(sorted_expansion_ids) do
-				info = UIDropDownMenu_CreateInfo()
-				info.text = _G["EXPANSION_NAME" .. expansion_id]
-				info.hasArrow = true
-				info.notCheckable = true
-				info.menuList = { type = "expansion", id = expansion_id }
-				UIDropDownMenu_AddButton(info, level)
-			end
-		elseif level == 2 then
-			-- Instance type submenus for the selected expansion (from instance_categories)
-			local expansion_id = menuList and menuList.id
-			if instance_categories then
-				-- Use consistent category order: Dungeon, Raid, Battleground, Arena
-				local category_order = { "Dungeon", "Raid", "Battleground", "Arena" }
-				for _, category_name in ipairs(category_order) do
-					local filtered_instances = getInstanceCategoryForExpansion(category_name, expansion_id)
-					if #filtered_instances > 0 then
-						info = UIDropDownMenu_CreateInfo()
-						info.text = category_name
-						info.hasArrow = true
-						info.notCheckable = true
-						info.menuList = { type = "instance_type", expansion_id = expansion_id, category_name = category_name, instances = filtered_instances }
-						UIDropDownMenu_AddButton(info, level)
+			if skip_expansion_layer then
+				-- Only one expansion: show instance types directly at level 1
+				if instance_categories then
+					local category_order = { "Dungeon", "Raid", "Battleground", "Arena" }
+					for _, category_name in ipairs(category_order) do
+						local filtered_instances = getInstanceCategoryForExpansion(category_name, single_expansion_id)
+						if #filtered_instances > 0 then
+							info = UIDropDownMenu_CreateInfo()
+							info.text = category_name
+							info.hasArrow = true
+							info.notCheckable = true
+							info.menuList = { type = "instance_type", expansion_id = single_expansion_id, category_name = category_name, instances = filtered_instances }
+							UIDropDownMenu_AddButton(info, level)
+						end
+					end
+				else
+					-- No categories: show all instances directly
+					local instances = instance_to_id[single_expansion_id]
+					if instances then
+						local sorted_instances = {}
+						for instance_name, instance_id in pairs(instances) do
+							table.insert(sorted_instances, { name = instance_name, id = instance_id })
+						end
+						table.sort(sorted_instances, function(a, b) return a.name < b.name end)
+						for _, instance in ipairs(sorted_instances) do
+							info = UIDropDownMenu_CreateInfo()
+							info.text = instance.name
+							info.checked = font_container.instance_dd.val == instance.name
+							info.func = function()
+								font_container.instance_dd.val = instance.name
+								UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
+								setFilter()
+								CloseDropDownMenus()
+							end
+							UIDropDownMenu_AddButton(info, level)
+						end
 					end
 				end
+			else
+				-- Multiple expansions: show expansion submenus (sorted by expansion_id)
+				local sorted_expansion_ids = {}
+				for expansion_id, _ in pairs(instance_to_id) do
+					table.insert(sorted_expansion_ids, expansion_id)
+				end
+				table.sort(sorted_expansion_ids)
+				for _, expansion_id in ipairs(sorted_expansion_ids) do
+					info = UIDropDownMenu_CreateInfo()
+					info.text = _G["EXPANSION_NAME" .. expansion_id]
+					info.hasArrow = true
+					info.notCheckable = true
+					info.menuList = { type = "expansion", id = expansion_id }
+					UIDropDownMenu_AddButton(info, level)
+				end
 			end
-			
-			-- Fallback if no categories: show all instances directly
-			if not instance_categories then
-				local instances = instance_to_id[expansion_id]
-				if instances then
-					local sorted_instances = {}
-					for instance_name, instance_id in pairs(instances) do
-						table.insert(sorted_instances, { name = instance_name, id = instance_id })
-					end
-					table.sort(sorted_instances, function(a, b) return a.name < b.name end)
-					for _, instance in ipairs(sorted_instances) do
-						info = UIDropDownMenu_CreateInfo()
-						info.text = instance.name
-						info.checked = font_container.instance_dd.val == instance.name
-						info.func = function()
-							font_container.instance_dd.val = instance.name
-							UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
-							setFilter()
-							CloseDropDownMenus()
+		elseif level == 2 then
+			local menu_type = menuList and menuList.type
+
+			if menu_type == "instance_type" then
+				-- Coming from either: single-expansion level 1, or multi-expansion level 2
+				-- Show individual instances for selected type/category
+				local category_instances = menuList.instances
+				local expansion_id = menuList.expansion_id
+				if category_instances and expansion_id then
+					local instances = instance_to_id[expansion_id]
+					if instances then
+						local category_instance_ids = {}
+						for _, inst_id in ipairs(category_instances) do
+							category_instance_ids[inst_id] = true
 						end
-						UIDropDownMenu_AddButton(info, level)
+						local sorted_instances = {}
+						for instance_name, instance_id in pairs(instances) do
+							if category_instance_ids[instance_id] then
+								table.insert(sorted_instances, { name = instance_name, id = instance_id })
+							end
+						end
+						table.sort(sorted_instances, function(a, b) return a.name < b.name end)
+						for _, instance in ipairs(sorted_instances) do
+							info = UIDropDownMenu_CreateInfo()
+							info.text = instance.name
+							info.checked = font_container.instance_dd.val == instance.name
+							info.func = function()
+								font_container.instance_dd.val = instance.name
+								UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
+								setFilter()
+								CloseDropDownMenus()
+							end
+							UIDropDownMenu_AddButton(info, level)
+						end
+					end
+				end
+			elseif menu_type == "expansion" then
+				-- Multi-expansion path: show instance type submenus
+				local expansion_id = menuList.id
+				if instance_categories then
+					local category_order = { "Dungeon", "Raid", "Battleground", "Arena" }
+					for _, category_name in ipairs(category_order) do
+						local filtered_instances = getInstanceCategoryForExpansion(category_name, expansion_id)
+						if #filtered_instances > 0 then
+							info = UIDropDownMenu_CreateInfo()
+							info.text = category_name
+							info.hasArrow = true
+							info.notCheckable = true
+							info.menuList = { type = "instance_type", expansion_id = expansion_id, category_name = category_name, instances = filtered_instances }
+							UIDropDownMenu_AddButton(info, level)
+						end
+					end
+				end
+
+				-- Fallback if no categories: show all instances directly
+				if not instance_categories then
+					local instances = instance_to_id[expansion_id]
+					if instances then
+						local sorted_instances = {}
+						for instance_name, instance_id in pairs(instances) do
+							table.insert(sorted_instances, { name = instance_name, id = instance_id })
+						end
+						table.sort(sorted_instances, function(a, b) return a.name < b.name end)
+						for _, instance in ipairs(sorted_instances) do
+							info = UIDropDownMenu_CreateInfo()
+							info.text = instance.name
+							info.checked = font_container.instance_dd.val == instance.name
+							info.func = function()
+								font_container.instance_dd.val = instance.name
+								UIDropDownMenu_SetText(font_container.instance_dd, font_container.instance_dd.val)
+								setFilter()
+								CloseDropDownMenus()
+							end
+							UIDropDownMenu_AddButton(info, level)
+						end
 					end
 				end
 			end

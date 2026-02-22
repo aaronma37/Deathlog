@@ -254,7 +254,7 @@ end
 ---@param arg table
 local function onUnitHealth(arg)
 	local target = arg[1]
-	if target ~= "player" and (UnitHealth(target) == 0 or UnitIsDeadOrGhost(target)) and _dnl.canUseUnitStates(target) and _dnl.shouldBroadcastDeath(target) then
+	if target ~= "player" and (UnitHealth(target) == 0 or UnitIsDeadOrGhost(target)) and not UnitIsFeignDeath(target) and _dnl.canUseUnitStates(target) and _dnl.shouldBroadcastDeath(target) then
 		_dnl.reportPartyRaidDeath(target)
 	end
 end
