@@ -1,4 +1,9 @@
-local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
+local id_to_npc = DeathNotificationLib.ID_TO_NPC
+local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
+local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
+local deathlog_class_colors = DeathNotificationLib.CLASS_ID_TO_COLOR
+
+local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 local ace_refresh_timer_handle = nil
 local entry_cache = {}
 local font_handle = nil
@@ -45,16 +50,17 @@ local widget_name = "minilog"
 
 local fonts = LSM30:HashTable("font")
 fonts["default_font"] = default_font
-fonts["BreatheFire"] = "Interface\\AddOns\\Deathlog\\Fonts\\BreatheFire.ttf"
-fonts["BlackChancery"] = "Interface\\AddOns\\Deathlog\\Fonts\\BLKCHCRY.TTF"
-fonts["ArgosGeorge"] = "Interface\\AddOns\\Deathlog\\Fonts\\ArgosGeorge.ttf"
-fonts["GothicaBook"] = "Interface\\AddOns\\Deathlog\\Fonts\\Gothica-Book.ttf"
-fonts["Immortal"] = "Interface\\AddOns\\Deathlog\\Fonts\\IMMORTAL.ttf"
-fonts["BlackwoodCastle"] = "Interface\\AddOns\\Deathlog\\Fonts\\BlackwoodCastle.ttf"
-fonts["Alegreya"] = "Interface\\AddOns\\Deathlog\\Fonts\\alegreya.regular.ttf"
-fonts["Cathedral"] = "Interface\\AddOns\\Deathlog\\Fonts\\Cathedral.ttf"
-fonts["FletcherGothic"] = "Interface\\AddOns\\Deathlog\\Fonts\\FletcherGothic-pwy.ttf"
-fonts["GothamNarrowUltra"] = "Interface\\AddOns\\Deathlog\\Fonts\\GothamNarrowUltra.ttf"
+local font_base_path = "Interface\\AddOns\\Deathlog\\Libs\\DeathNotificationLib\\Fonts\\"
+fonts["BreatheFire"] = font_base_path .. "BreatheFire.ttf"
+fonts["BlackChancery"] = font_base_path .. "BLKCHCRY.TTF"
+fonts["ArgosGeorge"] = font_base_path .. "ArgosGeorge.ttf"
+fonts["GothicaBook"] = font_base_path .. "Gothica-Book.ttf"
+fonts["Immortal"] = font_base_path .. "IMMORTAL.ttf"
+fonts["BlackwoodCastle"] = font_base_path .. "BlackwoodCastle.ttf"
+fonts["Alegreya"] = font_base_path .. "alegreya.regular.ttf"
+fonts["Cathedral"] = font_base_path .. "Cathedral.ttf"
+fonts["FletcherGothic"] = font_base_path .. "FletcherGothic-pwy.ttf"
+fonts["GothamNarrowUltra"] = font_base_path .. "GothamNarrowUltra.ttf"
 
 local themes = {
 	["None"] = "None",
@@ -135,7 +141,7 @@ death_log_frame.frame:EnableMouse(false)
 death_log_frame:SetTitle("Deathlog")
 death_log_frame.titletext:SetFont(Deathlog_L.mini_log_font, 19, "THICK")
 
-Deathlog_createInfoButton(death_log_frame, true, 28, -2)
+deathlog_createInfoButton(death_log_frame, true, 28, -2)
 
 local subtitle_metadata = {
 	["ColoredName"] = {
@@ -144,13 +150,11 @@ local subtitle_metadata = {
 		function(_entry)
 			local class_id = _entry.player_data["class_id"]
 			if class_id then
-				if deathlog_class_tbl[class_id] then
-					if RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()] then
-						return "|c"
-							.. RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()].colorStr
-							.. (_entry.player_data["name"] or "")
-							.. "|r"
-					end
+				if deathlog_class_colors[class_id] then
+					return "|c"
+						.. deathlog_class_colors[class_id].colorStr
+						.. (_entry.player_data["name"] or "")
+						.. "|r"
 				end
 			end
 			return _entry.player_data["name"] or ""
@@ -187,14 +191,14 @@ local subtitle_metadata = {
 			local _pvp_source_name = _entry.player_data["extra_data"] and _entry.player_data["extra_data"]["pvp_source_name"]
 			local _source = id_to_npc[_entry.player_data["source_id"]]
 				or deathlog_environment_damage[_entry.player_data["source_id"]]
-				or deathlog_decode_pvp_source(_entry.player_data["source_id"], _pvp_source_name)
+				or DeathNotificationLib.DecodePvPSource(_entry.player_data["source_id"], _pvp_source_name)
 				or ""
 
 			if _source == "" then
 				if _entry.player_data["predicted_source"] then
 					_source = _entry.player_data["predicted_source"]
-				elseif deathlogPredictSource then
-					local predicted = deathlogPredictSource(_entry.player_data["map_pos"], _entry.player_data["map_id"])
+				else
+					local predicted = deathlogPredictSource(_entry.player_data)
 					if predicted then
 						_entry.player_data["predicted_source"] = predicted
 						_source = predicted
@@ -210,16 +214,12 @@ local subtitle_metadata = {
 		function(_entry)
 			local class_id = _entry.player_data["class_id"]
 			if class_id then
-				local class_str, _, _ = GetClassInfo(class_id)
-				if class_id then
-					if deathlog_id_to_class_tbl[class_id] then
-						if RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()] then
-							return "|c"
-								.. RAID_CLASS_COLORS[deathlog_id_to_class_tbl[class_id]:upper()].colorStr
-								.. class_str
-								.. "|r"
-						end
-					end
+				local class_str = GetClassInfo(class_id)
+				if deathlog_class_colors[class_id] then
+					return "|c"
+						.. deathlog_class_colors[class_id].colorStr
+						.. (class_str or "")
+						.. "|r"
 				end
 				return class_str or ""
 			end
@@ -252,6 +252,13 @@ local subtitle_metadata = {
 		40,
 		function(_entry)
 			return _entry.player_data["guild"] or ""
+		end,
+	},
+	["Playtime"] = {
+		"Playtime",
+		70,
+		function(_entry)
+			return DeathNotificationLib.FormatPlaytime(_entry.player_data["played"]) or ""
 		end,
 	},
 	["LastWords"] = {
@@ -367,17 +374,21 @@ local function setupRowEntries()
 	local function WPDropDownDemo_Menu(frame, level, menuList)
 		local info = UIDropDownMenu_CreateInfo()
 
-		if death_tomb_frame.map_id and death_tomb_frame.coordinates then
+		local function canOpenWorldMap()
+			if not (death_tomb_frame.map_id and death_tomb_frame.coordinates) then
+				return false
+			end
+			if C_Map.GetMapInfo(death_tomb_frame["map_id"]) == nil then
+				return false
+			end
+			if tonumber(death_tomb_frame.coordinates[1]) == nil or tonumber(death_tomb_frame.coordinates[2]) == nil then
+				return false
+			end
+			return true
 		end
 
 		local function openWorldMap()
-			if not (death_tomb_frame.map_id and death_tomb_frame.coordinates) then
-				return
-			end
-			if C_Map.GetMapInfo(death_tomb_frame["map_id"]) == nil then
-				return
-			end
-			if tonumber(death_tomb_frame.coordinates[1]) == nil or tonumber(death_tomb_frame.coordinates[2]) == nil then
+			if not canOpenWorldMap() then
 				return
 			end
 
@@ -405,32 +416,56 @@ local function setupRowEntries()
 			death_tomb_frame:Show()
 		end
 
+		local function canBlockUser()
+			if not death_tomb_frame.clicked_name then
+				return false
+			end
+			if C_FriendList.GetNumIgnores() >= 50 then
+				return false
+			end
+			return true
+		end
+
 		local function blockUser()
-			if death_tomb_frame.clicked_name then
+			if not canBlockUser() then
 				local added = C_FriendList.AddIgnore(death_tomb_frame.clicked_name)
 			end
 		end
 
+		local function canWhisperPlayer()
+			if not death_tomb_frame.clicked_name then
+				return false
+			end
+			return true
+		end
+
 		local function whisperPlayer()
-			if death_tomb_frame.clicked_name then
+			if not canWhisperPlayer() then
 				ChatFrame_OpenChat("/w " .. death_tomb_frame.clicked_name .. " ")
 			end
 		end
 
+		local function canCheckSpoof()
+			if not death_tomb_frame.clicked_name then
+				return false
+			end
+			return true
+		end
+
 		local function checkSpoof()
-			if death_tomb_frame.clicked_name then
+			if not canCheckSpoof() then
 				C_FriendList.SendWho(death_tomb_frame.clicked_name)
 			end
 		end
 
 		if level == 1 then
-			info.text, info.hasArrow, info.func, info.disabled = "Whisper player", false, whisperPlayer, false
+			info.text, info.hasArrow, info.func, info.disabled = "Whisper player", false, whisperPlayer, not canWhisperPlayer()
 			UIDropDownMenu_AddButton(info)
-			info.text, info.hasArrow, info.func, info.disabled = "Show death location", false, openWorldMap, false
+			info.text, info.hasArrow, info.func, info.disabled = "Show death location", false, openWorldMap, not canOpenWorldMap()
 			UIDropDownMenu_AddButton(info)
-			info.text, info.hasArrow, info.func, info.disabled = "Block user", false, blockUser, false
+			info.text, info.hasArrow, info.func, info.disabled = "Block user", false, blockUser, not canBlockUser()
 			UIDropDownMenu_AddButton(info)
-			info.text, info.hasArrow, info.func, info.disabled = "Inspect user", false, checkSpoof, false
+			info.text, info.hasArrow, info.func, info.disabled = "Inspect user", false, checkSpoof, not canCheckSpoof()
 			UIDropDownMenu_AddButton(info)
 		end
 	end
@@ -505,16 +540,14 @@ local function setupRowEntries()
 					C_FriendList.SendWho(_entry["player_data"]["name"])
 				end
 			elseif click_type == "RightButton" then
+				death_tomb_frame.map_id = _entry["player_data"]["map_id"]
+				death_tomb_frame.coordinates = _entry["player_data"]["map_pos"] and strsplit(",", _entry["player_data"]["map_pos"], 2) or nil
+				death_tomb_frame.clicked_name = _entry["player_data"]["name"]
+				
 				local dropDown = CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
 				-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
 				UIDropDownMenu_Initialize(dropDown, WPDropDownDemo_Menu, "MENU")
 				ToggleDropDownMenu(1, nil, dropDown, "cursor", 3, -3)
-				if _entry["player_data"]["map_id"] and _entry["player_data"]["map_pos"] then
-					death_tomb_frame.map_id = _entry["player_data"]["map_id"]
-					local x, y = strsplit(",", _entry["player_data"]["map_pos"], 2)
-					death_tomb_frame.coordinates = { x, y }
-					death_tomb_frame.clicked_name = _entry["player_data"]["name"]
-				end
 			end
 		end)
 
@@ -683,6 +716,7 @@ local defaults = {
 	["tooltip_zone"] = true,
 	["tooltip_loc"] = true,
 	["tooltip_date"] = true,
+	["tooltip_playtime"] = true,
 	["tooltip_lastwords"] = true,
 	["lock"] = false,
 }
@@ -1293,97 +1327,7 @@ options = {
 			name = "Add fake entry",
 			desc = "Add fake entry",
 			func = function()
-				local idx = math.random(1, 100)
-				local some_name = UnitName("player")
-				local some_guild = ""
-				local found_random_name = false
-				if deathlog_data then
-					for servername, v in pairs(deathlog_data) do
-						for checksum, entry in pairs(v) do
-							some_name = entry["name"]
-							some_guild = entry["guild"]
-							idx = idx - 1
-							if idx < 1 then
-								found_random_name = true
-								break
-							end
-						end
-						if found_random_name then
-							break
-						end
-					end
-				end
-				idx = math.random(1, 100)
-				local some_source_id = -2
-				for k, v in pairs(id_to_npc) do
-					idx = idx - 1
-					some_source_id = k
-					if idx < 1 then
-						break
-					end
-				end
-
-				idx = math.random(1, 2)
-				local map_id = nil
-				local instance_id = nil
-				if idx == 1 then
-					idx = math.random(1, 10)
-					for k, v in pairs(id_to_instance) do
-						idx = idx - 1
-						instance_id = k
-						if idx < 1 then
-							break
-						end
-					end
-				else
-					idx = math.random(1, 10)
-					for _, zones in pairs(zone_to_id) do
-						for k, v in pairs(zones) do
-							idx = idx - 1
-							map_id = v
-							if idx < 1 then
-								break
-							end
-						end
-						if idx < 1 then
-							break
-						end
-					end
-				end
-
-				fake_player_data = {
-					["name"] = some_name,
-					["level"] = math.random(1, 60),
-					["class_id"] = math.random(1, 12),
-					["race_id"] = math.random(1, 8),
-					["source_id"] = some_source_id,
-					["map_id"] = map_id,
-					["instance_id"] = instance_id,
-					["guild"] = some_guild,
-				}
-
-				-- pvp tests
-				local pvp_r = math.random(0, 3)
-				local pvp_source_name = nil
-				if pvp_r == 1 then
-					fake_player_data["source_id"], pvp_source_name = deathlog_encode_pvp_source("target")
-				elseif pvp_r == 2 then
-					fake_player_data["source_id"], pvp_source_name = deathlog_encode_pvp_source(deathlog_last_attack_player)
-				elseif pvp_r == 3 and UnitIsPlayer("target") then
-					deathlog_refresh_last_attack_info(UnitName("target"))
-					deathlog_last_duel_to_death_player = deathlog_last_attack_player
-					fake_player_data["source_id"], pvp_source_name = deathlog_encode_pvp_source(deathlog_last_attack_player)
-					deathlog_last_duel_to_death_player = nil
-					deathlog_clear_last_attack_info()
-				end
-
-				if pvp_source_name and math.random(0, 100) < 50 then
-					fake_player_data["extra_data"] = {
-						["pvp_source_name"] = pvp_source_name,
-					}
-				end
-
-				deathlog_widget_minilog_createEntry(fake_player_data)
+				deathlog_widget_minilog_createEntry(DeathNotificationLib.CreateFakeEntry())
 			end,
 		},
 
@@ -1727,6 +1671,29 @@ options = {
 						end
 						deathlog_settings[widget_name]["tooltip_date"] =
 							not deathlog_settings[widget_name]["tooltip_date"]
+					end,
+				},
+				playtime = {
+					type = "toggle",
+					name = "Playtime",
+					desc = "Show the 'Playtime' row in the minilog tooltip",
+					order = 9,
+					get = function()
+						if
+							deathlog_settings[widget_name]["tooltip_playtime"] == nil
+							or deathlog_settings[widget_name]["tooltip_playtime"] == true
+						then
+							return true
+						else
+							return false
+						end
+					end,
+					set = function()
+						if deathlog_settings[widget_name]["tooltip_playtime"] == nil then
+							deathlog_settings[widget_name]["tooltip_playtime"] = true
+						end
+						deathlog_settings[widget_name]["tooltip_playtime"] =
+							not deathlog_settings[widget_name]["tooltip_playtime"]
 					end,
 				},
 				last_words = {

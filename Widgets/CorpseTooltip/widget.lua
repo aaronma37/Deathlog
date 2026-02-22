@@ -3,8 +3,8 @@ local widget_name = "Corpse Tooltip"
 
 local timer_handle = nil
 
-local corpse_word = Deathlog_L.corpse_word
-local of_word = Deathlog_L.of_word
+-- Build a Lua pattern from Blizzard's localized CORPSE_TOOLTIP ("Corpse of %s")
+local corpse_pattern = string.gsub(CORPSE_TOOLTIP, "%%s", "(.+)")
 
 local function checkForEntryAndSetTooltip()
 	if timer_handle then
@@ -13,15 +13,12 @@ local function checkForEntryAndSetTooltip()
 	timer_handle = C_Timer.NewTimer(0.1, function()
 		local text = _G["GameTooltipTextLeft1"]:GetText()
 		if text ~= nil then
-			local a, b = strsplit(" ", text, 2)
-			if a == corpse_word then
-				local c, _name = strsplit(" ", b, 2)
-				if c == of_word then
-					local realmName = GetRealmName()
-					local _entry = deathlog_data[realmName][deathlog_data_map[realmName][_name]]
-					deathlog_setTooltipFromEntry(_entry)
-					GameTooltip:Show()
-				end
+			local _name = string.match(text, corpse_pattern)
+			if _name then
+				local realmName = GetRealmName()
+				local _entry = deathlog_data[realmName][deathlog_data_map[realmName][_name]]
+				deathlog_setTooltipFromEntry(_entry)
+				GameTooltip:Show()
 			end
 		end
 	end)

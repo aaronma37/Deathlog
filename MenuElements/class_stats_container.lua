@@ -17,7 +17,8 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
-local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
+local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
+local deathlog_class_colors = DeathNotificationLib.CLASS_COLORS
 local class_stat_comparison_container = CreateFrame("Frame")
 class_stat_comparison_container:SetSize(100, 100)
 class_stat_comparison_container:Show()

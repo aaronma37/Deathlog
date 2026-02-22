@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-id_to_quote_de = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.de.ID_TO_QUOTE = {
   [6]="Yiieeeee! Ich wegrennen!",
   [38]="Dieses Land gehört jetzt der Bruderschaft der Defias!",
   [40]="Du nicht nehmen Kerze!",

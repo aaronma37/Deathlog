@@ -125,29 +125,12 @@ SlashCmdList["DEATHLOGREPORT"] = function()
 		Deathlog_ReportWidget_RemoveFromQueue(entry.name)
 	else
 		-- Targeting failed (player out of range/released), try /who as fallback
-		if deathlog_query_who then
-			deathlog_query_who(entry.name, function(who_info)
+		if DeathNotificationLib.WhoPlayer then
+			DeathNotificationLib.WhoPlayer(entry.name, function(who_info)
 				if who_info then
-					local who_class_id = entry.class_id
-					if who_info.filename then
-						local class_map = {
-							["WARRIOR"] = 1, ["PALADIN"] = 2, ["HUNTER"] = 3, ["ROGUE"] = 4,
-							["PRIEST"] = 5, ["DEATHKNIGHT"] = 6, ["SHAMAN"] = 7, ["MAGE"] = 8,
-							["WARLOCK"] = 9, ["MONK"] = 10, ["DRUID"] = 11
-						}
-						who_class_id = class_map[who_info.filename] or entry.class_id
-					end
-					
-					local who_race_id = entry.race_id
-					if who_info.raceStr then
-						local race_map = {
-							["Human"] = 1, ["Orc"] = 2, ["Dwarf"] = 3, ["Night Elf"] = 4,
-							["Undead"] = 5, ["Tauren"] = 6, ["Gnome"] = 7, ["Troll"] = 8,
-							["Goblin"] = 9, ["Blood Elf"] = 10, ["Draenei"] = 11
-						}
-						who_race_id = race_map[who_info.raceStr] or entry.race_id
-					end
-					
+					local who_class_id = who_info.filename and DeathNotificationLib.CLASS_FILE_TO_ID[who_info.filename] or nil
+					local who_race_id = who_info.raceStr and DeathNotificationLib.RACE_NAME_TO_ID[who_info.raceStr] or nil
+
 					Deathlog_ReportWidget_CreateEntry(entry.name, who_info.level, who_info.fullGuildName, who_race_id, who_class_id, entry.map_id, entry.map_pos, entry.instance_id)
 				else
 					-- Both failed, create with partial info
@@ -155,7 +138,7 @@ SlashCmdList["DEATHLOGREPORT"] = function()
 				end
 				Deathlog_ReportWidget_RemoveFromQueue(entry.name)
 			end)
-			
+
 			-- Timeout for /who
 			C_Timer.After(5, function()
 				if report_queue[entry.name] then
@@ -171,23 +154,21 @@ SlashCmdList["DEATHLOGREPORT"] = function()
 	end
 end
 
--- Helper: Create death entry via DeathNotificationLib
+-- Helper: Broadcast reported death via DeathNotificationLib
 function Deathlog_ReportWidget_CreateEntry(name, level, guild, race_id, class_id, map_id, map_pos, instance_id)
-	if not DeathNotificationLib_CreateTarnishedSoulEntry then
+	if not DeathNotificationLib.BroadcastReportedDeath then
 		print("|cffFF6600[Deathlog]|r ReportWidget: DeathNotificationLib not loaded")
 		return
 	end
-	
-	DeathNotificationLib_CreateTarnishedSoulEntry(name, level, guild, race_id, class_id, map_id, map_pos, instance_id)
+
+	local success, error_message = DeathNotificationLib.BroadcastReportedDeath(name, guild, -1, race_id, class_id, level, instance_id, map_id, map_pos, time(), nil, nil)
+	if not success then
+		print("|cffFF6600[Deathlog]|r ReportWidget: Failed to broadcast death - " .. (error_message or "unknown error"))
+	end
 end
 
--- Add a player to the report queue
-function Deathlog_ReportWidget_QueuePlayer(name, guid, race_id, class_id, guild, map_id, map_pos, instance_id)
-	-- Only works on Soul of Iron realms
-	if not Deathlog_isSoulOfIronRealm then
-		return false
-	end
-	
+-- Add a player to the report queue (registered as a QueuePlayer hook)
+local function reportWidgetQueuePlayer(name, guid, race_id, class_id, guild, map_id, map_pos, instance_id)
 	-- Check if reporting is enabled
 	if deathlog_settings and deathlog_settings[widget_name] and deathlog_settings[widget_name]["enable"] == false then
 		return false
@@ -349,11 +330,6 @@ local options = {
 
 local optionsframe = nil
 function Deathlog_ReportWidget_ApplySettings()
-	-- Only show settings on Soul of Iron realms
-	if not Deathlog_isSoulOfIronRealm then
-		return
-	end
-	
 	applyDefaults(defaults)
 	
 	report_frame:ClearAllPoints()
@@ -373,8 +349,8 @@ end
 
 -- Hook into death notifications to remove reported players from queue
 local function hookDeathNotifications()
-	if DeathNotificationLib_HookOnNewEntry then
-		DeathNotificationLib_HookOnNewEntry(function(_player_data)
+	if DeathNotificationLib.HookOnNewEntry then
+		DeathNotificationLib.HookOnNewEntry(function(_player_data)
 			if _player_data and _player_data["name"] then
 				-- Someone else reported this death, remove from our queue
 				Deathlog_ReportWidget_RemoveFromQueue(_player_data["name"])
@@ -388,7 +364,9 @@ local init_frame = CreateFrame("Frame")
 init_frame:RegisterEvent("PLAYER_LOGIN")
 init_frame:SetScript("OnEvent", function(self, event)
 	if event == "PLAYER_LOGIN" then
-		Deathlog_ReportWidget_ApplySettings()
 		hookDeathNotifications()
 	end
 end)
+
+-- Register the queue-player hook so DNL invokes us for reported deaths
+DeathNotificationLib.HookQueuePlayer(reportWidgetQueuePlayer)

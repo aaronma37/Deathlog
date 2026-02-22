@@ -2,28 +2,18 @@ deathlog_strings_en = {
 	-- fonts
 	main_font = "Fonts\\FRIZQT__.TTF",
 	class_font = "Fonts\\blei00d.TTF",
-	death_alert_font = "Fonts\\blei00d.TTF",
 	mini_log_font = "Fonts\\blei00d.TTF",
 	menu_font = "Fonts\\blei00d.TTF",
 	deadliest_creature_container_font = "Fonts\\blei00d.TTF",
 	creature_model_quote_font = "Fonts\\MORPHEUS.TTF",
-	-- death alerts messages
-	death_alert_default_message = "<name> the <race> <class> has been slain\nby <source> at lvl <level> in <zone>.",
-	death_alert_default_fall_message = "<name> the <race> <class> fell to\ndeath at lvl <level> in <zone>.",
-	death_alert_default_drown_message = "<name> the <race> <class> drowned\n at lvl <level> in <zone>.",
-	death_alert_default_slime_message = "<name> the <race> <class> has died from slime.\n at lvl <level> in <zone>.",
-	death_alert_default_lava_message = "<name> the <race> <class> drowned in lava.\n at lvl <level> in <zone>.",
-	death_alert_default_fire_message = "<name> the <race> <class> has died from fire.\n at lvl <level> in <zone>.",
-	death_alert_default_fatigue_message = "<name> the <race> <class> has died from fatigue.\n at lvl <level> in <zone>.",
 	-- words
-	corpse_word = "Corpse",
-	of_word = "of",
 	minimap_btn_left_click = "|cFF666666Left Click:|r View log",
 	minimap_btn_right_click = "|cFF666666Right Click:|r ",
 	class_word = "Class",
 	killed_by_word = "Killed by",
 	zone_instance_word = "Zone/Instance",
 	date_word = "Date",
+	playtime_word = "Playtime",
 	last_words_word = "Last words",
 	death_word = "Death",
 	guild_word = "Guild",
@@ -39,55 +29,11 @@ deathlog_strings_en = {
 		{ value = "LogTab", text = "Search" },
 		{ value = "WatchListTab", text = "Watch List" },
 	},
-	-- Expansion names for UI display
-	expansion_names = {
-		[0] = "Classic",
-		[1] = "The Burning Crusade",
-	},
-	--- Blizzard hardcore death broadcast parsing function (nil if not supported in this language yet)
-	-- @param msg string The death broadcast message to parse
-	-- @return string|nil name The player name
-	-- @return number|nil source_id The creature/source ID or special ID for environmental deaths
-	-- @return string|nil area The area name where death occurred
-	-- @return number|nil level The player level
-	-- @return string|nil pvp_source_name The PvP player name (if applicable)
-	parse_hc_death_broadcast = function(msg)
-		-- Regex: \|Hplayer:(.*)\|h\[(.*)]\|h has been slain by a (.*) in (.*)! They were level (\d*)
-		local _, name, source, area, level = msg:match("|Hplayer:(.-)|h%[(.-)%]|h has been slain by a (.-) in (.-)! They were level (%d+)")
-		if name and source and area and level then
-			return name, npc_to_id[source], area, tonumber(level), nil
-		end
-
-		-- Regex: \|Hplayer:(.*)\|h\[(.*)]\|h has been slain by (.*) in (.*)! They were level (\d*)
-		_, name, source, area, level = msg:match("|Hplayer:(.-)|h%[(.-)%]|h has been slain by (.-) in (.-)! They were level (%d+)")
-		if name and source and area and level then
-			return name, deathlog_create_pvp_source_id(deathlog_pvp_flag.REGULAR) , area, tonumber(level), source
-		end
-
-		-- Regex: \|Hplayer:(.*)\|h\[(.*)]\|h drowned to death in (.*)! They were level (\d*)
-		_, name, area, level = msg:match("|Hplayer:(.-)|h%[(.-)%]|h drowned to death in (.-)! They were level (%d+)")
-		if name and area and level then
-			return name, -2, area, tonumber(level), nil
-		end
-
-		-- Regex: \|Hplayer:(.*)\|h\[(.*)]\|h fell to their death in (.*)! They were level (\d*)
-		_, name, area, level = msg:match("|Hplayer:(.-)|h%[(.-)%]|h fell to their death in (.-)! They were level (%d+)")
-		if name and area and level then
-			return name, -3, area, tonumber(level), nil
-		end
-
-		-- Regex: \|Hplayer:(.*)|h\[(.*)\]|h has died from fatigue in (.*)! They were level (\d*)
-		_, name, area, level = msg:match("|Hplayer:(.-)|h%[(.-)%]|h has died from fatigue in (.-)! They were level (%d+)")
-		if name and area and level then
-			return name, -4, area, tonumber(level), nil
-		end
-
-		return nil, nil, nil, nil, nil
-	end,
-	--- Soul of Iron tarnished soul emote parsing function (nil if not supported in this language yet)
-	-- @param msg string The emote message to check
-	-- @return boolean true if message matches tarnished soul pattern, false otherwise
-	parse_tarnished_soul_emote = function(msg)
-		return msg == "Death tarnishes %s's soul."
-	end,
+	-- CTA (Call to Action) strings
+	cta_title = "Your Deathlog Data Matters!",
+	cta_body = "You've collected over %d death entries — that's incredible!\n\nThis data helps us build better stats, heatmaps, and insights for the entire hardcore community.\n\nPlease consider sharing your database file with us!",
+	cta_file_path = "File: WTF/Account/<name>/SavedVariables/Deathlog.lua",
+	cta_remind_later = "Remind me later",
+	cta_dismiss = "Don't show again",
+	cta_menu_banner = "You have %d entries! Help the community — share your data.",
 }

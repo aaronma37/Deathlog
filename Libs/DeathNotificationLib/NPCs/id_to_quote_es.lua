@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-id_to_quote_es = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.es.ID_TO_QUOTE = {
   [2564]="¡Te machacaré!",
   [2566]="¡Yo machacar! ¡Tú morir!",
   [4452]="Ya está, esto deberá servir...",

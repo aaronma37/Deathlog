@@ -243,8 +243,8 @@ local function checkAll()
 			if deathlog_watchlist_entries[_name] then
 				deathlog_watchlist_entries[_name]["last_checked"] = time()
 			end
-			DeathNotificationLib_queryGuild(_name)
-			DeathNotificationLib_querySay(_name)
+			DeathNotificationLib.QueryGuild(_name)
+			DeathNotificationLib.QuerySay(_name)
 		end
 		idx = idx + 1
 	end, 20)

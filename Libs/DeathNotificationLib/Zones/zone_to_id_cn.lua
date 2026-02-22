@@ -1,10 +1,13 @@
 -- Auto-generated zone map data. Do not edit manually.
 -- Version: bd8505fb
-zone_to_id_cn = {}
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.cn.ZONE_TO_ID = {}
 
 
 do
-  zone_to_id_cn[0] = {
+  _dnl.L.cn.ZONE_TO_ID[0] = {
     ["艾澤拉斯"] = 947,
     ["杜洛塔"] = 1411,
     ["莫高雷"] = 1412,
@@ -62,7 +65,7 @@ end
 
 if GetExpansionLevel and GetExpansionLevel() >= 1 then
 do
-  zone_to_id_cn[1] = {
+  _dnl.L.cn.ZONE_TO_ID[1] = {
     ["寰宇"] = 946,
     ["永歌森林"] = 1941,
     ["鬼魂之地"] = 1942,

@@ -1,10 +1,13 @@
 -- Auto-generated zone map data. Do not edit manually.
 -- Version: bd8505fb
-zone_to_id_ru = {}
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.ru.ZONE_TO_ID = {}
 
 
 do
-  zone_to_id_ru[0] = {
+  _dnl.L.ru.ZONE_TO_ID[0] = {
     ["Азерот"] = 947,
     ["Дуротар"] = 1411,
     ["Мулгор"] = 1412,
@@ -62,7 +65,7 @@ end
 
 if GetExpansionLevel and GetExpansionLevel() >= 1 then
 do
-  zone_to_id_ru[1] = {
+  _dnl.L.ru.ZONE_TO_ID[1] = {
     ["Космос"] = 946,
     ["Леса Вечной Песни"] = 1941,
     ["Призрачные земли"] = 1942,

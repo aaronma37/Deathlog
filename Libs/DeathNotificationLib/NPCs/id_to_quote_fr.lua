@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-id_to_quote_fr = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.fr.ID_TO_QUOTE = {
   [122]="La Confrérie ne tolérera pas vos actions.",
   [424]="Grrrr... de la viande fraîche !",
   [467]="L'entrée est dissimulée ici, à Ruisselune. Ouvrez l'œil, il peut y avoir des voleurs. Ils veulent ma mort.",

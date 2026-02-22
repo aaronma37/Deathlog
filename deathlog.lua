@@ -18,10 +18,12 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 local addonName, addon = ...
 
+local id_to_npc = DeathNotificationLib.ID_TO_NPC
+local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
+local SOURCE = DeathNotificationLib.SOURCE
+
 local save_precompute = false
 local use_precomputed = true
-local last_attack_source = nil
-local recent_msg = nil
 local general_stats = {}
 local log_normal_params = {}
 local class_data = {}
@@ -44,9 +46,13 @@ local most_deadly_units_normalized = {
 deathlog_data = deathlog_data or {}
 deathlog_data_map = deathlog_data_map or {}
 deathlog_settings = deathlog_settings or {}
+deathlog_char_data = deathlog_char_data or {}
+deathlog_dev_data = deathlog_dev_data or {}
+deathlog_entry_counts = deathlog_entry_counts or {}
 
+local sync_options -- forward declaration; populated after options table
+local deathlog_sync_options_registered = false
 local deathlog_minimap_button_stub = nil
-local deathlog_minimap_button_info = {}
 local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject(addonName, {
 	type = "data source",
 	text = addonName,
@@ -69,7 +75,10 @@ local function initMinimapButton()
 	if deathlog_minimap_button_stub:IsRegistered(addonName) then
 		return
 	end
-	deathlog_minimap_button_stub:Register(addonName, deathlog_minimap_button, deathlog_minimap_button_info)
+	if deathlog_settings.minimap == nil then
+		deathlog_settings.minimap = {}
+	end
+	deathlog_minimap_button_stub:Register(addonName, deathlog_minimap_button, deathlog_settings.minimap)
 
 	if deathlog_settings["show_minimap"] ~= nil and deathlog_settings["show_minimap"] == false then
 		deathlog_minimap_button_stub:Hide(addonName)
@@ -82,7 +91,43 @@ local function loadWidgets()
 	Deathlog_CTTWidget_applySettings()
 	Deathlog_HIWidget_applySettings()
 	Deathlog_HWMWidget_applySettings()
-	Deathlog_DeathAlertWidget_applySettings()
+	DeathNotificationLib.UpdateDeathAlert()
+	Deathlog_ReportWidget_ApplySettings()
+end
+
+--- Initialize entry counters from existing data on first load.
+--- Classifies legacy entries by inspecting available fields:
+---   - Has both class_id and race_id → "self_death" (older clients only had addon-reported deaths with full data)
+---   - Missing class_id or race_id → "blizzard" (Blizzard's HARDCORE_DEATHS channel reports lack these fields)
+local function initEntryCounters()
+	if deathlog_entry_counts == nil then
+		deathlog_entry_counts = {}
+	end
+
+	if deathlog_entry_counts["initialized"] then
+		return
+	end
+
+	local total = 0
+	local self_death = 0
+	local blizzard = 0
+	for realmName, entries in pairs(deathlog_data) do
+		if type(entries) == "table" then
+			for _, entry in pairs(entries) do
+				total = total + 1
+				if entry["class_id"] and entry["race_id"] then
+					self_death = self_death + 1
+				else
+					blizzard = blizzard + 1
+				end
+			end
+		end
+	end
+
+	deathlog_entry_counts[SOURCE.SELF_DEATH] = self_death
+	deathlog_entry_counts[SOURCE.BLIZZARD] = blizzard
+	deathlog_entry_counts["total"] = total
+	deathlog_entry_counts["initialized"] = true
 end
 
 function Deathlog_LoadFromHardcore()
@@ -113,6 +158,7 @@ function Deathlog_LoadFromHardcore()
 					["level"] = v["level"],
 					["map_id"] = v["map_id"],
 					["instance_id"] = v["instance_id"],
+					["played"] = v["played"],
 					["last_words"] = v["last_words"],
 				}
 			else
@@ -123,34 +169,140 @@ function Deathlog_LoadFromHardcore()
 	end
 end
 
+-- sync_options registered in handleEvent after loadWidgets() so it appears last in the sidebar
+-- Deduplication window in seconds - deaths of the same player within this window are considered duplicates
+-- This works alongside DeathNotificationLib's dedup mechanisms (lru_by_name)
+-- but operates at the final entry point to catch duplicates from different sources (addon broadcast vs HARDCORE_DEATHS)
+local DEATHLOG_DEDUP_WINDOW = 60
+
+local function newEntry(_player_data, _checksum, num_peer_checks, in_guild, source)
+	local realmName = GetRealmName()
+	if deathlog_data == nil then
+		deathlog_data = {}
+	end
+
+	if deathlog_data_map == nil then
+		deathlog_data_map = {}
+	end
+
+	if deathlog_data[realmName] == nil then
+		deathlog_data[realmName] = {}
+	end
+
+	if deathlog_data_map[realmName] == nil then
+		deathlog_data_map[realmName] = {}
+	end
+
+	local player_name = _player_data["name"]
+	local current_time = _player_data["date"] or time()
+
+	-- Check for existing entry for this player (deduplication)
+	local existing_checksum = deathlog_data_map[realmName][player_name]
+	if existing_checksum and deathlog_data[realmName][existing_checksum] then
+		local existing_entry = deathlog_data[realmName][existing_checksum]
+		local existing_time = existing_entry["date"] or 0
+		local time_diff = math.abs(current_time - existing_time)
+
+		-- If there's a recent entry for the same player, merge or skip
+		if time_diff <= DEATHLOG_DEDUP_WINDOW then
+			local existing_quality = DeathNotificationLib.EntryQuality(existing_entry)
+			local new_quality = DeathNotificationLib.EntryQuality(_player_data)
+
+			if new_quality > existing_quality then
+				-- New entry has more data - merge entries to preserve any unique data from existing
+				_player_data = DeathNotificationLib.MergeEntries(_player_data, existing_entry)
+				-- Remove old entry (will be replaced with merged entry under new checksum)
+				deathlog_data[realmName][existing_checksum] = nil
+			elseif new_quality < existing_quality then
+				-- Existing entry is better - merge any new unique data into existing, skip creating new
+				local merged = DeathNotificationLib.MergeEntries(existing_entry, _player_data)
+				deathlog_data[realmName][existing_checksum] = merged
+				return
+			else
+				-- Equal quality - merge and keep existing checksum, skip new entry
+				local merged = DeathNotificationLib.MergeEntries(existing_entry, _player_data)
+				deathlog_data[realmName][existing_checksum] = merged
+				return
+			end
+		end
+	end
+
+	local modified_checksum = DeathNotificationLib.Fletcher16(_player_data)
+
+
+	deathlog_data[realmName][modified_checksum] = _player_data
+
+	-- Only create widgets for self-reported deaths, peer broadcasts, and Blizzard notifications.
+	-- Death alert is now handled internally by DNL (~DeathAlert.lua) via createEntry().
+	if source == SOURCE.SELF_DEATH or source == SOURCE.PEER_BROADCAST or source == SOURCE.BLIZZARD then
+		deathlog_widget_minilog_createEntry(_player_data)
+	end
+
+	deathlog_data_map[realmName][player_name] = modified_checksum
+
+	source = source or SOURCE.UNKNOWN
+	if deathlog_entry_counts then
+		deathlog_entry_counts[source] = (deathlog_entry_counts[source] or 0) + 1
+		deathlog_entry_counts["total"] = (deathlog_entry_counts["total"] or 0) + 1
+	end
+end
+
 local function handleEvent(self, event, ...)
 	if event == "PLAYER_ENTERING_WORLD" then
 		initMinimapButton()
-		if deathlog_data[GetRealmName()] and deathlog_data_map[GetRealmName()] then
-			DeathNotificationLib_attachDB(deathlog_data[GetRealmName()], deathlog_data_map[GetRealmName()])
+		-- Ensure realm sub-tables exist so AttachAddon receives valid table
+		-- references (not nil) that remain in sync with newEntry.
+		local realmName = GetRealmName()
+		if deathlog_data[realmName] == nil then
+			deathlog_data[realmName] = {}
 		end
+		if deathlog_data_map[realmName] == nil then
+			deathlog_data_map[realmName] = {}
+		end
+
+		DeathNotificationLib.AttachAddon({
+			name             = "Deathlog",
+			tag              = "DLG",
+			isUnitTracked    = deathlog_isUnitTracked,
+			settings         = deathlog_settings,
+			db               = deathlog_data[realmName],
+			db_map           = deathlog_data_map[realmName],
+			dev_data         = deathlog_dev_data,
+		})
+		DeathNotificationLib.HookOnNewAddonEntry("Deathlog", newEntry)
 		if use_precomputed then
 			general_stats = precomputed_general_stats
 			log_normal_params = precomputed_log_normal_params
-			dev_precomputed_general_stats = nil
-			dev_precomputed_log_normal_params = nil
-			dev_class_data = nil
+			deathlog_dev_data.precomputed_general_stats = nil
+			deathlog_dev_data.precomputed_log_normal_params = nil
+			deathlog_dev_data.class_data = nil
 		else
 			Deathlog_LoadFromHardcore()
 			general_stats = deathlog_calculate_statistics(deathlog_data, nil)
 			log_normal_params = deathlog_calculateLogNormalParameters(deathlog_data)
 			class_data = deathlog_calculateClassData(deathlog_data)
 			if save_precompute then
-				dev_precomputed_general_stats = general_stats
-				dev_precomputed_log_normal_params = log_normal_params
-				dev_class_data = class_data
+				deathlog_dev_data.precomputed_general_stats = general_stats
+				deathlog_dev_data.precomputed_log_normal_params = log_normal_params
+				deathlog_dev_data.class_data = class_data
 			else
-				dev_precomputed_general_stats = nil
-				dev_precomputed_log_normal_params = nil
+				deathlog_dev_data.precomputed_general_stats = nil
+				deathlog_dev_data.precomputed_log_normal_params = nil
 			end
 		end
 		most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
 		loadWidgets()
+
+		initEntryCounters()
+		C_Timer.After(2.5, function()
+			Deathlog_CheckCTA()
+		end)
+
+		if not deathlog_sync_options_registered then
+			deathlog_sync_options_registered = true
+			LibStub("AceConfig-3.0"):RegisterOptionsTable("DeathlogSync", sync_options)
+			LibStub("AceConfigDialog-3.0"):AddToBlizOptions("DeathlogSync", "Database Sync", "Deathlog")
+		end
 	end
 end
 
@@ -158,7 +310,9 @@ local function SlashHandler(msg, editbox)
 	if msg == "option" or msg == "options" then
 		Settings.OpenToCategory(addonName)
 	elseif msg == "alert" then
-		Deathlog_DeathAlertFakeDeath()
+		DeathNotificationLib.TestDeathAlert()
+	elseif msg == "sync" then
+		DeathNotificationLib.SyncStatus()
 	else
 		deathlogShowMenu(deathlog_data, general_stats, log_normal_params)
 	end
@@ -183,6 +337,7 @@ local options = {
 			name = "Import deathlog from hardcore",
 			desc = "Import deathlog from hardcore. This will append entries.",
 			width = 1.3,
+			order = 1,
 			func = function()
 				Deathlog_LoadFromHardcore()
 			end,
@@ -192,31 +347,50 @@ local options = {
 			name = "Clear cache",
 			desc = "WARNING: This will remove deathlog data.  Do this if your log is getting too long.  The data is stored at _classic_era_/WTF/Account/<your_account_name>/SavedVariables/Deathlog.lua.  Reload after doing this.",
 			width = 1.3,
+			order = 2,
 			func = function()
 				deathlog_data = {}
 				deathlog_data_map = {}
 			end,
 		},
-		require_validation = {
+		peer_reporting = {
 			type = "toggle",
-			name = "Allow guildless death logging",
-			desc = "Toggle guildless death logging.  Guild-based death logging requires validation from guildmates to validate.  Guildless logging allows deaths to get logged without being validated.",
+			name = "Allow peer-reported deaths",
+			desc = "When enabled, deaths reported by party/raid members and tarnished soul detections from other players are accepted. When disabled, only self-reported deaths and Blizzard's hardcore death channel notifications are shown.",
 			width = 1.3,
+			order = 10,
 			get = function()
-				if deathlog_settings["deathless_logging"] == nil then
-					deathlog_settings["deathless_logging"] = true
+				if deathlog_settings["peer_reporting"] == nil then
+					deathlog_settings["peer_reporting"] = true
 				end
-				return deathlog_settings["deathless_logging"]
+				return deathlog_settings["peer_reporting"]
 			end,
 			set = function()
-				deathlog_settings["deathless_logging"] = not deathlog_settings["deathless_logging"]
+				deathlog_settings["peer_reporting"] = not deathlog_settings["peer_reporting"]
+			end,
+		},
+		accept_legacy_messages = {
+			type = "toggle",
+			name = "Accept legacy protocol messages",
+			desc = "When enabled, death messages from older addon versions (v0–v2 protocol) are accepted. When disabled, only current (v3) protocol messages are processed.",
+			width = 1.3,
+			order = 20,
+			get = function()
+				if deathlog_settings["legacy_messages"] == nil then
+					deathlog_settings["legacy_messages"] = true
+				end
+				return deathlog_settings["legacy_messages"]
+			end,
+			set = function()
+				deathlog_settings["legacy_messages"] = not deathlog_settings["legacy_messages"]
 			end,
 		},
 		show_addonless_deaths = {
 			type = "toggle",
 			name = "Allow addonless death logging",
-			desc = "Toggle addonless death logging.  Addonless deaths use blizzard notifications to log deaths from those who are not using the addon.",
+			desc = "When enabled, deaths received from Blizzard's HardcoreDeaths channel are converted into Deathlog entries. These entries have less detail (no race, class, or precise location) since the dying player isn't running the addon. Disable this if you only want full-quality addon-reported deaths in your log.",
 			width = 1.3,
+			order = 30,
 			get = function()
 				if deathlog_settings["addonless_logging"] == nil then
 					deathlog_settings["addonless_logging"] = false
@@ -227,11 +401,44 @@ local options = {
 				deathlog_settings["addonless_logging"] = not deathlog_settings["addonless_logging"]
 			end,
 		},
+		auto_blizzard_deaths = {
+			type = "toggle",
+			name = "Auto-configure Blizzard death tracking",
+			desc = "When enabled, Deathlog automatically configures the Blizzard hardcore death CVars, joins the HardcoreDeaths channel (hidden), and periodically verifies they remain active. This lets us convert Blizzard's built-in death notifications into full Deathlog entries. If you don't want lower-quality data from these notifications, you can leave this on and disable 'Allow addonless death logging' instead.",
+			width = 1.3,
+			order = 35,
+			get = function()
+				if deathlog_settings["auto_blizzard_deaths"] == nil then
+					deathlog_settings["auto_blizzard_deaths"] = true
+				end
+				return deathlog_settings["auto_blizzard_deaths"]
+			end,
+			set = function()
+				deathlog_settings["auto_blizzard_deaths"] = not deathlog_settings["auto_blizzard_deaths"]
+			end,
+		},
+		share_playtime = {
+			type = "toggle",
+			name = "Include playtime in death report",
+			desc = "When enabled, your total /played time is included in your death broadcast so others can see how long you survived. Disable this if you prefer to keep your playtime private.",
+			width = 1.3,
+			order = 36,
+			get = function()
+				if deathlog_settings["share_playtime"] == nil then
+					deathlog_settings["share_playtime"] = true
+				end
+				return deathlog_settings["share_playtime"]
+			end,
+			set = function()
+				deathlog_settings["share_playtime"] = not deathlog_settings["share_playtime"]
+			end,
+		},
 		show_minimap_button = {
 			type = "toggle",
 			name = "Show minimap button",
-			desc = "Toggles whether the minimap is visible.",
+			desc = "Toggles whether the minimap button is visible.",
 			width = 1.3,
+			order = 40,
 			get = function()
 				if deathlog_settings["show_minimap"] == nil then
 					deathlog_settings["show_minimap"] = true
@@ -253,6 +460,7 @@ local options = {
 			name = "Colored tooltips",
 			desc = "Toggles whether tooltips have colored fields.",
 			width = 1.3,
+			order = 50,
 			get = function()
 				if deathlog_settings["colored_tooltips"] == nil then
 					deathlog_settings["colored_tooltips"] = false
@@ -268,6 +476,7 @@ local options = {
 			name = "Source prediction radius",
 			desc = "Search radius (in map cells) when predicting the death source from heatmap data. Higher values may find matches further away but could be less accurate.",
 			width = 1.5,
+			order = 60,
 			min = 0,
 			max = 20,
 			step = 1,
@@ -287,159 +496,117 @@ local options = {
 LibStub("AceConfig-3.0"):RegisterOptionsTable(addonName, options)
 optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addonName, "Deathlog", nil)
 
--- Deduplication window in seconds - deaths of the same player within this window are considered duplicates
--- This works alongside DeathNotificationLib's dedup mechanisms (bliz_alert_cache, tarnished_soul_cache)
--- but operates at the final entry point to catch duplicates from different sources (addon broadcast vs HARDCORE_DEATHS)
-local DEATHLOG_DEDUP_WINDOW = 60
-
--- Calculate entry quality by counting populated fields
--- Similar to DeathNotificationLib's REPORT_QUALITY but more granular
-local function deathlog_calculate_entry_quality(entry)
-	local count = 0
-	if entry["guild"] and entry["guild"] ~= "" then count = count + 1 end
-	if entry["race_id"] then count = count + 1 end
-	if entry["class_id"] then count = count + 1 end
-	if entry["source_id"] and entry["source_id"] ~= -1 then count = count + 1 end
-	if entry["map_id"] then count = count + 1 end
-	if entry["map_pos"] then count = count + 1 end
-	if entry["instance_id"] then count = count + 1 end
-	if entry["last_words"] and entry["last_words"] ~= "" then count = count + 1 end
-	return count
-end
-
--- Merge two entries, preferring non-nil/non-empty values
--- Returns a new merged entry
-local function deathlog_merge_entries(entry_a, entry_b)
-	local merged = {}
-	local fields = {"name", "guild", "source_id", "race_id", "class_id", "level", "instance_id", "map_id", "map_pos", "date", "last_words", "extra_data", "predicted_source"}
-	for _, field in ipairs(fields) do
-		local val_a = entry_a[field]
-		local val_b = entry_b[field]
-		-- Prefer non-nil, non-empty values; for source_id prefer non -1
-		if field == "source_id" then
-			if val_a and val_a ~= -1 then
-				merged[field] = val_a
-			elseif val_b and val_b ~= -1 then
-				merged[field] = val_b
-			else
-				merged[field] = val_a or val_b
-			end
-		elseif field == "guild" or field == "last_words" or field == "map_pos" then
-			-- For string fields, prefer non-empty
-			if val_a and val_a ~= "" then
-				merged[field] = val_a
-			elseif val_b and val_b ~= "" then
-				merged[field] = val_b
-			else
-				merged[field] = val_a or val_b
-			end
-		else
-			merged[field] = val_a or val_b
-		end
-	end
-	return merged
-end
-
-local function newEntry(_player_data, _checksum, num_peer_checks, in_guild)
-	local realmName = GetRealmName()
-	if deathlog_data == nil then
-		deathlog_data = {}
-	end
-
-	if deathlog_data_map == nil then
-		deathlog_data_map = {}
-	end
-
-	if deathlog_data[realmName] == nil then
-		deathlog_data[realmName] = {}
-	end
-
-	if deathlog_data_map[realmName] == nil then
-		deathlog_data_map[realmName] = {}
-	end
-
-	local function deathlog_modified_fletcher16(_player_data)
-		local function deathlog_fletcher16(name, guild, level, source)
-			local data = name .. (guild or "") .. (level or 0) .. (source or -1)
-			local sum1 = 0
-			local sum2 = 0
-			for index = 1, #data do
-				sum1 = (sum1 + string.byte(string.sub(data, index, index))) % 255
-				sum2 = (sum2 + sum1) % 255
-			end
-			return name .. "-" .. bit.bor(bit.lshift(sum2, 8), sum1)
-		end
-		return deathlog_fletcher16(
-			_player_data["name"],
-			_player_data["guild"],
-			_player_data["level"],
-			_player_data["source_id"]
-		)
-	end
-
-	local player_name = _player_data["name"]
-	local current_time = _player_data["date"] or time()
-
-	-- Check for existing entry for this player (deduplication)
-	local existing_checksum = deathlog_data_map[realmName][player_name]
-	if existing_checksum and deathlog_data[realmName][existing_checksum] then
-		local existing_entry = deathlog_data[realmName][existing_checksum]
-		local existing_time = existing_entry["date"] or 0
-		local time_diff = math.abs(current_time - existing_time)
-
-		-- If there's a recent entry for the same player, merge or skip
-		if time_diff <= DEATHLOG_DEDUP_WINDOW then
-			local existing_quality = deathlog_calculate_entry_quality(existing_entry)
-			local new_quality = deathlog_calculate_entry_quality(_player_data)
-
-			if new_quality > existing_quality then
-				-- New entry has more data - merge entries to preserve any unique data from existing
-				_player_data = deathlog_merge_entries(_player_data, existing_entry)
-				-- Remove old entry (will be replaced with merged entry under new checksum)
-				deathlog_data[realmName][existing_checksum] = nil
-			elseif new_quality < existing_quality then
-				-- Existing entry is better - merge any new unique data into existing, skip creating new
-				local merged = deathlog_merge_entries(existing_entry, _player_data)
-				deathlog_data[realmName][existing_checksum] = merged
-				return
-			else
-				-- Equal quality - merge and keep existing checksum, skip new entry
-				local merged = deathlog_merge_entries(existing_entry, _player_data)
-				deathlog_data[realmName][existing_checksum] = merged
-				return
-			end
-		end
-	end
-
-	local modified_checksum = deathlog_modified_fletcher16(_player_data)
-
-	-- Predict source if unknown and store it for future use
-	if _player_data["source_id"] and _player_data["predicted_source"] == nil then
-		local known_source = id_to_npc and id_to_npc[_player_data["source_id"]]
-		local env_source = deathlog_environment_damage and deathlog_environment_damage[_player_data["source_id"]]
-		local pvp_source_name = _player_data["extra_data"] and _player_data["extra_data"]["pvp_source_name"]
-		local pvp_source = deathlog_decode_pvp_source and deathlog_decode_pvp_source(_player_data["source_id"], pvp_source_name)
-		if not known_source and not env_source and (not pvp_source or pvp_source == "") then
-			if deathlogPredictSource then
-				_player_data["predicted_source"] = deathlogPredictSource(_player_data["map_pos"], _player_data["map_id"])
-			end
-		end
-	end
-
-	deathlog_data[realmName][modified_checksum] = _player_data
-	deathlog_widget_minilog_createEntry(_player_data)
-	Deathlog_DeathAlertPlay(_player_data)
-	deathlog_data_map[realmName][player_name] = modified_checksum
-end
-
--- Hook to DeathNotificationLib
-DeathNotificationLib_HookOnNewEntry(newEntry)
-
--- local b = C_Timer.NewTicker(0.5, function()
--- DeathNotificationLib_queryTarget("Hogbishop", UnitName("player"))
--- DeathNotificationLib_queryYell("Hogbishop")
--- end)
-
--- DeathNotificationLib_HookOnNewEntrySecure(function()
--- 	print("secure!")
--- end)
+sync_options = {
+	name = "Database Sync",
+	type = "group",
+	args = {
+		sync_desc = {
+			type = "description",
+			name = "Continuously sync death entries with other Deathlog users in the background. Peers exchange watermarks, manifests, and entries over a dedicated addon channel.",
+			fontSize = "medium",
+			order = 1,
+		},
+		sync_enabled = {
+			type = "toggle",
+			name = "Enable database sync",
+			desc = "Toggle background database sync on or off.",
+			width = 1.3,
+			order = 10,
+			get = function()
+				if deathlog_settings["sync_enabled"] == nil then
+					deathlog_settings["sync_enabled"] = true
+				end
+				return deathlog_settings["sync_enabled"]
+			end,
+			set = function()
+				deathlog_settings["sync_enabled"] = not deathlog_settings["sync_enabled"]
+			end,
+		},
+		sync_window_days = {
+			type = "range",
+			name = "Sync window (days)",
+			desc = "Only sync entries from the last N days. Larger windows exchange more data but cover more history. Set to -1 to sync ALL data.",
+			width = 1.5,
+			min = -1,
+			max = 30,
+			step = 1,
+			order = 20,
+			get = function()
+				if deathlog_settings["sync_window_days"] == nil then
+					deathlog_settings["sync_window_days"] = 7
+				end
+				return deathlog_settings["sync_window_days"]
+			end,
+			set = function(_, val)
+				deathlog_settings["sync_window_days"] = val
+			end,
+		},
+		sync_interval = {
+			type = "range",
+			name = "Watermark interval (seconds)",
+			desc = "How often to broadcast your watermark to other peers. Lower values detect gaps faster but generate more traffic.",
+			width = 1.5,
+			min = 60,
+			max = 3600,
+			step = 30,
+			order = 30,
+			get = function()
+				if deathlog_settings["sync_interval"] == nil then
+					deathlog_settings["sync_interval"] = 300
+				end
+				return deathlog_settings["sync_interval"]
+			end,
+			set = function(_, val)
+				deathlog_settings["sync_interval"] = val
+			end,
+		},
+		sync_max_entries = {
+			type = "range",
+			name = "Max entries per sync",
+			desc = "Maximum number of entries to request in a single sync session. Higher values catch up faster but use more bandwidth.",
+			width = 1.5,
+			min = 10,
+			max = 2000,
+			step = 10,
+			order = 40,
+			get = function()
+				if deathlog_settings["sync_max_entries"] == nil then
+					deathlog_settings["sync_max_entries"] = 500
+				end
+				return deathlog_settings["sync_max_entries"]
+			end,
+			set = function(_, val)
+				deathlog_settings["sync_max_entries"] = val
+			end,
+		},
+		sync_cooldown = {
+			type = "range",
+			name = "Sync cooldown (seconds)",
+			desc = "Minimum time between sync sessions. Lower values re-sync sooner after finishing but generate more traffic. Set to 0 to sync continuously.",
+			width = 1.5,
+			min = 0,
+			max = 3600,
+			step = 30,
+			order = 45,
+			get = function()
+				if deathlog_settings["sync_cooldown"] == nil then
+					deathlog_settings["sync_cooldown"] = 300
+				end
+				return deathlog_settings["sync_cooldown"]
+			end,
+			set = function(_, val)
+				deathlog_settings["sync_cooldown"] = val
+			end,
+		},
+		sync_status = {
+			type = "execute",
+			name = "Show sync status",
+			desc = "Print current sync status to chat (state, peer count, last sync time, cooldown).",
+			width = 1.3,
+			order = 50,
+			func = function()
+				DeathNotificationLib.SyncStatus()
+			end,
+		},
+	},
+}

@@ -1,3 +1,5 @@
+local precomputed_heatmap_intensity = DeathNotificationLib.HEATMAP_INTENSITY
+
 local AceGUI = LibStub("AceGUI-3.0")
 local widget_name = "Heatmap WorldMap Overlay"
 local WorldMapButton = WorldMapFrame:GetCanvas()

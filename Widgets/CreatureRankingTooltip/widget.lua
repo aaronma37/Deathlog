@@ -1,3 +1,7 @@
+local id_to_npc = DeathNotificationLib.ID_TO_NPC
+local npc_to_id = DeathNotificationLib.NPC_TO_ID
+local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
+
 local loaded_crt = false
 local widget_name = "Creature Ranking Tooltip"
 
@@ -8,9 +12,11 @@ local creature_avg_lvl = {}
 function Deathlog_activateCreatureRankingTooltip()
 	if loaded_crt == false then
 		GameTooltip:HookScript("OnTooltipSetUnit", function()
+			local a, b = GameTooltip:GetUnit()
+			if UnitIsPlayer(b) then return end
+
 			if deathlog_settings[widget_name]["enable_crt"] then
 				if creature_ranking then
-					local a, _ = GameTooltip:GetUnit()
 					local rank = creature_ranking[a]
 					if rank then
 						GameTooltip:AddLine("#" .. rank .. " deadliest in Azeroth", 0.6, 0.6, 0.6, true)
@@ -19,7 +25,6 @@ function Deathlog_activateCreatureRankingTooltip()
 			end
 
 			if deathlog_settings[widget_name]["by_zone"] then
-				local a, _ = GameTooltip:GetUnit()
 				local _zone = C_Map.GetBestMapForUnit("player")
 				local instance_id = nil
 				local zone_name = ""
@@ -50,7 +55,6 @@ function Deathlog_activateCreatureRankingTooltip()
 			end
 
 			if deathlog_settings[widget_name]["enable_avg_lvl"] then
-				local a, _ = GameTooltip:GetUnit()
 				if creature_avg_lvl[a] then
 					GameTooltip:AddLine(
 						"Avg. victim lvl. " .. string.format("%.1f", creature_avg_lvl[a]),

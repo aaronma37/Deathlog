@@ -18,7 +18,8 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
 
-local MAX_PLAYER_LEVEL = Deathlog_maxPlayerLevel
+local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
+local deathlog_class_colors = DeathNotificationLib.CLASS_COLORS
 local graph_lines = {}
 local graph_container = CreateFrame("frame")
 
@@ -206,7 +207,7 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 			for k, v in pairs(class_tbl) do
 				if _log_normal_params[current_map_id][v] and _log_normal_params[current_map_id][v][1] then
 					-- level_num[v][i] = level_num[v][i] / total[v]
-					-- createLine(k..i, {25+(i-2)/MAX_PLAYER_LEVEL*375,level_num[v][i-1]*100*8}, {25+(i-1)/MAX_PLAYER_LEVEL*375,level_num[v][i]*100*8}, RAID_CLASS_COLORS[string.upper(k)])
+					-- createLine(k..i, {25+(i-2)/MAX_PLAYER_LEVEL*375,level_num[v][i-1]*100*8}, {25+(i-1)/MAX_PLAYER_LEVEL*375,level_num[v][i]*100*8}, deathlog_class_colors[k])
 					local y1 = logNormal(
 						i - 1,
 						_log_normal_params[current_map_id][v][1],

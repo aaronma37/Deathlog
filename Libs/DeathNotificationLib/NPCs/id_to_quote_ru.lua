@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-id_to_quote_ru = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.ru.ID_TO_QUOTE = {
   [349]="Маршал Маррис, сэр! Капрал Кеешан из двенадцатого кавалерийского полка вернулся из битвы и прибыл за распоряжениями!",
   [1675]="Гр-р-р-р… Свежее мясо!",
   [1941]="Будет чьи кости поглодать…",

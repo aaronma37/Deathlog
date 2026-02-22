@@ -1,0 +1,109 @@
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
+
+  <!-- Bootstrap -->
+  <Script file="DeathNotificationLib~Init.lua"/>
+
+  <!-- Data: Areas -->
+  <Script file="Areas\area_to_id_cn.lua"/>
+  <Script file="Areas\area_to_id_de.lua"/>
+  <Script file="Areas\area_to_id_en.lua"/>
+  <Script file="Areas\area_to_id_es.lua"/>
+  <Script file="Areas\area_to_id_fr.lua"/>
+  <Script file="Areas\area_to_id_it.lua"/>
+  <Script file="Areas\area_to_id_ko.lua"/>
+  <Script file="Areas\area_to_id_pt.lua"/>
+  <Script file="Areas\area_to_id_ru.lua"/>
+
+  <!-- Data: Heatmaps -->
+  <Script file="Heatmaps\heatmap_vanilla.lua"/>
+  <Script file="Heatmaps\heatmap_tbc.lua"/>
+
+  <!-- Data: Instances -->
+  <Script file="Instances\instance_categories.lua"/>
+  <Script file="Instances\instance_to_id_cn.lua"/>
+  <Script file="Instances\instance_to_id_de.lua"/>
+  <Script file="Instances\instance_to_id_en.lua"/>
+  <Script file="Instances\instance_to_id_es.lua"/>
+  <Script file="Instances\instance_to_id_fr.lua"/>
+  <Script file="Instances\instance_to_id_it.lua"/>
+  <Script file="Instances\instance_to_id_ko.lua"/>
+  <Script file="Instances\instance_to_id_pt.lua"/>
+  <Script file="Instances\instance_to_id_ru.lua"/>
+  <Script file="Instances\zone_to_instance.lua"/>
+
+  <!-- Data: NPCs -->
+  <Script file="NPCs\id_to_display_id.lua"/>
+  <Script file="NPCs\id_to_npc_cn.lua"/>
+  <Script file="NPCs\id_to_npc_de.lua"/>
+  <Script file="NPCs\id_to_npc_en.lua"/>
+  <Script file="NPCs\id_to_npc_es.lua"/>
+  <Script file="NPCs\id_to_npc_fr.lua"/>
+  <Script file="NPCs\id_to_npc_it.lua"/>
+  <Script file="NPCs\id_to_npc_ko.lua"/>
+  <Script file="NPCs\id_to_npc_pt.lua"/>
+  <Script file="NPCs\id_to_npc_ru.lua"/>
+  <Script file="NPCs\id_to_quote_cn.lua"/>
+  <Script file="NPCs\id_to_quote_de.lua"/>
+  <Script file="NPCs\id_to_quote_en.lua"/>
+  <Script file="NPCs\id_to_quote_es.lua"/>
+  <Script file="NPCs\id_to_quote_fr.lua"/>
+  <Script file="NPCs\id_to_quote_it.lua"/>
+  <Script file="NPCs\id_to_quote_ko.lua"/>
+  <Script file="NPCs\id_to_quote_pt.lua"/>
+  <Script file="NPCs\id_to_quote_ru.lua"/>
+  <Script file="NPCs\npc_to_id_cn.lua"/>
+  <Script file="NPCs\npc_to_id_de.lua"/>
+  <Script file="NPCs\npc_to_id_en.lua"/>
+  <Script file="NPCs\npc_to_id_es.lua"/>
+  <Script file="NPCs\npc_to_id_fr.lua"/>
+  <Script file="NPCs\npc_to_id_it.lua"/>
+  <Script file="NPCs\npc_to_id_ko.lua"/>
+  <Script file="NPCs\npc_to_id_pt.lua"/>
+  <Script file="NPCs\npc_to_id_ru.lua"/>
+
+  <!-- Data: Locales -->
+  <Script file="Locales\strings_cn.lua"/>
+  <Script file="Locales\strings_de.lua"/>
+  <Script file="Locales\strings_en.lua"/>
+  <Script file="Locales\strings_es.lua"/>
+  <Script file="Locales\strings_fr.lua"/>
+  <Script file="Locales\strings_it.lua"/>
+  <Script file="Locales\strings_ko.lua"/>
+  <Script file="Locales\strings_pt.lua"/>
+  <Script file="Locales\strings_ru.lua"/>
+
+  <!-- Data: Zones -->
+  <Script file="Zones\zone_categories.lua"/>
+  <Script file="Zones\zone_to_id_cn.lua"/>
+  <Script file="Zones\zone_to_id_de.lua"/>
+  <Script file="Zones\zone_to_id_en.lua"/>
+  <Script file="Zones\zone_to_id_es.lua"/>
+  <Script file="Zones\zone_to_id_fr.lua"/>
+  <Script file="Zones\zone_to_id_it.lua"/>
+  <Script file="Zones\zone_to_id_ko.lua"/>
+  <Script file="Zones\zone_to_id_pt.lua"/>
+  <Script file="Zones\zone_to_id_ru.lua"/>
+
+  <!-- Module files (load order matters) -->
+  <Script file="DeathNotificationLib~Localization.lua"/>
+  <Script file="DeathNotificationLib~Protocol.lua"/>
+  <Script file="DeathNotificationLib~PvP.lua"/>
+  <Script file="DeathNotificationLib~BlizzardParser.lua"/>
+  <Script file="DeathNotificationLib~UnitState.lua"/>
+  <Script file="DeathNotificationLib~Query.lua"/>
+  <Script file="DeathNotificationLib~PredictSource.lua"/>
+  <Script file="DeathNotificationLib~Cache.lua"/>
+  <Script file="DeathNotificationLib~Broadcast.lua"/>
+  <Script file="DeathNotificationLib~Sync.lua"/>
+  <Script file="DeathNotificationLib~Events.lua"/>
+  <Script file="DeathNotificationLib~Backwards.lua"/>
+  <Script file="DeathNotificationLib~Transport.lua"/>
+  <Script file="DeathNotificationLib~DeathAlert.lua"/>
+  <Script file="DeathNotificationLib~HardcoreTBC.lua"/>
+  <Script file="DeathNotificationLib~UltraHardcore.lua"/>
+  <Script file="DeathNotificationLib~Testing.lua"/>
+
+  <!-- Cleanup -->
+  <Script file="DeathNotificationLib~Finalizer.lua"/>
+
+</Ui>

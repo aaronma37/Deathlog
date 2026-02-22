@@ -1,10 +1,13 @@
 -- Auto-generated instance map data. Do not edit manually.
 -- Version: bd8505fb
-instance_to_id_de = {}
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.de.INSTANCE_TO_ID = {}
 
 
 do
-  instance_to_id_de[0] = {
+  _dnl.L.de.INSTANCE_TO_ID[0] = {
     ["Alteractal"] = 30,
     ["Burg Schattenfang"] = 33,
     ["Verlies von Sturmwind"] = 34,
@@ -39,7 +42,7 @@ end
 
 if GetExpansionLevel and GetExpansionLevel() >= 1 then
 do
-  instance_to_id_de[1] = {
+  _dnl.L.de.INSTANCE_TO_ID[1] = {
     ["Öffnung des Dunklen Portals"] = 269,
     ["Karazhan"] = 532,
     ["Die Schlacht um den Berg Hyjal"] = 534,

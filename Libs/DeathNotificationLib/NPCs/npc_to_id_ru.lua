@@ -1,6 +1,9 @@
 -- Auto-generated data file. Do not edit manually.
 -- Version: 28290c6d
-npc_to_id_ru = {
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.ru.NPC_TO_ID = {
   ["Плотояд"]=3,
   ["Кобольд-вредитель"]=6,
   ["Benny Questgiver"]=19,

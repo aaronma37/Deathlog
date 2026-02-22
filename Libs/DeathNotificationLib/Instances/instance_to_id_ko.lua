@@ -1,10 +1,13 @@
 -- Auto-generated instance map data. Do not edit manually.
 -- Version: bd8505fb
-instance_to_id_ko = {}
+
+local _dnl = DeathNotificationLib.Internal ---@class _dnl
+if not _dnl then return end
+_dnl.L.ko.INSTANCE_TO_ID = {}
 
 
 do
-  instance_to_id_ko[0] = {
+  _dnl.L.ko.INSTANCE_TO_ID[0] = {
     ["알터랙 계곡"] = 30,
     ["그림자송곳니 성채"] = 33,
     ["스톰윈드 지하감옥"] = 34,
@@ -39,7 +42,7 @@ end
 
 if GetExpansionLevel and GetExpansionLevel() >= 1 then
 do
-  instance_to_id_ko[1] = {
+  _dnl.L.ko.INSTANCE_TO_ID[1] = {
     ["어둠의 문 열기"] = 269,
     ["카라잔"] = 532,
     ["하이잘 산의 전투"] = 534,
