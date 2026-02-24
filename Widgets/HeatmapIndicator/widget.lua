@@ -36,24 +36,44 @@ local function startUpdate()
 			local position = nil
 			if map then
 				if precomputed_heatmap_intensity[map] == nil then
+					if deathlog_settings[widget_name]["limit"] then
+						heatmap_indicator_frame:Hide()
+						heatmap_indicator_frame.tex:Hide()
+					end
 					return
 				end
 				position = C_Map.GetPlayerMapPosition(map, "player")
 				local x = ceil(position.x * 100)
 				local y = ceil(position.y * 100)
 				if precomputed_heatmap_intensity[map][x] == nil then
+					if deathlog_settings[widget_name]["limit"] then
+						heatmap_indicator_frame:Hide()
+						heatmap_indicator_frame.tex:Hide()
+					end
 					return
 				end
 				local intensity = precomputed_heatmap_intensity[map][x][y]
 				if intensity == nil then
+					if deathlog_settings[widget_name]["limit"] then
+						heatmap_indicator_frame:Hide()
+						heatmap_indicator_frame.tex:Hide()
+					end
 					return
 				end
 
 				if intensity < 0.1 then
 					heatmap_indicator_frame.tex:SetVertexColor(1, 1, 1, 1)
+					if deathlog_settings[widget_name]["limit"] then
+						heatmap_indicator_frame:Hide()
+						heatmap_indicator_frame.tex:Hide()
+					end
 				elseif intensity < 0.25 then
+					heatmap_indicator_frame:Show()
+					heatmap_indicator_frame.tex:Show()
 					heatmap_indicator_frame.tex:SetVertexColor(1, 1, 0, 1)
 				else
+					heatmap_indicator_frame:Show()
+					heatmap_indicator_frame.tex:Show()
 					heatmap_indicator_frame.tex:SetVertexColor(1, 0, 0, 1)
 				end
 				heatmap_indicator_frame.numeric_text:SetText(string.format("%.1f", intensity * 10))
@@ -180,6 +200,18 @@ options = {
 			end,
 			set = function()
 				deathlog_settings[widget_name]["enable"] = not deathlog_settings[widget_name]["enable"]
+				Deathlog_HIWidget_applySettings()
+			end,
+		},
+		limit = {
+			type = "toggle",
+			name = "Show only warnings",
+			desc = "Show only yellow and red indication, not white indicator",
+			get = function()
+				return deathlog_settings[widget_name]["limit"]
+			end,
+			set = function()
+				deathlog_settings[widget_name]["limit"] = not deathlog_settings[widget_name]["limit"]
 				Deathlog_HIWidget_applySettings()
 			end,
 		},
