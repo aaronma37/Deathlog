@@ -16,9 +16,11 @@ local function checkForEntryAndSetTooltip()
 			local _name = string.match(text, corpse_pattern)
 			if _name then
 				local realmName = GetRealmName()
-				local _entry = deathlog_data[realmName][deathlog_data_map[realmName][_name]]
-				deathlog_setTooltipFromEntry(_entry)
-				GameTooltip:Show()
+				if deathlog_data[realmName] and deathlog_data_map[realmName] and deathlog_data_map[realmName][_name] then
+					local _entry = deathlog_data[realmName][deathlog_data_map[realmName][_name]]
+					deathlog_setTooltipFromEntry(_entry)
+					GameTooltip:Show()
+				end
 			end
 		end
 	end)
@@ -81,7 +83,6 @@ end
 
 options = {
 	name = widget_name,
-	handler = Minilog,
 	type = "group",
 	args = {
 		enable_ctt = {

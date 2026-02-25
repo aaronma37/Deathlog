@@ -82,7 +82,7 @@ local subtitle_data = {
 			if _entry["last_checked"] == nil then
 				return "Never"
 			end
-			local dur = abs(time() - _entry["last_checked"])
+			local dur = abs(GetServerTime() - _entry["last_checked"])
 			if dur < 60 then
 				return ceil(dur) .. "s ago"
 			elseif dur < 3600 then
@@ -154,6 +154,7 @@ local function refreshFontData()
 	end
 end
 
+local last_font_string = nil
 for idx, v in ipairs(subtitle_data) do
 	header_strings[v[1]] = watch_list_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	if idx == 1 then
@@ -207,10 +208,14 @@ local last_time = nil
 local scroll_frame_ref = nil
 local ticker_handler = nil
 local function checkAll()
+	if ticker_handler then
+		ticker_handler:Cancel()
+		ticker_handler = nil
+	end
 	if comm_query_lock_out then
 		local time_til = ""
 		if last_time then
-			time_til = math.ceil(60 - (time() - last_time))
+			time_til = math.ceil(60 - (GetServerTime() - last_time))
 		end
 
 		if ticker_handler then
@@ -226,7 +231,23 @@ local function checkAll()
 	end)
 
 	status_string:SetText("Querying for deaths...")
-	last_time = time()
+	last_time = GetServerTime()
+
+	-- Batch channel query: broadcast all un-dead names at once to
+	-- every Deathlog user on the realm.  Responses come back via the
+	-- existing COMM_QUERY_ACK whisper handler.
+	local channel_names = {}
+	for _name, _ in pairs(deathlog_watchlist_entries) do
+		if isDead(_name) == nil then
+			table.insert(channel_names, _name)
+		end
+	end
+	if #channel_names > 0 then
+		DeathNotificationLib.QueryChannel(channel_names, "DLG")
+	end
+
+	-- Also query guild/say per-name as a slower fallback for
+	-- players not on the death alerts channel.
 	local idx = 1
 	ticker_handler = C_Timer.NewTicker(5, function(self)
 		if watch_list_frame:IsShown() then
@@ -241,10 +262,10 @@ local function checkAll()
 		local _name = font_strings[idx].name
 		if isDead(_name) == nil then
 			if deathlog_watchlist_entries[_name] then
-				deathlog_watchlist_entries[_name]["last_checked"] = time()
+				deathlog_watchlist_entries[_name]["last_checked"] = GetServerTime()
 			end
-			DeathNotificationLib.QueryGuild(_name)
-			DeathNotificationLib.QuerySay(_name)
+			DeathNotificationLib.QueryGuild(_name, "DLG")
+			DeathNotificationLib.QuerySay(_name, "DLG")
 		end
 		idx = idx + 1
 	end, 20)
@@ -287,9 +308,9 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 			deathlog_watchlist_entries[name]["Note"] = watch_list_frame.name_box:GetText()
 			watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
 		else
-			local name = font_strings[selected_entry]["Name"]
-			if name ~= nil and name["Name"] ~= nil then
-				deathlog_watchlist_entries[_name] = nil
+			local old_name = font_strings[selected_entry] and font_strings[selected_entry].name
+			if old_name then
+				deathlog_watchlist_entries[old_name] = nil
 			end
 			local _name = watch_list_frame.name_box:GetText():gsub("^%l", string.upper)
 			deathlog_watchlist_entries[_name] = {
@@ -502,8 +523,41 @@ function Deathlog_WatchList()
 	return watch_list_frame
 end
 
-local watchlist_idx = 1
-local watchlist_event_handler = CreateFrame("Frame")
+-- Reactive watchlist death detection -----------------------------------------
+-- Fires for every incoming death (sync manager, peer broadcast, query, etc.)
+-- and checks whether the dead player was on the watchlist.
+local function onWatchlistDeath(_player_data)
+	if not _player_data or not _player_data["name"] then
+		return
+	end
+	local _name = _player_data["name"]
+	if deathlog_watchlist_entries[_name] then
+		deathlog_watchlist_entries[_name]["last_checked"] = GetServerTime()
+		local icon = deathlog_watchlist_entries[_name]["Icon"] or ""
+		print("|cffff0000[Deathlog Watchlist]|r " .. icon .. " " .. _name .. " has died!")
+	end
+end
 
+-- On login: scan for deaths that occurred while offline, then register the
+-- reactive hook so future deaths from any source are caught automatically.
+local watchlist_event_handler = CreateFrame("Frame")
 watchlist_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
-watchlist_event_handler:SetScript("OnEvent", handleEvent)
+watchlist_event_handler:SetScript("OnEvent", function(self, event)
+	-- Small delay so deathlog.lua's PLAYER_ENTERING_WORLD has time to
+	-- initialise deathlog_data_map and call AttachAddon first.
+	C_Timer.After(4, function()
+		-- 1) Offline-death check: scan the local DB for any watched names
+		for _name, entry in pairs(deathlog_watchlist_entries) do
+			if isDead(_name) then
+				local icon = entry["Icon"] or ""
+				print("|cffff0000[Deathlog Watchlist]|r " .. icon .. " " .. _name .. " died while you were away!")
+			end
+		end
+
+		-- 2) Register reactive hook for all future deaths (sync, broadcast, etc.)
+		DeathNotificationLib.HookOnNewEntry(function(_player_data, _checksum, num_peer_checks, in_guild, source)
+			onWatchlistDeath(_player_data)
+		end)
+	end)
+	self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+end)

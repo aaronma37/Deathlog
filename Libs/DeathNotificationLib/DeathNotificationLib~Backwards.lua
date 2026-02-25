@@ -160,7 +160,7 @@ function _dnl.handleV2DeathBroadcast(sender, data)
 	end
 
 	-- Fill in missing v3 fields
-	player_data["date"] = player_data["date"] or time()
+	player_data["date"] = player_data["date"] or GetServerTime()
 
 	-- Merge orphan last_words stored by handleV2LastWords (Strategy 3)
 	if not player_data["last_words"] or player_data["last_words"] == "" then
@@ -327,7 +327,7 @@ local function handleV2TarnishedSoul(sender, data)
 	end
 
 	-- Check name dedup
-	if _dnl.isNameAlreadyCommitted(name) then
+	if _dnl.isNameAlreadyCommitted(name, level) then
 		if _dnl.DEBUG then
 			print("|cff888888[Backwards]|r Tarnished soul already committed:", name)
 		end
@@ -345,7 +345,7 @@ local function handleV2TarnishedSoul(sender, data)
 	-- v3 pipeline via a v3-encoded message through handleDeathBroadcast
 	local player_data = _dnl.playerData(
 		name, guild or "", -1, race_id, class_id, effective_level,
-		instance_id, map_id, map_pos, time(), nil, nil
+		instance_id, map_id, map_pos, GetServerTime(), nil, nil
 	)
 
 	local v3_msg = _dnl.encodeMessage(player_data)

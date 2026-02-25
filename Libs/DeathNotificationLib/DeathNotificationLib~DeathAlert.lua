@@ -65,6 +65,7 @@ local death_alert_styles = {
 	["boss_banner_enemy_icon_small"]     = "boss_banner_enemy_icon_small",
 	["boss_banner_enemy_icon_medium"]    = "boss_banner_enemy_icon_medium",
 	["boss_banner_enemy_icon_animated"]  = "boss_banner_enemy_icon_animated",
+	["lf_animated"]                      = "lf_animated",
 	["text_only"]                        = "text_only",
 }
 
@@ -154,31 +155,41 @@ local function applyDefaults(force)
 end
 
 -- ── frame creation ───────────────────────────────────────────────────
-local death_alert_frame = CreateFrame("frame")
-death_alert_frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-death_alert_frame:SetWidth(25)
-death_alert_frame:SetHeight(25)
-death_alert_frame:SetMovable(false)
-death_alert_frame:EnableMouse(false)
-death_alert_frame:SetFrameStrata("FULLSCREEN_DIALOG")
-death_alert_frame:Show()
+local death_alert_frame = nil
 
-death_alert_frame.text = death_alert_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-death_alert_frame.text:SetText("")
-death_alert_frame.text:SetFont(getLocaleString("death_alert_font"), 22, "")
-death_alert_frame.text:SetTextColor(1, 1, 1, 1)
-death_alert_frame.text:SetJustifyH("CENTER")
-death_alert_frame.text:SetParent(death_alert_frame)
-death_alert_frame.text:Show()
+local function createDeathAlertFrame()
+	if death_alert_frame then
+		if death_alert_frame.timer then death_alert_frame.timer:Cancel() end
+		death_alert_frame:Hide()
+		death_alert_frame:SetParent(nil)
+		death_alert_frame = nil
+	end
+
+	death_alert_frame = CreateFrame("frame")
+	death_alert_frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+	death_alert_frame:SetWidth(25)
+	death_alert_frame:SetHeight(25)
+	death_alert_frame:SetMovable(false)
+	death_alert_frame:EnableMouse(false)
+	death_alert_frame:SetFrameStrata("FULLSCREEN_DIALOG")
+	death_alert_frame:Show()
+
+	death_alert_frame.text = death_alert_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	death_alert_frame.text:SetText("")
+	death_alert_frame.text:SetFont(getLocaleString("death_alert_font"), 22, "")
+	death_alert_frame.text:SetTextColor(1, 1, 1, 1)
+	death_alert_frame.text:SetJustifyH("CENTER")
+	death_alert_frame.text:SetParent(death_alert_frame)
+	death_alert_frame.text:Show()
+end
 
 -- ── alert dedup cache ────────────────────────────────────────────────
 local alert_cache = {}
-local ALERT_CACHE_TTL = 120  -- seconds before a name can trigger another alert
 
 C_Timer.NewTicker(30, function()
-	local now = time()
-	for name, ts in pairs(alert_cache) do
-		if now - ts > ALERT_CACHE_TTL then
+	local now = GetServerTime()
+	for name, info in pairs(alert_cache) do
+		if now - info.ts > _dnl.getDedupWindow(info.level) then
 			alert_cache[name] = nil
 		end
 	end
@@ -202,16 +213,14 @@ C_Timer.NewTicker(10, _refreshGuildList)
 
 -- ── random sound ─────────────────────────────────────────────────────
 local function PlayRandomSound()
-	local count = 0
-	for _ in pairs(sounds) do count = count + 1 end
-	local idx = math.random(1, count)
-	local c = 0
-	for _, v in pairs(sounds) do
-		c = c + 1
-		if c == idx then
-			PlaySoundFile(v)
-			return
+	local paths = {}
+	for k, v in pairs(sounds) do
+		if type(v) == "string" and k ~= "random" and v ~= "random" then
+			paths[#paths + 1] = v
 		end
+	end
+	if #paths > 0 then
+		PlaySoundFile(paths[math.random(1, #paths)])
 	end
 end
 
@@ -227,7 +236,7 @@ local function initializeLFBanner(icon_type, icon_size)
 	end
 	death_alert_frame.textures.top:SetPoint("CENTER", death_alert_frame, "CENTER", 0, 0)
 	death_alert_frame.textures.top:SetWidth(400)
-	death_alert_frame.textures.top:SetHeight(120)
+	death_alert_frame.textures.top:SetHeight(100)
 	death_alert_frame.textures.top:SetDrawLayer("OVERLAY", 4)
 	death_alert_frame.textures.top:SetVertexColor(1, 1, 1, 1)
 	death_alert_frame.textures.top:SetTexture("Interface\\LootFrame\\LootToastAtlas")
@@ -244,17 +253,19 @@ local function initializeLFBanner(icon_type, icon_size)
 	death_alert_frame.textures.top_emblem:SetVertexColor(1, 1, 1, 1)
 	death_alert_frame.textures.top_emblem:SetTexture("Interface\\LevelUp\\BossBanner")
 	death_alert_frame.textures.top_emblem:SetTexCoord(0.24, 0.59, 0.58, 0.72)
-	death_alert_frame.textures.top_emblem:Show()
+	death_alert_frame.textures.top_emblem:Hide()
 
 	if death_alert_frame.textures.top_emblem_overlay == nil then
 		death_alert_frame.textures.top_emblem_overlay = death_alert_frame:CreateTexture(nil, "OVERLAY")
 	end
-	death_alert_frame.textures.top_emblem_overlay:SetPoint("LEFT", death_alert_frame.textures.top, "LEFT", death_alert_frame:GetWidth() * 0.075, 0)
-	death_alert_frame.textures.top_emblem_overlay:SetWidth(death_alert_frame.textures.top:GetHeight() * 0.225 * 2.7)
-	death_alert_frame.textures.top_emblem_overlay:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.225 * 2.7)
+	death_alert_frame.textures.top_emblem_overlay:SetPoint("LEFT", death_alert_frame.textures.top, "LEFT", death_alert_frame:GetWidth() * 0.066, 2)
+	death_alert_frame.textures.top_emblem_overlay:SetWidth(death_alert_frame.textures.top:GetHeight() * 0.225 * 3)
+	death_alert_frame.textures.top_emblem_overlay:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.225 * 3)
 	death_alert_frame.textures.top_emblem_overlay:SetTexture("Interface\\PVPFrame\\SilverIconBorder")
+	-- Crop out the ornamental wing so only the frame ring remains.
+	death_alert_frame.textures.top_emblem_overlay:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 	death_alert_frame.textures.top_emblem_overlay:SetVertexColor(0.5, 0.2, 0.2, 1)
-	death_alert_frame.textures.top_emblem_overlay:SetDrawLayer("OVERLAY", 7)
+	death_alert_frame.textures.top_emblem_overlay:SetDrawLayer("OVERLAY", 3)
 	death_alert_frame.textures.top_emblem_overlay:Show()
 
 	if death_alert_frame.textures.top_emblem_background == nil then
@@ -265,11 +276,12 @@ local function initializeLFBanner(icon_type, icon_size)
 	death_alert_frame.textures.top_emblem_background:SetWidth(death_alert_frame.textures.top_emblem_overlay:GetWidth() * 0.7)
 	death_alert_frame.textures.top_emblem_background:SetDrawLayer("OVERLAY", 6)
 	death_alert_frame.textures.top_emblem_background:SetColorTexture(0, 0, 0, 1)
+	death_alert_frame.textures.top_emblem_background:Show()
 
 	if death_alert_frame.textures.enemy_portrait == nil then
 		death_alert_frame.textures.enemy_portrait = death_alert_frame:CreateTexture(nil, "OVERLAY")
 	end
-	death_alert_frame.textures.enemy_portrait:SetPoint("TOP", death_alert_frame.textures.top, "TOP", 2, -death_alert_frame.textures.top:GetHeight() * 0.237)
+	death_alert_frame.textures.enemy_portrait:SetPoint("TOP", death_alert_frame.textures.top, "TOP", 0, -death_alert_frame.textures.top:GetHeight() * 0.237)
 	death_alert_frame.textures.enemy_portrait:SetWidth(death_alert_frame.textures.top:GetHeight() * 0.225 * 0.8 * 1.15)
 	death_alert_frame.textures.enemy_portrait:SetHeight(death_alert_frame.textures.top:GetHeight() * 0.225 * 0.8 * 1.15)
 	death_alert_frame.textures.enemy_portrait:SetDrawLayer("OVERLAY", 7)
@@ -284,8 +296,10 @@ local function initializeLFBanner(icon_type, icon_size)
 	death_alert_frame.textures.enemy_portrait_mask:SetTexture(blur_mask_path, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	death_alert_frame.textures.enemy_portrait:AddMaskTexture(death_alert_frame.textures.enemy_portrait_mask)
 
-	death_alert_frame.text:SetPoint("CENTER", death_alert_frame.textures.top, "CENTER", death_alert_frame:GetWidth() * 0.05, -death_alert_frame.textures.top:GetHeight() * 0.04)
-	death_alert_frame.text:SetWidth(death_alert_frame:GetWidth() * 0.3)
+	death_alert_frame.text:SetPoint("CENTER", death_alert_frame.textures.top, "CENTER", death_alert_frame:GetWidth() * 0.07, death_alert_frame.textures.top:GetHeight() * 0.01)
+	death_alert_frame.text:SetWidth(death_alert_frame:GetWidth() * 0.40)
+	death_alert_frame.lf_font_scale = 0.7
+	death_alert_frame.remove_new_lines = true
 	death_alert_frame:Hide()
 end
 
@@ -406,12 +420,28 @@ local function initializeBossBanner(icon_type, icon_size)
 	death_alert_frame:Hide()
 end
 
+-- Environment damage icon textures (same as DeathAlert widget)
+local environment_damage_icons = {
+	[-2] = "Interface\\ICONS\\Ability_Suffocate", -- Drowning
+	[-3] = "Interface\\ICONS\\Spell_Magic_FeatherFall", -- Falling
+	[-4] = "Interface\\ICONS\\Spell_Nature_Sleep", -- Fatigue
+	[-5] = "Interface\\ICONS\\Spell_Fire_Fire", -- Fire
+	[-6] = "Interface\\ICONS\\Spell_Fire_Volcano", -- Lava
+	[-7] = "Interface\\ICONS\\INV_Misc_Slime_01", -- Slime
+}
+
 -- ── playDeathAlert ───────────────────────────────────────────────────
 ---Show a death alert popup for the given PlayerData entry.
 ---@param entry PlayerData
 function _dnl.playDeathAlert(entry)
 	local s = S()
 	if not s or s["enable"] == false then return end
+
+	-- Ensure the alert frame has been fully initialized (textures, font, etc.)
+	if not death_alert_frame or not death_alert_frame.textures then
+		_dnl.applyDeathAlertSettings()
+		if not death_alert_frame or not death_alert_frame.textures then return end
+	end
 
 	-- Level filter
 	local min_lvl = s["min_lvl_player"] and UnitLevel("player") or s["min_lvl"]
@@ -436,8 +466,11 @@ function _dnl.playDeathAlert(entry)
 	end
 
 	-- Name dedup
-	if alert_cache[entry["name"]] then return end
-	alert_cache[entry["name"]] = time()
+	local cached = alert_cache[entry["name"]]
+	if cached then
+		if GetServerTime() - cached.ts <= _dnl.getDedupWindow(math.max(tonumber(entry["level"]) or 0, cached.level or 0)) then return end
+	end
+	alert_cache[entry["name"]] = { ts = GetServerTime(), level = tonumber(entry["level"]) or 0 }
 
 	-- Sound
 	if s["enable_sound"] then
@@ -537,6 +570,9 @@ function _dnl.playDeathAlert(entry)
 	end)
 	-- Remaining tags outside groups
 	msg = applySubs(msg)
+	if death_alert_frame.remove_new_lines then
+		msg = msg:gsub("\n", " ")
+	end
 
 	death_alert_frame.text:SetText(msg)
 
@@ -545,6 +581,14 @@ function _dnl.playDeathAlert(entry)
 		for _, v in pairs(death_alert_frame.textures) do
 			if v.Hide then v:Hide() end
 		end
+	end
+
+	if not death_alert_frame.textures then return end
+
+	-- Hide animated model from a previous alert if this style doesn't use it
+	if s["style"] ~= "boss_banner_enemy_icon_animated" and s["style"] ~= "lf_animated" then
+		if death_alert_frame.textures.modelLayer then death_alert_frame.textures.modelLayer:Hide() end
+		if death_alert_frame.textures.backlayer then death_alert_frame.textures.backlayer:Hide() end
 	end
 
 	-- Enemy portrait (static)
@@ -557,20 +601,15 @@ function _dnl.playDeathAlert(entry)
 			end
 		elseif entry["source_id"] then
 			if id_to_display_id[entry["source_id"]] then
-				SetPortraitTextureFromCreatureDisplayID(death_alert_frame.textures.enemy_portrait, id_to_display_id[entry["source_id"]])
-				death_alert_frame.textures.enemy_portrait:AddMaskTexture(death_alert_frame.textures.enemy_portrait_mask)
-			elseif entry["source_id"] == -2 then
-				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Ability_Suffocate")
-			elseif entry["source_id"] == -3 then
-				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Spell_Magic_FeatherFall")
-			elseif entry["source_id"] == -4 then
-				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Spell_Nature_Sleep")
-			elseif entry["source_id"] == -5 then
-				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Spell_Fire_Fire")
-			elseif entry["source_id"] == -6 then
-				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\Spell_Fire_Volcano")
-			elseif entry["source_id"] == -7 then
-				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\INV_Misc_Slime_01")
+				local portrait_to_use = death_alert_frame.textures.enemy_portrait
+				portrait_to_use:Hide()
+				SetPortraitTextureFromCreatureDisplayID(portrait_to_use, id_to_display_id[entry["source_id"]])
+				portrait_to_use:AddMaskTexture(death_alert_frame.textures.enemy_portrait_mask)
+				C_Timer.After(0.04, function()
+					if portrait_to_use and portrait_to_use.Show then portrait_to_use:Show() end
+				end)
+			elseif environment_damage_icons[entry["source_id"]] then
+				death_alert_frame.textures.enemy_portrait:SetTexture(environment_damage_icons[entry["source_id"]])
 			else
 				death_alert_frame.textures.enemy_portrait:SetTexture("Interface\\ICONS\\INV_Misc_Bone_ElfSkull_01")
 			end
@@ -625,15 +664,37 @@ function _dnl.playDeathAlert(entry)
 		portrait.modelLayer:SetShown(true)
 		portrait.backLayer:SetTexCoord(0, 1, 0, 1)
 		portrait.maskLayer:SetShown(false)
-		if id_to_display_id[entry["source_id"]] then
-			portrait.modelLayer:SetDisplayInfo(id_to_display_id[entry["source_id"]])
+
+		-- Create a dedicated envIcon for environment damage (flat icon, no mask)
+		if death_alert_frame.textures.envIcon == nil then
+			death_alert_frame.textures.envIcon = death_alert_frame:CreateTexture(nil, "OVERLAY")
+			death_alert_frame.textures.envIcon:SetDrawLayer("OVERLAY", 7)
 		end
-		portrait.modelLayer:SetPortraitZoom(1)
-		portrait.modelLayer:SetRotation(0)
+		death_alert_frame.textures.envIcon:SetPoint("CENTER", death_alert_frame.textures.top_emblem_overlay, "CENTER", 0, 0)
+		death_alert_frame.textures.envIcon:SetSize(
+			death_alert_frame.textures.top_emblem_overlay:GetWidth() * 0.55,
+			death_alert_frame.textures.top_emblem_overlay:GetHeight() * 0.55
+		)
+
+		if id_to_display_id[entry["source_id"]] then
+			portrait.modelLayer:ClearModel()
+			portrait.modelLayer:SetDisplayInfo(id_to_display_id[entry["source_id"]])
+			portrait.modelLayer:SetPortraitZoom(1)
+			portrait.modelLayer:SetRotation(0)
+			death_alert_frame.textures.envIcon:Hide()
+		elseif environment_damage_icons[entry["source_id"]] then
+			portrait.modelLayer:SetShown(false)
+			death_alert_frame.textures.envIcon:SetTexture(environment_damage_icons[entry["source_id"]])
+			death_alert_frame.textures.envIcon:Show()
+		else
+			portrait.modelLayer:SetShown(false)
+			death_alert_frame.textures.envIcon:SetTexture("Interface\\ICONS\\INV_Misc_Bone_ElfSkull_01")
+			death_alert_frame.textures.envIcon:Show()
+		end
 	end
 
 	death_alert_frame:Show()
-	death_alert_frame.text:SetFont((fonts[s["font"]] or "Nimrod MT"), s["font_size"])
+	death_alert_frame.text:SetFont((fonts[s["font"]] or "Fonts\\NIM_____.ttf"), s["font_size"] * (death_alert_frame.lf_font_scale or 1))
 
 	if death_alert_frame.timer then death_alert_frame.timer:Cancel() end
 	death_alert_frame.timer = C_Timer.NewTimer(s["display_time"], function()
@@ -660,6 +721,8 @@ function _dnl.applyDeathAlertSettings()
 	local s = S()
 	if not s then return end
 
+	createDeathAlertFrame()
+
 	death_alert_frame:ClearAllPoints()
 	death_alert_frame:SetPoint("CENTER", UIParent, "CENTER", s["pos_x"], s["pos_y"])
 	death_alert_frame:SetSize(s["size_x"], s["size_y"])
@@ -680,7 +743,7 @@ function _dnl.applyDeathAlertSettings()
 		initializeBossBanner("enemy_icon", "medium")
 	end
 
-	death_alert_frame.text:SetFont((fonts[s["font"]] or "Nimrod MT"), s["font_size"])
+	death_alert_frame.text:SetFont((fonts[s["font"]] or "Fonts\\NIM_____.ttf"), s["font_size"] * (death_alert_frame.lf_font_scale or 1))
 	death_alert_frame.text:SetTextColor(s["font_color_r"], s["font_color_g"], s["font_color_b"], s["font_color_a"])
 
 	-- Register AceConfig options panel if available and not yet registered

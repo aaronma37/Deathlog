@@ -4,11 +4,11 @@
 ## Author: Yazpad & Deathwing
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.4.0
+## Version: 0.4.1
 
 
 ## DefaultState: enabled
-## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, deathlog_watchlist_entries, deathlog_record_econ_stats, deathlog_entry_counts
+## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, deathlog_watchlist_entries, deathlog_record_econ_stats, deathlog_entry_counts, deathlog_purged
 ## SavedVariablesPerCharacter: deathlog_char_data
 
 Localization/strings_cn.lua
@@ -26,7 +26,12 @@ embeds.xml
 
 Libs/DeathNotificationLib/DeathNotificationLib.xml
 
+Data/precomputed_stats_vanilla.lua [AllowLoadGameType vanilla]
+Data/precomputed_stats_tbc.lua [AllowLoadGameType tbc]
+Data/precomputed_purges.lua
+
 utils.lua
+purge.lua
 
 hardcore_state.lua
 info_button.lua
@@ -55,8 +60,5 @@ Widgets/ReportWidget/widget.lua
 Widgets/CTAWidget/widget.lua
 
 menu.lua
-
-Data/precomputed_stats_vanilla.lua [AllowLoadGameType vanilla]
-Data/precomputed_stats_tbc.lua [AllowLoadGameType tbc]
 
 deathlog.lua

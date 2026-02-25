@@ -18,7 +18,7 @@ threshold (≥ 2 peers) is met.
 Auto-commit timers: reported deaths (source_id == -1) commit after 4 s;
 regular deaths after 3.5 s.  On commit, registered consumer hooks are
 fired via createEntry().  A periodic ticker (120 s) garbage-collects
-stale LRU entries older than 600 s.
+stale LRU entries whose age exceeds getDedupWindow(level).
 
 Hook registration:
   HookOnNewEntry(fn)               – fires for every committed death (global)
@@ -83,7 +83,7 @@ end
 ---@return table
 function _dnl.deepCopy(t, _depth)
 	_depth = _depth or 0
-	if _depth > 10 then return t end
+	if _depth > 10 then return {} end
 	local out = {}
 	for k, v in pairs(t) do
 		local vtype = type(v)
@@ -107,9 +107,7 @@ end
 ---has addonless_logging enabled in its settings will fire.
 ---
 ---Hooks receive a **defensive copy** so they cannot corrupt the internal
----LRU cache.  Each per-addon hook receives its own copy with
----predicted_source computed using that addon's prediction_radius setting.
----Global hooks get a shared copy with the default radius (5).
+---LRU cache.
 ---@param _player_data PlayerData
 ---@param checksum string|nil
 ---@param peer_count number|nil
@@ -129,14 +127,9 @@ function _dnl.createEntry(_player_data, checksum, peer_count, in_guild, source, 
 	local alert_copy = nil
 
 	-- Per-addon copy preparation:
-	-- 1. Compute predicted_source using the addon's own prediction_radius.
-	-- 2. Strip playtime if the addon explicitly opted out (share_playtime = false).
+	-- Strip playtime if the addon explicitly opted out (share_playtime = false).
 	local function prepareAddonCopy(addon_copy, addon)
-		if not addon_copy.predicted_source then
-			local radius = (addon and addon.settings and addon.settings.prediction_radius) or 5
-			addon_copy.predicted_source = _dnl.predictSource(addon_copy, radius)
-		end
-		if addon and addon.settings and addon.settings.share_playtime == false then
+		if addon.settings and addon.settings.share_playtime == false then
 			addon_copy["played"] = nil
 		end
 	end
@@ -183,10 +176,9 @@ function _dnl.createEntry(_player_data, checksum, peer_count, in_guild, source, 
 			end
 		end
 	else
-		-- Normal path: global hooks get a shared copy enriched with a default radius,
-		-- then each per-addon hook gets its own copy with its own radius.
+		-- Normal path: global hooks get a shared copy,
+		-- then each per-addon hook gets its own copy prepared according to that addon's settings.
 		local shared_copy = _dnl.deepCopy(_player_data)
-		prepareAddonCopy(shared_copy, nil)
 
 		for _, f in ipairs(hook_on_entry_functions) do
 			safeCallHook(f, shared_copy, checksum, peer_count, in_guild, source)
@@ -220,7 +212,7 @@ end
 ---@field committed number|nil 1 once createEntry has been called
 ---@field quality number|nil QUALITY tier (BLIZZARD/PEER/SELF)
 ---@field auto_commit boolean|nil true for deaths that don't need peer corroboration
----@field timestamp number|nil time() when entry was created
+---@field timestamp number|nil GetServerTime() when entry was created
 ---@field source string|nil Entry origin label
 
 ---@class LRUByNameEntry
@@ -234,65 +226,89 @@ local death_ping_lru_cache_tbl = {}
 ---@type table<string, LRUByNameEntry>
 local lru_by_name = {}
 
-local NAME_DEDUP_WINDOW = 60
-
-local higher_version_senders = {}
-local UPGRADE_HINT_THRESHOLD = 5
---- Tracks which protocol versions we have already warned about, so we
---- warn once per distinct version (e.g. v4 triggers a hint, then v5
---- triggers another hint, but more v4 senders do not).
-local upgrade_hint_warned_versions = {}
+--- Returns the dedup window in seconds based on character level.
+--- Higher-level Hardcore characters take exponentially longer to re-level,
+--- so we can safely use wider windows to catch duplicate death reports.
+---   Level  1-9:   120s (2 min)  — quick to recreate
+---   Level 10-19:  300s (5 min)  — moderate investment
+---   Level 20-39:  600s (10 min) — significant /played
+---   Level 40-59: 1800s (30 min) — days of /played
+---   Level 60+:   3600s (1 hour) — endgame
+---@param level number|nil
+---@return number seconds
+local function getDedupWindow(level)
+	level = tonumber(level) or 0
+	if level >= 60 then return 3600 end
+	if level >= 40 then return 1800 end
+	if level >= 20 then return 600 end
+	if level >= 10 then return 300 end
+	return 120
+end
 
 _dnl.death_ping_lru_cache_tbl = death_ping_lru_cache_tbl
 _dnl.lru_by_name = lru_by_name
-_dnl.NAME_DEDUP_WINDOW = NAME_DEDUP_WINDOW
+_dnl.getDedupWindow = getDedupWindow
 
 ---Update the lru_by_name index for a player
 ---@param name_lower string
 ---@param checksum string|nil
 ---@param committed boolean|nil If nil, committed field is not touched
-local function updateLRUByName(name_lower, checksum, committed)
+---@param level number|nil Character level (stored for level-scaled dedup window)
+local function updateLRUByName(name_lower, checksum, committed, level)
 	if not lru_by_name[name_lower] then
 		lru_by_name[name_lower] = {}
 	end
 	if checksum then
 		lru_by_name[name_lower].checksum = checksum
 	end
-	lru_by_name[name_lower].timestamp = time()
+	lru_by_name[name_lower].timestamp = GetServerTime()
 	if committed ~= nil then
 		lru_by_name[name_lower].committed = committed
+	end
+	if level then
+		lru_by_name[name_lower].level = level
 	end
 end
 _dnl.updateLRUByName = updateLRUByName
 
-local LRU_TTL = 600
-_dnl.LRU_TTL = LRU_TTL
-
 C_Timer.NewTicker(GC_INTERVAL, function()
-	local now = time()
+	local now = GetServerTime()
+	local stale_checksums = {}
 	for checksum, entry in pairs(death_ping_lru_cache_tbl) do
-		if entry["committed"] and (now - (entry["timestamp"] or 0)) > LRU_TTL then
-			death_ping_lru_cache_tbl[checksum] = nil
+		if entry["committed"] then
+			local lvl = entry["player_data"] and entry["player_data"]["level"]
+			if (now - (entry["timestamp"] or 0)) > getDedupWindow(lvl) then
+				table.insert(stale_checksums, checksum)
+			end
 		end
 	end
+	for _, checksum in ipairs(stale_checksums) do
+		death_ping_lru_cache_tbl[checksum] = nil
+	end
+	local stale_names = {}
 	for name_lower, entry in pairs(lru_by_name) do
-		if entry.committed and (now - (entry.timestamp or 0)) > LRU_TTL then
-			lru_by_name[name_lower] = nil
+		if entry.committed and (now - (entry.timestamp or 0)) > getDedupWindow(entry.level) then
+			table.insert(stale_names, name_lower)
 		end
+	end
+	for _, name_lower in ipairs(stale_names) do
+		lru_by_name[name_lower] = nil
 	end
 end)
 
 ---Check if a player name has already been committed within the dedup window
 ---@param name string|nil
+---@param level number|nil Incoming entry's level (for level-scaled window)
 ---@return boolean
-function _dnl.isNameAlreadyCommitted(name)
+function _dnl.isNameAlreadyCommitted(name, level)
 	if not name then return false end
 	local name_lower = name:lower()
 	local existing = lru_by_name[name_lower]
 	if not existing then return false end
 	if not existing.committed then return false end
-	local time_diff = math.abs(time() - (existing.timestamp or 0))
-	return time_diff <= NAME_DEDUP_WINDOW
+	local effective_level = math.max(tonumber(level) or 0, tonumber(existing.level) or 0)
+	local time_diff = math.abs(GetServerTime() - (existing.timestamp or 0))
+	return time_diff <= getDedupWindow(effective_level)
 end
 
 ---Try to commit a death from the LRU cache
@@ -311,19 +327,19 @@ local function tryCommitEntry(checksum)
 		return
 	end
 
-	local pdata_name = death_ping_lru_cache_tbl[checksum]["player_data"]["name"]
-	if pdata_name and _dnl.isNameAlreadyCommitted(pdata_name) then
+	local pdata = death_ping_lru_cache_tbl[checksum]["player_data"]
+	local pdata_name = pdata["name"]
+	if pdata_name and _dnl.isNameAlreadyCommitted(pdata_name, pdata["level"]) then
 		death_ping_lru_cache_tbl[checksum]["committed"] = 1
 		return
 	end
 
 	local cache = death_ping_lru_cache_tbl[checksum]
-	cache["player_data"]["date"] = cache["player_data"]["date"] or time()
+	cache["player_data"]["date"] = cache["player_data"]["date"] or GetServerTime()
 	cache["committed"] = 1
 
-	local pdata = cache["player_data"]
-	if pdata["name"] then
-		updateLRUByName(pdata["name"]:lower(), checksum, true)
+	if pdata_name then
+		updateLRUByName(pdata_name:lower(), checksum, true, pdata["level"])
 	end
 
 	_dnl.createEntry(
@@ -382,6 +398,7 @@ local function mergeLRUEntry(existing_data, incoming_data, incoming_quality, exi
 		existing_data["level"] = incoming_data["level"]
 	end
 end
+_dnl.mergeLRUEntry = mergeLRUEntry
 
 ---Unified death broadcast receiver
 ---Handles all death types through a single pipeline:
@@ -403,21 +420,8 @@ function _dnl.handleDeathBroadcast(sender, data)
 		return
 	end
 
-	if protocol_version and protocol_version < _dnl.MIN_SUPPORTED_PROTOCOL_VERSION then
+	if protocol_version and (protocol_version < _dnl.MIN_SUPPORTED_PROTOCOL_VERSION or protocol_version > _dnl.PROTOCOL_VERSION) then
 		return
-	end
-
-	if protocol_version and protocol_version > _dnl.PROTOCOL_VERSION then
-		if not upgrade_hint_warned_versions[protocol_version] then
-			higher_version_senders[sender] = true
-			local count = 0
-			for _ in pairs(higher_version_senders) do count = count + 1 end
-			if count >= UPGRADE_HINT_THRESHOLD then
-				upgrade_hint_warned_versions[protocol_version] = true
-				wipe(higher_version_senders)
-				print("|cffFFFF00[DeathNotificationLib]|r A newer version (v" .. protocol_version .. ") is available. Please update your death logging addon!")
-			end
-		end
 	end
 
 	local is_self_report = (sender == decoded_player_data["name"])
@@ -449,8 +453,9 @@ function _dnl.handleDeathBroadcast(sender, data)
 
 	local name_entry = lru_by_name[name_lower]
 	if name_entry then
-		local time_diff = math.abs(time() - (name_entry.timestamp or 0))
-		if time_diff <= NAME_DEDUP_WINDOW then
+		local effective_level = math.max(tonumber(decoded_player_data["level"]) or 0, tonumber(name_entry.level) or 0)
+		local time_diff = math.abs(GetServerTime() - (name_entry.timestamp or 0))
+		if time_diff <= getDedupWindow(effective_level) then
 			local existing_checksum = name_entry.checksum
 			if existing_checksum and existing_checksum ~= checksum then
 				local existing_cache = death_ping_lru_cache_tbl[existing_checksum]
@@ -458,13 +463,42 @@ function _dnl.handleDeathBroadcast(sender, data)
 					local existing_quality = existing_cache["quality"] or _dnl.QUALITY.PEER
 
 					if quality > existing_quality then
+						if existing_cache["committed"] then
+							-- The lower-quality entry already committed (timer race:
+							-- arrival spread exceeded commit delay). Upgrade the
+							-- committed data in-place and re-fire addon hooks so
+							-- the DB entry is overwritten with the better data.
+							mergeLRUEntry(existing_cache["player_data"], decoded_player_data, quality, existing_quality)
+							existing_cache["quality"] = quality
+
+							if _dnl.DEBUG then
+								print("Late quality upgrade for", dead_player_name,
+									": re-firing hooks with SELF data (existing already committed)")
+							end
+
+							_dnl.createEntry(
+								existing_cache["player_data"],
+								existing_checksum,
+								(existing_cache["peer_report"] or 0),
+								existing_cache["in_guild"],
+								SOURCE.UPGRADE
+							)
+							return
+						end
+
+						-- Not yet committed — supersede normally
 						mergeLRUEntry(decoded_player_data, existing_cache["player_data"], existing_quality, quality)
 						existing_cache["committed"] = 1
 
 						if _dnl.DEBUG then
 							print("Quality upgrade for", dead_player_name, ": replacing", existing_checksum, "with", checksum)
 						end
-					elseif existing_cache["committed"] then
+					else
+						-- Existing is equal or better quality — merge incoming data into
+						-- existing and skip, regardless of committed state. This prevents
+						-- creating a parallel LRU entry (and thus a duplicate commit) when
+						-- multiple party members broadcast the same death with different
+						-- checksums (different guild/source/map_pos).
 						mergeLRUEntry(existing_cache["player_data"], decoded_player_data, quality, existing_quality)
 						return
 					end
@@ -483,7 +517,7 @@ function _dnl.handleDeathBroadcast(sender, data)
 		cache_entry["player_data"] = decoded_player_data
 		cache_entry["quality"] = quality
 		cache_entry["auto_commit"] = auto_commit
-		cache_entry["timestamp"] = time()
+		cache_entry["timestamp"] = GetServerTime()
 		cache_entry["source"] = entry_source
 	else
 		local existing_quality = cache_entry["quality"] or _dnl.QUALITY.PEER
@@ -493,7 +527,7 @@ function _dnl.handleDeathBroadcast(sender, data)
 		end
 	end
 
-	updateLRUByName(name_lower, checksum, cache_entry["committed"] and true or false)
+	updateLRUByName(name_lower, checksum, cache_entry["committed"] and true or false, decoded_player_data["level"])
 
 	if cache_entry["committed"] then
 		return
@@ -512,7 +546,7 @@ function _dnl.handleDeathBroadcast(sender, data)
 						if death_ping_lru_cache_tbl[checksum] and death_ping_lru_cache_tbl[checksum]["committed"] then
 							return
 						end
-						table.insert(_dnl.broadcast_death_ping_queue, {checksum .. _dnl.COMM_FIELD_DELIM .. _dnl.PROTOCOL_VERSION .. _dnl.COMM_FIELD_DELIM, time()})
+						table.insert(_dnl.broadcast_death_ping_queue, {checksum .. _dnl.COMM_FIELD_DELIM .. _dnl.PROTOCOL_VERSION .. _dnl.COMM_FIELD_DELIM, GetServerTime()})
 					end)
 					break
 				end
@@ -581,9 +615,6 @@ end
 ---Blizzard HARDCORE_DEATHS: lowest quality source, routed through the unified LRU cache
 ---@param msg string
 function _dnl.onBlizzardChat(msg)
-	if _G["RaidWarningFrameSlot1"]:GetText() == msg then _G["RaidWarningFrameSlot1"]:SetText("") end
-	if _G["RaidWarningFrameSlot2"]:GetText() == msg then _G["RaidWarningFrameSlot2"]:SetText("") end
-
 	local death_name, source, area_name, parsed_lvl, pvp_source_name = _dnl.parse_hc_death_broadcast(msg)
 	if not death_name or not source then
 		return
@@ -598,7 +629,7 @@ function _dnl.onBlizzardChat(msg)
 	end
 
 	local invoked = false
-	local curr_time = time()
+	local curr_time = GetServerTime()
 
 	local guild = nil
 	local class_id = nil
@@ -612,7 +643,33 @@ function _dnl.onBlizzardChat(msg)
 			return
 		end
 
-		if _dnl.isNameAlreadyCommitted(death_name) then
+		if _dnl.isNameAlreadyCommitted(death_name, parsed_lvl) then
+			-- Even though an entry was already committed (e.g. from a peer broadcast
+			-- with source_id=-1), the Blizzard HARDCORE_DEATHS message may carry
+			-- the correct NPC source_id.  Upgrade the committed entry and re-fire
+			-- hooks so addon databases receive the better data.
+			if source and source ~= -1 then
+				local name_lower = death_name:lower()
+				local name_entry = lru_by_name[name_lower]
+				if name_entry and name_entry.checksum then
+					local existing_cache = death_ping_lru_cache_tbl[name_entry.checksum]
+					if existing_cache and existing_cache["player_data"]
+						and (not existing_cache["player_data"]["source_id"] or existing_cache["player_data"]["source_id"] == -1) then
+						existing_cache["player_data"]["source_id"] = source
+						-- Re-fire hooks so addon databases merge the upgraded source_id
+						_dnl.createEntry(
+							existing_cache["player_data"],
+							name_entry.checksum,
+							existing_cache["peer_report"] or 0,
+							existing_cache["in_guild"],
+							existing_cache["source"]
+						)
+						if _dnl.DEBUG then
+							print("Blizzard source upgrade for", death_name, ": source_id", -1, "→", source)
+						end
+					end
+				end
+			end
 			if _dnl.DEBUG then
 				print("Blizzard death skipped - addon already committed:", death_name)
 			end
@@ -623,8 +680,7 @@ function _dnl.onBlizzardChat(msg)
 		local instance_id = area_id and (_dnl.D.ID_TO_INSTANCE[area_id] and area_id or _dnl.D.ZONE_TO_INSTANCE[area_id])
 		local map_id = not instance_id and (area_id or _dnl.ROOT_MAP_ID) or nil
 
-		local date = time()
-		local _player_data = _dnl.playerData(death_name, guild, source, race_id, class_id, parsed_lvl, instance_id, map_id, nil, date, nil, nil, extra_data)
+		local _player_data = _dnl.playerData(death_name, guild, source, race_id, class_id, parsed_lvl, instance_id, map_id, nil, curr_time, nil, nil, extra_data)
 
 		local checksum = _dnl.fletcher16(_player_data)
 
@@ -643,11 +699,11 @@ function _dnl.onBlizzardChat(msg)
 			cache_entry["player_data"] = _player_data
 			cache_entry["quality"] = _dnl.QUALITY.BLIZZARD
 			cache_entry["auto_commit"] = true
-			cache_entry["timestamp"] = time()
+			cache_entry["timestamp"] = GetServerTime()
 			cache_entry["source"] = SOURCE.BLIZZARD
 		end
 
-		updateLRUByName(death_name:lower(), checksum, nil)
+		updateLRUByName(death_name:lower(), checksum, nil, _player_data["level"])
 
 		tryCommitEntry(checksum)
 	end
@@ -658,7 +714,7 @@ function _dnl.onBlizzardChat(msg)
 			class_id = who_info.filename and _dnl.D.CLASS_FILE_TO_ID[who_info.filename] or nil
 			race_id = who_info.raceStr and _dnl.D.RACE_NAME_TO_ID[who_info.raceStr] or nil
 
-			local elapsed = time() - curr_time
+			local elapsed = GetServerTime() - curr_time
 			if elapsed < 5 then
 				C_Timer.After(5 - elapsed, commit)
 			else
@@ -741,5 +797,7 @@ end
 DeathNotificationLib.HookQueuePlayer = function(fun) hook_queue_player_functions[#hook_queue_player_functions + 1] = fun end
 
 DeathNotificationLib.GetDeathRecord = getDeathRecord
+
+DeathNotificationLib.GetDedupWindow = getDedupWindow
 
 --#endregion

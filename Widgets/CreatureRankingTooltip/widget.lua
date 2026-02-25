@@ -151,7 +151,6 @@ local metric_values = { ["Normalized Score"] = "Normalized Score", ["Total Kills
 
 options = {
 	name = widget_name,
-	handler = Minilog,
 	type = "group",
 	args = {
 		enable_crt = {

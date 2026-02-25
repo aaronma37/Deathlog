@@ -6,7 +6,7 @@ Test suites, simulation helpers, and developer tooling.
 Provides fake death generation (CreateFakeEntry, available without DEBUG)
 and a comprehensive set of in-game test suites gated behind _dnl.DEBUG:
 
-  testIntegration()       – 34-phase suite covering encode/decode,
+  testIntegration()       – 38-phase suite covering encode/decode,
                             fletcher16, dedup, broadcast, corroboration,
                             PvP, quality merge, throttle, secure hooks,
                             malformed messages, and more
@@ -15,6 +15,10 @@ and a comprehensive set of in-game test suites gated behind _dnl.DEBUG:
   testAttachAddon()       – 6-phase suite for the AttachAddon multi-addon
                             registry, settings aggregation, per-addon hook
                             dispatch, sync isolation, and edge cases
+  testDedup()             – 10-phase suite for cross-checksum name dedup,
+                            late quality upgrades, ZF party scenarios,
+                            outbound broadcast dedup, inbound merge,
+                            dedup window boundaries, and mergeLRUEntry
   testAll()               – chains all suites with staggered timers
 
 Each suite uses test_tracking to record checksums, names, and queue
@@ -104,13 +108,7 @@ local function createFakeEntry()
 
 	local pvp_r = math.random(0, 3)
 	local pvp_source_name = nil
-	if pvp_r == 1 then
-		local pvp_ok, src_id, src_name = _dnl.encodePvpSource(UnitName("target"), UnitGUID("target"))
-		if pvp_ok and src_id then
-			fake_entry["source_id"] = src_id
-			pvp_source_name = src_name
-		end
-	elseif pvp_r == 2 then
+	if pvp_r == 1 or pvp_r == 2 then
 		local pvp_ok, src_id, src_name = _dnl.encodePvpSource(UnitName("target"), UnitGUID("target"))
 		if pvp_ok and src_id then
 			fake_entry["source_id"] = src_id
@@ -180,6 +178,23 @@ local function testBegin()
 	_dnl.LOCAL_DEBUG_ONLY = true
 	test_tracking.active = true
 	test_tracking.followups_scheduled = false
+
+	-- Pause real sync activity so it doesn't contaminate test results.
+	-- Leverage the existing per-addon sync_enabled setting.
+	-- Store addon references + originals in an array so nil values survive.
+	test_tracking.saved_sync_enabled = {}
+	for _, addon in pairs(_dnl.addons) do
+		if addon.settings then
+			table.insert(test_tracking.saved_sync_enabled, { addon = addon, original = addon.settings.sync_enabled })
+			addon.settings.sync_enabled = false
+		end
+	end
+	if _dnl._stopSyncWatermarkTicker then
+		_dnl._stopSyncWatermarkTicker()
+	end
+	if _dnl._syncResetToIdle then
+		_dnl._syncResetToIdle()
+	end
 end
 
 --- Remove all currently tracked test entries from caches and database.
@@ -271,6 +286,16 @@ local function testCleanup()
 					wipe(test_tracking.checksums)
 					wipe(test_tracking.names)
 					_dnl.LOCAL_DEBUG_ONLY = test_tracking.was_local_only
+					-- Restore per-addon sync_enabled settings
+					if test_tracking.saved_sync_enabled then
+						for _, entry in ipairs(test_tracking.saved_sync_enabled) do
+							entry.addon.settings.sync_enabled = entry.original
+						end
+						test_tracking.saved_sync_enabled = nil
+					end
+					if _dnl._startSyncWatermarkTicker then
+						_dnl._startSyncWatermarkTicker()
+					end
 				end
 			end)
 		end
@@ -298,8 +323,8 @@ end)
 -- Also track entries that go through broadcastDeath (outbound) but haven't
 -- hit createEntry yet — track when we insert into LRU cache
 local orig_updateLRUByName = _dnl.updateLRUByName
-_dnl.updateLRUByName = function(name_lower, checksum, committed)
-	orig_updateLRUByName(name_lower, checksum, committed)
+_dnl.updateLRUByName = function(name_lower, checksum, committed, level)
+	orig_updateLRUByName(name_lower, checksum, committed, level)
 	if test_tracking.active then
 		if checksum then test_tracking.checksums[checksum] = true end
 		if name_lower then test_tracking.names[name_lower] = true end
@@ -700,14 +725,14 @@ function _dnl.testV2BackwardsCompat()
 	local lw_name = "LWTest" .. math.random(10000, 99999)
 	_dnl.lru_by_name[lw_name:lower()] = nil
 
-	local lw_pd = _dnl.playerData(lw_name, "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil)
+	local lw_pd = _dnl.playerData(lw_name, "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil)
 	local lw_v3_cs = _dnl.fletcher16(lw_pd)
 	_dnl.death_ping_lru_cache_tbl[lw_v3_cs] = {
 		player_data = lw_pd,
 		quality = _dnl.QUALITY.PEER,
-		timestamp = time(),
+		timestamp = GetServerTime(),
 	}
-	_dnl.updateLRUByName(lw_name:lower(), lw_v3_cs, false)
+	_dnl.updateLRUByName(lw_name:lower(), lw_v3_cs, false, lw_pd["level"])
 
 	-- v2 uses a different checksum, so it won't match directly — should use name fallback
 	local lw_v2_cs = bw.fletcher16V2(lw_pd)
@@ -975,7 +1000,7 @@ function _dnl.testIntegration()
 			nil,   -- instance_id
 			1429,  -- map_id (Elwynn Forest)
 			"0.5000,0.5000",  -- map_pos
-			time(),
+			GetServerTime(),
 			nil,   -- played
 			"Avenge me!"
 		)
@@ -1141,7 +1166,7 @@ function _dnl.testIntegration()
 			nil,
 			1426,  -- Dun Morogh
 			"0.4000,0.6000",
-			time(),
+			GetServerTime(),
 			nil,   -- played
 			"Peer's last words"
 		)
@@ -1223,7 +1248,7 @@ function _dnl.testIntegration()
 				-- ============================================================
 				print(TAG .. "Phase 9: Extra data round-trip")
 				local ed_test = _dnl.playerData(
-					"ExtraDataPlayer", "Guild", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil,
+					"ExtraDataPlayer", "Guild", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil,
 					{ pvp_source_name = "Attacker", custom_key = "value~with|special=chars" }
 				)
 				local ed_encoded = _dnl.encodeMessage(ed_test)
@@ -1242,7 +1267,7 @@ function _dnl.testIntegration()
 				end
 
 				-- Nil extra_data round-trip
-				local ed_nil_test = _dnl.playerData("NoExtra", "", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil, nil)
+				local ed_nil_test = _dnl.playerData("NoExtra", "", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil, nil)
 				local ed_nil_enc = _dnl.encodeMessage(ed_nil_test)
 				if ed_nil_enc then
 					local ed_nil_dec = _dnl.decodeMessage(ed_nil_enc)
@@ -1252,7 +1277,7 @@ function _dnl.testIntegration()
 
 				-- Backslash round-trip (tests escape ordering fix)
 				local ed_bs_test = _dnl.playerData(
-					"BackslashTest", "Guild", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil,
+					"BackslashTest", "Guild", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil,
 					{ backslash_tilde = "a\\~b", double_backslash = "x\\\\y", backslash_t = "c\\td" }
 				)
 				local ed_bs_enc = _dnl.encodeMessage(ed_bs_test)
@@ -1303,7 +1328,7 @@ function _dnl.testIntegration()
 
 				-- Round-trip through encode/decode message
 				local pvp_player_data = _dnl.playerData(
-					"PvPVictim", "G", pvp_src_regular, 1, 1, 42, nil, 1429, nil, time(), nil, "PvP death!"
+					"PvPVictim", "G", pvp_src_regular, 1, 1, 42, nil, 1429, nil, GetServerTime(), nil, "PvP death!"
 				)
 				local pvp_enc = _dnl.encodeMessage(pvp_player_data)
 				if pvp_enc then
@@ -1326,7 +1351,7 @@ function _dnl.testIntegration()
 					string.format("got %s", tostring(short_decoded)))
 
 				-- Craft a message with a low protocol version — should still be accepted (MIN=0)
-				local old_version_msg = "OldPlayer~Guild~100~1~1~30~~1429~0.5,0.5~~words~" .. time() .. "~~1~"
+				local old_version_msg = "OldPlayer~Guild~100~1~1~30~~1429~0.5,0.5~~words~" .. GetServerTime() .. "~~1~"
 				local old_decoded, old_ver = _dnl.decodeMessage(old_version_msg)
 				record("decodeMessage parses old version message",
 					old_decoded ~= nil,
@@ -1335,7 +1360,7 @@ function _dnl.testIntegration()
 				-- handleDeathBroadcast should accept any protocol version >= 0
 				local old_lru_name = "oldprotocolplayer" .. math.random(100000, 999999)
 				_dnl.lru_by_name[old_lru_name:lower()] = nil
-				local old_msg = old_lru_name .. "~Guild~100~1~1~30~~1429~0.5,0.5~~words~" .. time() .. "~~1~"
+				local old_msg = old_lru_name .. "~Guild~100~1~1~30~~1429~0.5,0.5~~words~" .. GetServerTime() .. "~~1~"
 				_dnl.handleDeathBroadcast("OldSender", old_msg)
 				local old_cache = _dnl.lru_by_name[old_lru_name:lower()]
 				record("handleDeathBroadcast accepts v1 message (MIN=0)",
@@ -1348,21 +1373,21 @@ function _dnl.testIntegration()
 				print(TAG .. "Phase 12: fletcher16 edge cases")
 
 				-- Two entries differing only in name should produce different checksums
-				local f16_a = _dnl.playerData("Alice", "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil)
-				local f16_b = _dnl.playerData("Bob", "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil)
+				local f16_a = _dnl.playerData("Alice", "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil)
+				local f16_b = _dnl.playerData("Bob", "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil)
 				record("fletcher16 different names → different checksums",
 					_dnl.fletcher16(f16_a) ~= _dnl.fletcher16(f16_b))
 
 				-- source_id == -1 should zero out level in checksum
-				local f16_reported_a = _dnl.playerData("SamePlayer", "G", -1, 1, 1, 20, nil, 1429, nil, time(), nil, nil)
-				local f16_reported_b = _dnl.playerData("SamePlayer", "G", -1, 1, 1, 40, nil, 1429, nil, time(), nil, nil)
+				local f16_reported_a = _dnl.playerData("SamePlayer", "G", -1, 1, 1, 20, nil, 1429, nil, GetServerTime(), nil, nil)
+				local f16_reported_b = _dnl.playerData("SamePlayer", "G", -1, 1, 1, 40, nil, 1429, nil, GetServerTime(), nil, nil)
 				record("fletcher16 ignores level when source_id == -1",
 					_dnl.fletcher16(f16_reported_a) == _dnl.fletcher16(f16_reported_b),
 					string.format("%s vs %s", _dnl.fletcher16(f16_reported_a), _dnl.fletcher16(f16_reported_b)))
 
 				-- Different guilds should produce different checksums
-				local f16_g1 = _dnl.playerData("Same", "GuildA", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil)
-				local f16_g2 = _dnl.playerData("Same", "GuildB", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil)
+				local f16_g1 = _dnl.playerData("Same", "GuildA", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil)
+				local f16_g2 = _dnl.playerData("Same", "GuildB", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil)
 				record("fletcher16 different guilds → different checksums",
 					_dnl.fletcher16(f16_g1) ~= _dnl.fletcher16(f16_g2))
 
@@ -1382,7 +1407,7 @@ function _dnl.testIntegration()
 
 				-- First: simulate a low-quality (PEER) broadcast
 				local peer_entry = _dnl.playerData(
-					merge_name, "", 100, nil, nil, 25, nil, 1429, nil, time(), nil, nil
+					merge_name, "", 100, nil, nil, 25, nil, 1429, nil, GetServerTime(), nil, nil
 				)
 				local peer_enc_merge = _dnl.encodeMessage(peer_entry)
 				if peer_enc_merge then
@@ -1394,7 +1419,7 @@ function _dnl.testIntegration()
 
 					-- Now send a SELF-reported broadcast from the player (higher quality)
 					local self_entry = _dnl.playerData(
-						merge_name, "MyGuild", 100, 1, 1, 25, nil, 1429, "0.3000,0.7000", time(), nil, "My last words"
+						merge_name, "MyGuild", 100, 1, 1, 25, nil, 1429, "0.3000,0.7000", GetServerTime(), nil, "My last words"
 					)
 					local self_enc_merge = _dnl.encodeMessage(self_entry)
 					if self_enc_merge then
@@ -1450,7 +1475,7 @@ function _dnl.testIntegration()
 				-- createEntry with peer_count=1 should NOT fire secure hooks
 				secure_hook_called = false
 				local sec_data_1 = _dnl.playerData(
-					"SecureTestOne" .. math.random(10000,99999), "", 100, 1, 1, 20, nil, 1429, nil, time(), nil, nil
+					"SecureTestOne" .. math.random(10000,99999), "", 100, 1, 1, 20, nil, 1429, nil, GetServerTime(), nil, nil
 				)
 				_dnl.createEntry(sec_data_1, "fake-cs-1", 1, nil, _dnl.SOURCE.DEBUG)
 				record("secure hook NOT called with peer_count=1", secure_hook_called == false)
@@ -1458,7 +1483,7 @@ function _dnl.testIntegration()
 				-- createEntry with peer_count=2 SHOULD fire secure hooks
 				secure_hook_called = false
 				local sec_data_2 = _dnl.playerData(
-					"SecureTestTwo" .. math.random(10000,99999), "", 100, 1, 1, 20, nil, 1429, nil, time(), nil, nil
+					"SecureTestTwo" .. math.random(10000,99999), "", 100, 1, 1, 20, nil, 1429, nil, GetServerTime(), nil, nil
 				)
 				_dnl.createEntry(sec_data_2, "fake-cs-2", 2, nil, _dnl.SOURCE.DEBUG)
 				record("secure hook called with peer_count=2",
@@ -1473,14 +1498,14 @@ function _dnl.testIntegration()
 				_dnl.lru_by_name[multi_name:lower()] = nil
 
 				-- Insert a cache entry directly
-				local multi_data = _dnl.playerData(multi_name, "", 200, 1, 1, 40, nil, 1429, nil, time(), nil, nil)
+				local multi_data = _dnl.playerData(multi_name, "", 200, 1, 1, 40, nil, 1429, nil, GetServerTime(), nil, nil)
 				local multi_cs = _dnl.fletcher16(multi_data)
 				_dnl.death_ping_lru_cache_tbl[multi_cs] = {
 					player_data = multi_data,
 					quality = _dnl.QUALITY.PEER,
-					timestamp = time(),
+					timestamp = GetServerTime(),
 				}
-				_dnl.updateLRUByName(multi_name:lower(), multi_cs, false)
+				_dnl.updateLRUByName(multi_name:lower(), multi_cs, false, multi_data["level"])
 
 				-- Send corroborations from 3 different senders
 				for i = 1, 3 do
@@ -1519,7 +1544,7 @@ function _dnl.testIntegration()
 				-- ============================================================
 				print(TAG .. "Phase 18: map_pos table format")
 				local mp_data = _dnl.playerData(
-					"MapPosTest", "", 100, 1, 1, 30, nil, 1429, { x = 0.1234, y = 0.5678 }, time(), nil, nil
+					"MapPosTest", "", 100, 1, 1, 30, nil, 1429, { x = 0.1234, y = 0.5678 }, GetServerTime(), nil, nil
 				)
 				local mp_enc = _dnl.encodeMessage(mp_data)
 				record("map_pos table encodes", mp_enc ~= nil)
@@ -1796,7 +1821,7 @@ function _dnl.testIntegration()
 				local bd_name = "BroadcastDedupTest" .. math.random(10000, 99999)
 				_dnl.lru_by_name[bd_name:lower()] = nil
 
-				local bd_data = _dnl.playerData(bd_name, "", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil)
+				local bd_data = _dnl.playerData(bd_name, "", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil)
 				local bd_cs = _dnl.fletcher16(bd_data)
 				-- Clear any prior cache
 				_dnl.death_ping_lru_cache_tbl[bd_cs] = nil
@@ -1826,7 +1851,7 @@ function _dnl.testIntegration()
 				_dnl.lru_by_name[rpt_name:lower()] = nil
 				-- Clear any cache that might match
 				-- Compute expected checksum with source_id=-1 (reported death) so we can clear LRU
-				local rpt_preview = _dnl.playerData(rpt_name, "RG", -1, 2, 3, 0, nil, 1426, nil, time(), nil, nil)
+				local rpt_preview = _dnl.playerData(rpt_name, "RG", -1, 2, 3, 0, nil, 1426, nil, GetServerTime(), nil, nil)
 				local rpt_cs = _dnl.fletcher16(rpt_preview)
 				_dnl.death_ping_lru_cache_tbl[rpt_cs] = nil
 
@@ -1871,13 +1896,13 @@ function _dnl.testIntegration()
 				print(TAG .. "Phase 21b: validatePlayerData")
 				-- Valid minimal PlayerData
 				local v_ok, v_err = _dnl.validatePlayerData(
-					_dnl.playerData("Testplayer", "", -1, nil, nil, 10, nil, 1429, nil, time(), nil, nil, nil))
+					_dnl.playerData("Testplayer", "", -1, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil, nil))
 				record("validatePlayerData accepts valid minimal",
 					v_ok == true, tostring(v_err))
 
 				-- Valid full PlayerData
 				v_ok, v_err = _dnl.validatePlayerData(
-					_dnl.playerData("TestFull", "MyGuild", -1, 2, 3, 42, 349, 1429, "0.5,0.5", time(), 36000, "goodbye", { key = "val" }))
+					_dnl.playerData("TestFull", "MyGuild", -1, 2, 3, 42, 349, 1429, "0.5,0.5", GetServerTime(), 36000, "goodbye", { key = "val" }))
 				record("validatePlayerData accepts valid full",
 					v_ok == true, tostring(v_err))
 
@@ -1888,7 +1913,7 @@ function _dnl.testIntegration()
 
 				-- Rejects nil source_id
 				v_ok, v_err = _dnl.validatePlayerData(
-					_dnl.playerData("Testplayer", "", nil, nil, nil, 10, nil, 1429, nil, time(), nil, nil, nil))
+					_dnl.playerData("Testplayer", "", nil, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil, nil))
 				record("validatePlayerData rejects nil source_id",
 					v_ok == false and v_err:find("source_id"), tostring(v_err))
 
@@ -1930,7 +1955,7 @@ function _dnl.testIntegration()
 				_dnl.lru_by_name[lru_test_name] = nil
 
 				-- Create entry with committed=true
-				_dnl.updateLRUByName(lru_test_name, "cs-test", true)
+				_dnl.updateLRUByName(lru_test_name, "cs-test", true, 25)
 				record("updateLRUByName sets committed",
 					_dnl.lru_by_name[lru_test_name] and _dnl.lru_by_name[lru_test_name].committed == true)
 				record("updateLRUByName sets checksum",
@@ -1939,7 +1964,7 @@ function _dnl.testIntegration()
 					_dnl.lru_by_name[lru_test_name] and _dnl.lru_by_name[lru_test_name].timestamp ~= nil)
 
 				-- Update with committed=nil should leave committed unchanged
-				_dnl.updateLRUByName(lru_test_name, "cs-test-2", nil)
+				_dnl.updateLRUByName(lru_test_name, "cs-test-2", nil, 25)
 				record("updateLRUByName nil committed preserves existing",
 					_dnl.lru_by_name[lru_test_name].committed == true,
 					string.format("got %s", tostring(_dnl.lru_by_name[lru_test_name].committed)))
@@ -1981,7 +2006,7 @@ function _dnl.testIntegration()
 				local pr_name = "PeerReportDisabled" .. math.random(10000, 99999)
 				_dnl.lru_by_name[pr_name:lower()] = nil
 
-				local pr_data = _dnl.playerData(pr_name, "", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil)
+				local pr_data = _dnl.playerData(pr_name, "", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil)
 				local pr_enc = _dnl.encodeMessage(pr_data)
 				if pr_enc then
 					_dnl.handleDeathBroadcast("SomeOtherPlayer", pr_enc)
@@ -2000,7 +2025,7 @@ function _dnl.testIntegration()
 				-- ============================================================
 				print(TAG .. "Phase 25: isNameAlreadyCommitted positive")
 				local commit_name = "CommittedPlayer" .. math.random(10000, 99999)
-				_dnl.updateLRUByName(commit_name:lower(), "test-cs", true)
+				_dnl.updateLRUByName(commit_name:lower(), "test-cs", true, 30)
 				record("isNameAlreadyCommitted true for committed name",
 					_dnl.isNameAlreadyCommitted(commit_name) == true)
 
@@ -2080,7 +2105,7 @@ function _dnl.testIntegration()
 
 				-- last_words containing ~ (field delimiter)
 				local lw_tilde_data = _dnl.playerData(
-					"EscTilde", "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, "hello~world"
+					"EscTilde", "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, "hello~world"
 				)
 				local lw_tilde_enc = _dnl.encodeMessage(lw_tilde_data)
 				record("last_words with ~ encodes", lw_tilde_enc ~= nil)
@@ -2097,7 +2122,7 @@ function _dnl.testIntegration()
 
 				-- last_words containing | (sync entry separator)
 				local lw_pipe_data = _dnl.playerData(
-					"EscPipe", "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, "foo|bar|baz"
+					"EscPipe", "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, "foo|bar|baz"
 				)
 				local lw_pipe_enc = _dnl.encodeMessage(lw_pipe_data)
 				record("last_words with | encodes", lw_pipe_enc ~= nil)
@@ -2111,7 +2136,7 @@ function _dnl.testIntegration()
 
 				-- last_words containing % (escape character)
 				local lw_pct_data = _dnl.playerData(
-					"EscPercent", "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, "50% hp left"
+					"EscPercent", "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, "50% hp left"
 				)
 				local lw_pct_enc = _dnl.encodeMessage(lw_pct_data)
 				record("last_words with %% encodes", lw_pct_enc ~= nil)
@@ -2125,7 +2150,7 @@ function _dnl.testIntegration()
 
 				-- last_words containing \ (WoW chat escape character)
 				local lw_bs_data = _dnl.playerData(
-					"EscBackslash", "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, "path\\to\\file"
+					"EscBackslash", "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, "path\\to\\file"
 				)
 				local lw_bs_enc = _dnl.encodeMessage(lw_bs_data)
 				record("last_words with \\ encodes", lw_bs_enc ~= nil)
@@ -2139,7 +2164,7 @@ function _dnl.testIntegration()
 
 				-- last_words with all special characters combined
 				local lw_all_data = _dnl.playerData(
-					"EscAll", "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, "~|%%\\~|"
+					"EscAll", "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, "~|%%\\~|"
 				)
 				local lw_all_enc = _dnl.encodeMessage(lw_all_data)
 				record("last_words with ~|%%\\ combined encodes", lw_all_enc ~= nil)
@@ -2157,7 +2182,7 @@ function _dnl.testIntegration()
 				print(TAG .. "Phase 29: extra_data escaping (multi-key round-trip)")
 
 				local ed_multi_data = _dnl.playerData(
-					"ExtraMulti", "G", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil,
+					"ExtraMulti", "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil,
 					{ pvp_source_name = "Attacker", realm = "Whitemane" }
 				)
 				local ed_multi_enc = _dnl.encodeMessage(ed_multi_data)
@@ -2211,7 +2236,7 @@ function _dnl.testIntegration()
 				local long_lw = string.rep("A", 255)
 				local len_data = _dnl.playerData(
 					"Longwordsman", "TwentyFourCharGuild!", pvp_src,
-					1, 11, 60, 99999, 9999, "0.9999,0.9999", time(), nil, long_lw,
+					1, 11, 60, 99999, 9999, "0.9999,0.9999", GetServerTime(), nil, long_lw,
 					{ pvp_source_name = "TwelveChars" }
 				)
 				local len_enc = _dnl.encodeMessage(len_data)
@@ -2232,7 +2257,7 @@ function _dnl.testIntegration()
 
 				-- Simple PvE case should have more room for last_words
 				local pve_data = _dnl.playerData(
-					"Pve", "", 100, 1, 1, 30, nil, 1429, nil, time(), nil, long_lw
+					"Pve", "", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, long_lw
 				)
 				local pve_enc = _dnl.encodeMessage(pve_data)
 				record("PvE worst-case message <= 253 bytes",
@@ -2245,11 +2270,11 @@ function _dnl.testIntegration()
 				print(TAG .. "Phase 31: Sync entry splitting safety")
 
 				local sync_data1 = _dnl.playerData(
-					"SyncSafe1", "", 100, 1, 1, 30, nil, 1429, nil, time(), nil, "words~with|pipes",
+					"SyncSafe1", "", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, "words~with|pipes",
 					{ key1 = "val1", key2 = "val2" }
 				)
 				local sync_data2 = _dnl.playerData(
-					"SyncSafe2", "", 200, 2, 3, 40, nil, 1429, nil, time(), nil, nil,
+					"SyncSafe2", "", 200, 2, 3, 40, nil, 1429, nil, GetServerTime(), nil, nil,
 					{ pvp_source_name = "Enemy" }
 				)
 				local enc1 = _dnl.encodeMessage(sync_data1)
@@ -2299,7 +2324,7 @@ function _dnl.testIntegration()
 				-- Synthetic name containing ~ (impossible in real WoW, but
 				-- verifies the escaping layer is complete)
 				local ng_data = _dnl.playerData(
-					"Name~Evil", "Guild|Bad%%", 100, 1, 1, 30, nil, 1429, nil, time(), nil, "hi"
+					"Name~Evil", "Guild|Bad%%", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, "hi"
 				)
 				local ng_enc = _dnl.encodeMessage(ng_data)
 				record("name with ~ encodes", ng_enc ~= nil)
@@ -2331,14 +2356,14 @@ function _dnl.testIntegration()
 
 				-- Empty entry (only required fields) should score 1
 				-- (map_id or instance_id is required for validity and always counts)
-				local eq_empty = _dnl.playerData("EqEmpty", nil, -1, nil, nil, 10, nil, 1429, nil, time(), nil, nil)
+				local eq_empty = _dnl.playerData("EqEmpty", nil, -1, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil)
 				record("entryQuality: minimal entry = 1",
 					_dnl.entryQuality(eq_empty) == 1,
 					"got " .. _dnl.entryQuality(eq_empty))
 
 				-- Entry with all optional fields filled
 				local eq_full = _dnl.playerData(
-					"EqFull", "MyGuild", 1234, 1, 2, 30, 349, 1429, "0.5,0.5", time(), nil, "famous last words"
+					"EqFull", "MyGuild", 1234, 1, 2, 30, 349, 1429, "0.5,0.5", GetServerTime(), nil, "famous last words"
 				)
 				-- guild(1) + race(1) + class(1) + source!=−1(1) + map(1) + pos(1) + instance(1) + last_words(1) = 8
 				record("entryQuality: full entry = 8",
@@ -2346,14 +2371,14 @@ function _dnl.testIntegration()
 					"got " .. _dnl.entryQuality(eq_full))
 
 				-- source_id == -1 should NOT count
-				local eq_unknown_src = _dnl.playerData("EqSrc", "G", -1, 1, 2, 30, nil, 1429, nil, time(), nil, nil)
+				local eq_unknown_src = _dnl.playerData("EqSrc", "G", -1, 1, 2, 30, nil, 1429, nil, GetServerTime(), nil, nil)
 				-- guild(1) + race(1) + class(1) + source(-1→0) + map(1) = 4
 				record("entryQuality: source_id=-1 not counted",
 					_dnl.entryQuality(eq_unknown_src) == 4,
 					"got " .. _dnl.entryQuality(eq_unknown_src))
 
 				-- Empty-string guild and last_words should not count
-				local eq_empty_str = _dnl.playerData("EqStr", "", 100, nil, nil, 10, nil, 1429, nil, time(), nil, "")
+				local eq_empty_str = _dnl.playerData("EqStr", "", 100, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, "")
 				-- source(1) + map(1) = 2  (guild="" → 0, last_words="" → 0)
 				record("entryQuality: empty strings not counted",
 					_dnl.entryQuality(eq_empty_str) == 2,
@@ -2365,8 +2390,8 @@ function _dnl.testIntegration()
 				print(TAG .. "Phase 34: mergeEntries")
 
 				-- Basic merge: entry_a fields preferred
-				local me_a = _dnl.playerData("Merged", "GuildA", 100, 1, nil, 30, nil, 1429, nil, time(), nil, nil)
-				local me_b = _dnl.playerData("Merged", "GuildB", 200, nil, 3, 30, nil, 1429, "0.5,0.5", time(), nil, "bye")
+				local me_a = _dnl.playerData("Merged", "GuildA", 100, 1, nil, 30, nil, 1429, nil, GetServerTime(), nil, nil)
+				local me_b = _dnl.playerData("Merged", "GuildB", 200, nil, 3, 30, nil, 1429, "0.5,0.5", GetServerTime(), nil, "bye")
 				local me_m = _dnl.mergeEntries(me_a, me_b)
 
 				record("mergeEntries: name from A",
@@ -2391,24 +2416,24 @@ function _dnl.testIntegration()
 					"got " .. tostring(me_m.last_words))
 
 				-- source_id: -1 in A should fall back to B's real value
-				local me_src_a = _dnl.playerData("SrcMerge", nil, -1, nil, nil, 10, nil, 1429, nil, time(), nil, nil)
-				local me_src_b = _dnl.playerData("SrcMerge", nil, 555, nil, nil, 10, nil, 1429, nil, time(), nil, nil)
+				local me_src_a = _dnl.playerData("SrcMerge", nil, -1, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil)
+				local me_src_b = _dnl.playerData("SrcMerge", nil, 555, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil)
 				local me_src_m = _dnl.mergeEntries(me_src_a, me_src_b)
 				record("mergeEntries: source_id -1 falls back to B",
 					me_src_m.source_id == 555,
 					"got " .. tostring(me_src_m.source_id))
 
 				-- Both -1 should keep -1
-				local me_both_a = _dnl.playerData("Both", nil, -1, nil, nil, 10, nil, 1429, nil, time(), nil, nil)
-				local me_both_b = _dnl.playerData("Both", nil, -1, nil, nil, 10, nil, 1429, nil, time(), nil, nil)
+				local me_both_a = _dnl.playerData("Both", nil, -1, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil)
+				local me_both_b = _dnl.playerData("Both", nil, -1, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil)
 				local me_both_m = _dnl.mergeEntries(me_both_a, me_both_b)
 				record("mergeEntries: both source_id=-1 keeps -1",
 					me_both_m.source_id == -1,
 					"got " .. tostring(me_both_m.source_id))
 
 				-- Empty-string guild in A should fall back to B
-				local me_guild_a = _dnl.playerData("GuildMerge", "", 100, nil, nil, 10, nil, 1429, nil, time(), nil, nil)
-				local me_guild_b = _dnl.playerData("GuildMerge", "RealGuild", 100, nil, nil, 10, nil, 1429, nil, time(), nil, nil)
+				local me_guild_a = _dnl.playerData("GuildMerge", "", 100, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil)
+				local me_guild_b = _dnl.playerData("GuildMerge", "RealGuild", 100, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil)
 				local me_guild_m = _dnl.mergeEntries(me_guild_a, me_guild_b)
 				record("mergeEntries: empty guild falls back to B",
 					me_guild_m.guild == "RealGuild",
@@ -2474,13 +2499,13 @@ function _dnl.testIntegration()
 				-- Trim to 12 chars
 				gdr_name = gdr_name:sub(1, 12)
 				gdr_name_lower = gdr_name:lower()
-				local gdr_test_pd = _dnl.playerData(gdr_name, "", -1, nil, nil, 15, nil, 1429, nil, time(), nil, nil)
+				local gdr_test_pd = _dnl.playerData(gdr_name, "", -1, nil, nil, 15, nil, 1429, nil, GetServerTime(), nil, nil)
 				local gdr_test_cs = _dnl.fletcher16(gdr_test_pd)
 				_dnl.death_ping_lru_cache_tbl[gdr_test_cs] = {
 					player_data = gdr_test_pd,
 					peer_report = 3,
 					committed = 1,
-					timestamp = time(),
+					timestamp = GetServerTime(),
 				}
 				_dnl.updateLRUByName(gdr_name_lower, gdr_test_cs, true)
 				local gdr_found_pd, gdr_found_pc = DeathNotificationLib.GetDeathRecord(gdr_name)
@@ -2508,7 +2533,7 @@ function _dnl.testIntegration()
 				record("PlayerData == _dnl.playerData",
 					DeathNotificationLib.PlayerData == _dnl.playerData)
 				-- Build + validate via public API
-				local pub_pd = DeathNotificationLib.PlayerData("PubTest", "G", -1, nil, nil, 10, nil, 1429, nil, time(), nil, nil)
+				local pub_pd = DeathNotificationLib.PlayerData("PubTest", "G", -1, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil)
 				local pub_ok, pub_err = DeathNotificationLib.ValidatePlayerData(pub_pd)
 				record("Public PlayerData + ValidatePlayerData works",
 					pub_ok == true,
@@ -2585,7 +2610,7 @@ function _dnl.testSync()
 	local saved_tag_to_addon = _dnl.tag_to_addon
 
 	-- Set up a mock database
-	local now = time()
+	local now = GetServerTime()
 	local mock_db = {}
 	local mock_db_map = {}
 	for i = 1, 50 do
@@ -2725,6 +2750,7 @@ function _dnl.testSync()
 
 	local entries_before = 0
 	for _ in pairs(mock_db) do entries_before = entries_before + 1 end
+	_dnl._syncStats.entries_received = 0
 
 	-- Simulate receiving E$ entries (feed encoded data through handleSyncEntry)
 	local consumed = 0
@@ -2736,6 +2762,7 @@ function _dnl.testSync()
 			consumed = consumed + 1
 		end
 	end
+	_dnl._drainSyncBacklogAll()
 
 	record("all 10 peer entries were consumed",
 		consumed == 10,
@@ -2757,6 +2784,7 @@ function _dnl.testSync()
 			_dnl.handleSyncEntry("FakePeer", "TST" .. _dnl.COMM_FIELD_DELIM .. encoded)
 		end
 	end
+	_dnl._drainSyncBacklogAll()
 	-- entries_received increments even for dupes (createEntry fires hooks
 	-- which do app-level dedup), but the addon db won't actually grow.
 	-- The key check is that handleSyncEntry doesn't error out.
@@ -2864,7 +2892,7 @@ function _dnl.testSyncEndToEnd()
 	-- ----------------------------------------------------------------
 	-- Setup: build two databases with overlapping entries
 	-- ----------------------------------------------------------------
-	local now = time()
+	local now = GetServerTime()
 
 	-- Shared entries: both requester and responder have these (30 entries)
 	local shared_db          = {}
@@ -3069,6 +3097,7 @@ function _dnl.testSyncEndToEnd()
 		for _, payload in ipairs(queued_messages) do
 			_dnl.handleSyncEntry("SyncTestResponder", payload)
 		end
+		_dnl._drainSyncBacklogAll()
 
 		local entries_received_stat = _dnl._syncStats.entries_received
 		record("requester received entries via handleSyncEntry",
@@ -3109,6 +3138,7 @@ function _dnl.testSyncEndToEnd()
 		for _, payload in ipairs(queued_messages) do
 			_dnl.handleSyncEntry("SyncTestResponder", payload)
 		end
+		_dnl._drainSyncBacklogAll()
 
 		local count_after_dedup = 0
 		for _ in pairs(requester_db) do count_after_dedup = count_after_dedup + 1 end
@@ -3304,6 +3334,7 @@ function _dnl.testSyncEndToEnd()
 						for _, payload in ipairs(empty_e2e_msgs) do
 							_dnl.handleSyncEntry("SyncTestResponder", payload)
 						end
+						_dnl._drainSyncBacklogAll()
 
 						local empty_count_after = 0
 						for _ in pairs(empty_db) do empty_count_after = empty_count_after + 1 end
@@ -4001,7 +4032,7 @@ function _dnl.testAttachAddon()
 	-- 3a: Normal createEntry → both addon hooks AND global hook fire
 	alpha_hook_count = 0; beta_hook_count = 0; global_hook_count = 0
 	local test_pd_3a = _dnl.playerData(
-		"HookTestA" .. math.random(10000, 99999), "G", 100, 1, 1, 30, nil, 1429, nil, time(), 7200, nil
+		"HookTestA" .. math.random(10000, 99999), "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), 7200, nil
 	)
 	_dnl.createEntry(test_pd_3a, "hooktest-cs-3a", 1, nil, _dnl.SOURCE.DEBUG)
 	record("createEntry: Alpha hook fires",
@@ -4017,7 +4048,7 @@ function _dnl.testAttachAddon()
 	-- 3b: Targeted createEntry → only Alpha's hook fires
 	alpha_hook_count = 0; beta_hook_count = 0; global_hook_count = 0
 	local test_pd_3b = _dnl.playerData(
-		"HookTestB" .. math.random(10000, 99999), "G", 200, 2, 3, 25, nil, 1429, nil, time(), nil, nil
+		"HookTestB" .. math.random(10000, 99999), "G", 200, 2, 3, 25, nil, 1429, nil, GetServerTime(), nil, nil
 	)
 	_dnl.createEntry(test_pd_3b, "hooktest-cs-3b", 1, nil, _dnl.SOURCE.DEBUG, "__TestAlpha__")
 	record("targeted createEntry: Alpha hook fires",
@@ -4043,7 +4074,7 @@ function _dnl.testAttachAddon()
 	-- peer_count=1 → secure hooks should NOT fire
 	alpha_secure_count = 0; beta_secure_count = 0
 	local test_pd_3c1 = _dnl.playerData(
-		"SecAddonA" .. math.random(10000, 99999), "", 100, 1, 1, 20, nil, 1429, nil, time(), nil, nil
+		"SecAddonA" .. math.random(10000, 99999), "", 100, 1, 1, 20, nil, 1429, nil, GetServerTime(), nil, nil
 	)
 	_dnl.createEntry(test_pd_3c1, "sec-addon-cs-1", 1, nil, _dnl.SOURCE.DEBUG)
 	record("per-addon secure hook: NOT called at peer_count=1",
@@ -4053,7 +4084,7 @@ function _dnl.testAttachAddon()
 	-- peer_count=2 → secure hooks SHOULD fire
 	alpha_secure_count = 0; beta_secure_count = 0
 	local test_pd_3c2 = _dnl.playerData(
-		"SecAddonB" .. math.random(10000, 99999), "", 100, 1, 1, 20, nil, 1429, nil, time(), nil, nil
+		"SecAddonB" .. math.random(10000, 99999), "", 100, 1, 1, 20, nil, 1429, nil, GetServerTime(), nil, nil
 	)
 	_dnl.createEntry(test_pd_3c2, "sec-addon-cs-2", 2, nil, _dnl.SOURCE.DEBUG)
 	record("per-addon secure hook: called at peer_count=2",
@@ -4092,7 +4123,7 @@ function _dnl.testAttachAddon()
 	alpha_hook_count = 0; beta_hook_count = 0
 	alpha_hook_played = nil; beta_hook_played = nil
 	local test_pd_3e = _dnl.playerData(
-		"PlaytimeTest" .. math.random(10000, 99999), "G", 100, 1, 1, 30, nil, 1429, nil, time(), 36000, nil
+		"PlaytimeTest" .. math.random(10000, 99999), "G", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), 36000, nil
 	)
 	_dnl.createEntry(test_pd_3e, "playtime-cs", 1, nil, _dnl.SOURCE.DEBUG)
 	record("share_playtime: Alpha receives played (share_playtime=true)",
@@ -4113,7 +4144,7 @@ function _dnl.testAttachAddon()
 
 	-- Create a test entry and route it through Alpha's tag
 	local sync_pd_alpha = _dnl.playerData(
-		"SyncAlphaP" .. math.random(1000, 9999), "SG", 300, 1, 1, 40, nil, 1429, nil, time(), nil, nil
+		"SyncAlphaP" .. math.random(1000, 9999), "SG", 300, 1, 1, 40, nil, 1429, nil, GetServerTime(), nil, nil
 	)
 	local sync_enc_alpha = _dnl.encodeMessage(sync_pd_alpha)
 	local sync_cs_alpha  = _dnl.fletcher16(sync_pd_alpha)
@@ -4128,6 +4159,7 @@ function _dnl.testAttachAddon()
 	if sync_enc_alpha then
 		_dnl.handleSyncEntry("FakeSyncPeer", "AL1" .. _dnl.COMM_FIELD_DELIM .. sync_enc_alpha)
 	end
+	_dnl._drainSyncBacklogAll()
 
 	-- Alpha's targeted hook should fire, Beta's should not
 	record("sync routing AL1: Alpha hook fires",
@@ -4139,7 +4171,7 @@ function _dnl.testAttachAddon()
 
 	-- Route an entry through Beta's tag
 	local sync_pd_beta = _dnl.playerData(
-		"SyncBetaPl" .. math.random(1000, 9999), "SG", 400, 2, 3, 35, nil, 1426, nil, time(), nil, nil
+		"SyncBetaPl" .. math.random(1000, 9999), "SG", 400, 2, 3, 35, nil, 1426, nil, GetServerTime(), nil, nil
 	)
 	local sync_enc_beta = _dnl.encodeMessage(sync_pd_beta)
 	local sync_cs_beta  = _dnl.fletcher16(sync_pd_beta)
@@ -4151,6 +4183,7 @@ function _dnl.testAttachAddon()
 	if sync_enc_beta then
 		_dnl.handleSyncEntry("FakeSyncPeer", "BE1" .. _dnl.COMM_FIELD_DELIM .. sync_enc_beta)
 	end
+	_dnl._drainSyncBacklogAll()
 
 	record("sync routing BE1: Beta hook fires",
 		beta_hook_count == 1,
@@ -4162,12 +4195,13 @@ function _dnl.testAttachAddon()
 	-- Unknown tag → neither fires
 	alpha_hook_count = 0; beta_hook_count = 0
 	local sync_pd_unk = _dnl.playerData(
-		"SyncUnkPla" .. math.random(1000, 9999), "SG", 500, 1, 1, 20, nil, 1429, nil, time(), nil, nil
+		"SyncUnkPla" .. math.random(1000, 9999), "SG", 500, 1, 1, 20, nil, 1429, nil, GetServerTime(), nil, nil
 	)
 	local sync_enc_unk = _dnl.encodeMessage(sync_pd_unk)
 	if sync_enc_unk then
 		_dnl.handleSyncEntry("FakeSyncPeer", "ZZZ" .. _dnl.COMM_FIELD_DELIM .. sync_enc_unk)
 	end
+	_dnl._drainSyncBacklogAll()
 	record("sync routing unknown tag: neither hook fires",
 		alpha_hook_count == 0 and beta_hook_count == 0,
 		string.format("alpha=%d, beta=%d", alpha_hook_count, beta_hook_count))
@@ -4207,7 +4241,7 @@ function _dnl.testAttachAddon()
 	DeathNotificationLib.HookOnNewAddonEntry("__TestAlpha__", function() multi_hook_c = multi_hook_c + 1 end)
 
 	local test_pd_5 = _dnl.playerData(
-		"MultiHookP" .. math.random(10000, 99999), "", 100, 1, 1, 20, nil, 1429, nil, time(), nil, nil
+		"MultiHookP" .. math.random(10000, 99999), "", 100, 1, 1, 20, nil, 1429, nil, GetServerTime(), nil, nil
 	)
 	_dnl.createEntry(test_pd_5, "multi-hook-cs", 1, nil, _dnl.SOURCE.DEBUG, "__TestAlpha__")
 	record("multiple hooks per addon: all 3 fire",
@@ -4239,13 +4273,13 @@ function _dnl.testAttachAddon()
 
 	-- getDeathRecord: committed entry found
 	local gdr_name = "GetRecordP" .. math.random(10000, 99999)
-	local gdr_pd  = _dnl.playerData(gdr_name, "GR", 100, 1, 1, 30, nil, 1429, nil, time(), nil, nil)
+	local gdr_pd  = _dnl.playerData(gdr_name, "GR", 100, 1, 1, 30, nil, 1429, nil, GetServerTime(), nil, nil)
 	local gdr_cs  = _dnl.fletcher16(gdr_pd)
 	_dnl.death_ping_lru_cache_tbl[gdr_cs] = {
 		player_data = gdr_pd,
 		peer_report = 2,
 		committed   = 1,
-		timestamp   = time(),
+		timestamp   = GetServerTime(),
 	}
 	_dnl.updateLRUByName(gdr_name:lower(), gdr_cs, true)
 
@@ -4293,12 +4327,1553 @@ function _dnl.testAttachAddon()
 end
 
 -- ============================================================================
+-- testWatchlistQuery: channel-based watchlist query unit tests
+-- ============================================================================
+
+--- Test the WATCHLIST_QUERY protocol: outbound queryChannel batching,
+--- wire-format compliance, expect_ack registration, input validation,
+--- and inbound handler DB-lookup logic (simulated in-process).
+function _dnl.testWatchlistQuery()
+	if not _dnl.DEBUG then
+		print("|cffFF0000[Deathlog]|r testWatchlistQuery requires DEBUG mode")
+		return
+	end
+
+	testBegin()
+	local TAG  = "|cffFFAA00[DNL WatchlistQuery Test]|r "
+	local PASS = "|cff00FF00PASS|r"
+	local FAIL = "|cffFF0000FAIL|r"
+
+	local results = {}
+	local function record(name, ok, detail)
+		table.insert(results, { name = name, ok = ok, detail = detail })
+		if test_tracking.all_depth > 0 then
+			table.insert(test_tracking.global_results, { suite = "WatchlistQuery", name = name, ok = ok, detail = detail })
+		end
+		print(TAG .. (ok and PASS or FAIL) .. " " .. name .. (detail and (" — " .. detail) or ""))
+	end
+
+	local function printSummary()
+		print(TAG .. "--- Summary ---")
+		local passed, failed = 0, 0
+		for _, r in ipairs(results) do
+			if r.ok then passed = passed + 1 else failed = failed + 1 end
+		end
+		for _, r in ipairs(results) do
+			print(TAG .. "  " .. (r.ok and PASS or FAIL) .. " " .. r.name)
+		end
+		local color = failed == 0 and "|cff00FF00" or "|cffFF0000"
+		print(TAG .. color .. string.format("%d/%d passed|r", passed, passed + failed))
+	end
+
+	print(TAG .. "=========================")
+	print(TAG .. "Watchlist Query Tests")
+	print(TAG .. "=========================")
+
+	-- Save state
+	local saved_addons       = _dnl.addons
+	local saved_tag_to_addon = _dnl.tag_to_addon
+	local saved_queue        = _dnl.watchlist_query_queue
+	local saved_expect_ack   = _dnl.expect_ack
+
+	-- Set up a mock addon with a populated DB
+	local mock_db     = {}
+	local mock_db_map = {}
+	local now = GetServerTime()
+
+	-- Populate 15 entries in the mock DB
+	for i = 1, 15 do
+		local name = "WatchQTest" .. i
+		local pd = _dnl.playerData(name, "TestGuild", 100 + i, 1, 1, 20 + i, nil, 1429, nil, now - (i * 3600), nil, nil)
+		local cs = _dnl.fletcher16(pd)
+		mock_db[cs] = pd
+		mock_db_map[name] = cs
+	end
+
+	_dnl.addons = {
+		["__test_wq__"] = {
+			name          = "__test_wq__",
+			tag           = "WQT",
+			isUnitTracked = function() return true end,
+			settings      = { death_alert_priority = 100 },
+			db            = mock_db,
+			db_map        = mock_db_map,
+		},
+	}
+	_dnl.tag_to_addon = { WQT = "__test_wq__" }
+
+	-- ================================================================
+	-- Phase 1: COMM_COMMANDS constant
+	-- ================================================================
+	print(TAG .. "Phase 1: COMM_COMMANDS constant")
+
+	record("WATCHLIST_QUERY command exists",
+		_dnl.COMM_COMMANDS["WATCHLIST_QUERY"] ~= nil)
+	record("WATCHLIST_QUERY == '6'",
+		_dnl.COMM_COMMANDS["WATCHLIST_QUERY"] == "6")
+	record("WATCHLIST_QUERY is 1-char",
+		#_dnl.COMM_COMMANDS["WATCHLIST_QUERY"] == 1)
+
+	-- ================================================================
+	-- Phase 2: queryChannel input validation
+	-- ================================================================
+	print(TAG .. "Phase 2: queryChannel input validation")
+
+	_dnl.watchlist_query_queue = {}
+	_dnl.expect_ack = {}
+
+	-- nil tag → no-op
+	_dnl.queryChannel({"Alice"}, nil)
+	record("queryChannel rejects nil tag",
+		#_dnl.watchlist_query_queue == 0)
+
+	-- unregistered tag → no-op
+	_dnl.queryChannel({"Alice"}, "ZZZ")
+	record("queryChannel rejects unregistered tag",
+		#_dnl.watchlist_query_queue == 0)
+
+	-- nil names → no-op
+	_dnl.queryChannel(nil, "WQT")
+	record("queryChannel rejects nil names",
+		#_dnl.watchlist_query_queue == 0)
+
+	-- empty names table → no-op
+	_dnl.queryChannel({}, "WQT")
+	record("queryChannel rejects empty names",
+		#_dnl.watchlist_query_queue == 0)
+
+	-- No expect_ack entries after invalid calls
+	local ack_count = 0
+	for _ in pairs(_dnl.expect_ack) do ack_count = ack_count + 1 end
+	record("no expect_ack after invalid calls",
+		ack_count == 0,
+		"count=" .. tostring(ack_count))
+
+	-- ================================================================
+	-- Phase 3: queryChannel queues correctly
+	-- ================================================================
+	print(TAG .. "Phase 3: queryChannel queues correctly")
+
+	_dnl.watchlist_query_queue = {}
+	_dnl.expect_ack = {}
+
+	local test_names = {"Alice", "Bob", "Charlie"}
+	_dnl.queryChannel(test_names, "WQT")
+
+	record("one message queued",
+		#_dnl.watchlist_query_queue == 1,
+		"queued=" .. tostring(#_dnl.watchlist_query_queue))
+
+	-- Check queue entry format: {msg, timestamp}
+	local q_entry = _dnl.watchlist_query_queue[1]
+	record("queue entry is table with 2 elements",
+		q_entry ~= nil and type(q_entry) == "table" and q_entry[2] ~= nil)
+
+	-- Check message format: "WQT~Alice,Bob,Charlie"
+	local q_msg = q_entry and q_entry[1]
+	local expected_msg = "WQT" .. _dnl.COMM_FIELD_DELIM .. "Alice,Bob,Charlie"
+	record("queue message format correct",
+		q_msg == expected_msg,
+		string.format("expected '%s', got '%s'", expected_msg, tostring(q_msg)))
+
+	-- Check expect_ack was set for each name
+	record("expect_ack[Alice] set",
+		_dnl.expect_ack["Alice"] == 1)
+	record("expect_ack[Bob] set",
+		_dnl.expect_ack["Bob"] == 1)
+	record("expect_ack[Charlie] set",
+		_dnl.expect_ack["Charlie"] == 1)
+
+	-- ================================================================
+	-- Phase 4: Wire format & 255-byte budget
+	-- ================================================================
+	print(TAG .. "Phase 4: Wire format & budget")
+
+	_dnl.watchlist_query_queue = {}
+	_dnl.expect_ack = {}
+
+	-- The final on-wire message is: "6$WQT~name1,name2,..."
+	-- overhead = 1("6") + 1("$") + 3("WQT") + 1("~") = 6 bytes
+	-- Budget for names = 255 - 6 = 249 bytes
+	local overhead = #_dnl.COMM_COMMANDS["WATCHLIST_QUERY"] + #_dnl.COMM_COMMAND_DELIM + 3 + #_dnl.COMM_FIELD_DELIM
+	record("computed overhead = 6",
+		overhead == 6,
+		"overhead=" .. tostring(overhead))
+
+	-- Generate many long names to test budget truncation
+	local many_names = {}
+	for i = 1, 50 do
+		table.insert(many_names, "LongTestName" .. string.format("%04d", i))  -- 16 chars each
+	end
+	_dnl.queryChannel(many_names, "WQT")
+
+	record("budget-exceeded: still queues one message",
+		#_dnl.watchlist_query_queue == 1)
+
+	local budget_msg = _dnl.watchlist_query_queue[1] and _dnl.watchlist_query_queue[1][1]
+	local full_wire = _dnl.COMM_COMMANDS["WATCHLIST_QUERY"] .. _dnl.COMM_COMMAND_DELIM .. budget_msg
+	record("budget-exceeded: full wire <= 255 bytes",
+		#full_wire <= 255,
+		"length=" .. tostring(#full_wire))
+
+	-- Count how many names made it into the message
+	local name_part = budget_msg and budget_msg:sub(5) or ""  -- skip "WQT~"
+	local queued_names_count = 0
+	for _ in name_part:gmatch("([^,]+)") do
+		queued_names_count = queued_names_count + 1
+	end
+	record("budget-exceeded: not all 50 names fit",
+		queued_names_count < 50,
+		"names_in_msg=" .. tostring(queued_names_count))
+	record("budget-exceeded: at least 1 name fits",
+		queued_names_count >= 1)
+
+	-- Only the names that fit should have expect_ack set
+	local ack_budget_count = 0
+	for _ in pairs(_dnl.expect_ack) do ack_budget_count = ack_budget_count + 1 end
+	record("budget-exceeded: expect_ack count matches names in msg",
+		ack_budget_count == queued_names_count,
+		string.format("ack=%d, names=%d", ack_budget_count, queued_names_count))
+
+	-- ================================================================
+	-- Phase 5: Single name query
+	-- ================================================================
+	print(TAG .. "Phase 5: Single name query")
+
+	_dnl.watchlist_query_queue = {}
+	_dnl.expect_ack = {}
+
+	_dnl.queryChannel({"Solo"}, "WQT")
+	record("single name queues one message",
+		#_dnl.watchlist_query_queue == 1)
+
+	local solo_msg = _dnl.watchlist_query_queue[1] and _dnl.watchlist_query_queue[1][1]
+	local solo_expected = "WQT" .. _dnl.COMM_FIELD_DELIM .. "Solo"
+	record("single name message format",
+		solo_msg == solo_expected,
+		string.format("expected '%s', got '%s'", solo_expected, tostring(solo_msg)))
+
+	-- ================================================================
+	-- Phase 6: Inbound handler simulation (DB lookup)
+	-- ================================================================
+	print(TAG .. "Phase 6: Inbound handler DB-lookup simulation")
+
+	-- Simulate what the onChatMsgChannel handler does when receiving
+	-- a WATCHLIST_QUERY.  We replicate the lookup logic in-process.
+
+	local addon_entry = _dnl.addons["__test_wq__"]
+
+	-- Query for names that exist
+	local query_names = {"WatchQTest1", "WatchQTest5", "WatchQTest10"}
+	local found_count = 0
+	for _, qn in ipairs(query_names) do
+		local cs = addon_entry.db_map[qn]
+		if cs and addon_entry.db[cs] then
+			found_count = found_count + 1
+		end
+	end
+	record("handler sim: finds all 3 existing entries",
+		found_count == 3,
+		"found=" .. tostring(found_count))
+
+	-- Query for names that don't exist
+	local missing_count = 0
+	local missing_names = {"NobodyHere", "Nonexistent"}
+	for _, qn in ipairs(missing_names) do
+		local cs = addon_entry.db_map[qn]
+		if cs and addon_entry.db[cs] then
+			missing_count = missing_count + 1
+		end
+	end
+	record("handler sim: unknown names return 0 matches",
+		missing_count == 0)
+
+	-- Verify encoding of found entries (used in response)
+	local test_cs = addon_entry.db_map["WatchQTest1"]
+	local test_pd = test_cs and addon_entry.db[test_cs]
+	if test_pd then
+		local tag_overhead = 4  -- "WQT~"
+		local encoded = _dnl.encodeMessage(test_pd, tag_overhead)
+		record("handler sim: found entry encodes for response",
+			encoded ~= nil,
+			"len=" .. tostring(encoded and #encoded))
+		if encoded then
+			local resp_msg = _dnl.COMM_QUERY_ACK .. _dnl.COMM_COMMAND_DELIM
+				.. "WQT" .. _dnl.COMM_FIELD_DELIM .. encoded
+			record("handler sim: response wire format <= 255",
+				#resp_msg <= 255,
+				"len=" .. tostring(#resp_msg))
+		end
+	end
+
+	-- MAX_RESPONSES cap: query all 15 entries + 5 missing = handler would
+	-- only respond to the first 10 found
+	local all_query_names = {}
+	for i = 1, 15 do table.insert(all_query_names, "WatchQTest" .. i) end
+	for i = 1, 5 do table.insert(all_query_names, "Nobody" .. i) end
+
+	local response_count = 0
+	local MAX_RESPONSES = 10
+	for _, qn in ipairs(all_query_names) do
+		if response_count >= MAX_RESPONSES then break end
+		local cs = addon_entry.db_map[qn]
+		if cs and addon_entry.db[cs] then
+			response_count = response_count + 1
+		end
+	end
+	record("handler sim: MAX_RESPONSES caps at 10",
+		response_count == MAX_RESPONSES,
+		"responded=" .. tostring(response_count))
+
+	-- ================================================================
+	-- Phase 7: Unknown tag rejected by handler
+	-- ================================================================
+	print(TAG .. "Phase 7: Tag validation")
+
+	-- Simulate receiving a query with unknown tag
+	local unknown_tag = "ZZZ"
+	local unknown_addon = _dnl.tag_to_addon[unknown_tag]
+	record("handler sim: unknown tag → no addon lookup",
+		unknown_addon == nil)
+
+	-- Valid tag resolves correctly
+	local valid_addon = _dnl.tag_to_addon["WQT"]
+	record("handler sim: valid tag resolves to addon",
+		valid_addon == "__test_wq__")
+
+	-- ================================================================
+	-- Phase 8: Parse format "TAG~name1,name2,..." validation
+	-- ================================================================
+	print(TAG .. "Phase 8: Message parse validation")
+
+	-- Simulate the parse logic from onChatMsgChannel
+	local function parseWatchlistMsg(msg_body)
+		local query_tag, name_list = nil, msg_body
+		if msg_body and #msg_body > 4 and msg_body:sub(4, 4) == _dnl.COMM_FIELD_DELIM then
+			query_tag = msg_body:sub(1, 3)
+			name_list = msg_body:sub(5)
+		end
+		return query_tag, name_list
+	end
+
+	local p_tag, p_names = parseWatchlistMsg("WQT~Alice,Bob")
+	record("parse: extracts tag from well-formed msg",
+		p_tag == "WQT")
+	record("parse: extracts name list",
+		p_names == "Alice,Bob")
+
+	-- Short message (no tag prefix)
+	local p_tag2, p_names2 = parseWatchlistMsg("AB")
+	record("parse: short msg returns nil tag",
+		p_tag2 == nil)
+
+	-- Missing delimiter
+	local p_tag3, p_names3 = parseWatchlistMsg("WQTXAlice")
+	record("parse: wrong delimiter returns nil tag",
+		p_tag3 == nil)
+
+	-- Correct format with single name
+	local p_tag4, p_names4 = parseWatchlistMsg("WQT~Solo")
+	record("parse: single name works",
+		p_tag4 == "WQT" and p_names4 == "Solo")
+
+	-- Name iteration via gmatch
+	local parsed_names = {}
+	for n in ("Alice,Bob,Charlie"):gmatch("([^,]+)") do
+		table.insert(parsed_names, n)
+	end
+	record("parse: gmatch splits comma-separated names",
+		#parsed_names == 3 and parsed_names[1] == "Alice" and parsed_names[3] == "Charlie")
+
+	-- ================================================================
+	-- Phase 9: Public API surface
+	-- ================================================================
+	print(TAG .. "Phase 9: Public API surface")
+
+	record("QueryChannel is exposed",
+		DeathNotificationLib.QueryChannel ~= nil)
+	record("QueryChannel is a function",
+		type(DeathNotificationLib.QueryChannel) == "function")
+
+	-- Public API should proxy to internal queryChannel
+	_dnl.watchlist_query_queue = {}
+	_dnl.expect_ack = {}
+	DeathNotificationLib.QueryChannel({"ApiTest"}, "WQT")
+	record("QueryChannel proxies to queryChannel",
+		#_dnl.watchlist_query_queue == 1)
+
+	local api_msg = _dnl.watchlist_query_queue[1] and _dnl.watchlist_query_queue[1][1]
+	record("QueryChannel: message format correct",
+		api_msg == "WQT" .. _dnl.COMM_FIELD_DELIM .. "ApiTest")
+
+	-- ================================================================
+	-- Phase 10: Transport queue format (drain simulation)
+	-- ================================================================
+	print(TAG .. "Phase 10: Transport queue drain format")
+
+	_dnl.watchlist_query_queue = {}
+	_dnl.expect_ack = {}
+
+	-- Queue a message and verify the wire format that sendNextInQueue
+	-- would construct: COMM_COMMANDS["WATCHLIST_QUERY"] .. "$" .. entry[1]
+	_dnl.queryChannel({"DrainTest"}, "WQT")
+	local drain_entry = _dnl.watchlist_query_queue[1]
+	if drain_entry then
+		local wire = _dnl.COMM_COMMANDS["WATCHLIST_QUERY"]
+			.. _dnl.COMM_COMMAND_DELIM .. drain_entry[1]
+		record("drain: wire = '6$WQT~DrainTest'",
+			wire == "6$WQT~DrainTest",
+			"got '" .. wire .. "'")
+		record("drain: wire <= 255 bytes",
+			#wire <= 255,
+			"len=" .. tostring(#wire))
+	end
+
+	-- ================================================================
+	-- Cleanup
+	-- ================================================================
+	_dnl.addons              = saved_addons
+	_dnl.tag_to_addon        = saved_tag_to_addon
+	_dnl.watchlist_query_queue = saved_queue
+	_dnl.expect_ack          = saved_expect_ack
+
+	C_Timer.After(0.5, function()
+		print(TAG .. "=========================")
+		printSummary()
+		print(TAG .. "=========================")
+		testCleanup()
+	end)
+end
+
+---------------------------------------------------------------------------
+-- testDedup: exercises cross-checksum name dedup, late quality upgrade,
+--            outbound name dedup, and inbound equal-quality merge
+---------------------------------------------------------------------------
+
+--- 10 phases, ~8s (5s commit timer wait + buffer)
+function _dnl.testDedup()
+	if not _dnl.DEBUG then
+		print("|cffFF0000[Deathlog]|r testDedup requires DEBUG mode")
+		return
+	end
+
+	testBegin()
+	local PASS = "|cff00FF00PASS|r"
+	local FAIL = "|cffFF0000FAIL|r"
+	local TAG  = "|cffFF6600[Deathlog Dedup]|r "
+
+	local results = {}
+	local function record(name, ok, detail)
+		table.insert(results, { name = name, ok = ok, detail = detail })
+		if test_tracking.all_depth > 0 then
+			table.insert(test_tracking.global_results, { suite = "Dedup", name = name, ok = ok, detail = detail })
+		end
+		local status = ok and PASS or FAIL
+		print(TAG .. status .. " " .. name .. (detail and (" - " .. detail) or ""))
+	end
+
+	local function printSummary()
+		print(TAG .. "--- Summary ---")
+		local passed, failed = 0, 0
+		for _, r in ipairs(results) do
+			if r.ok then passed = passed + 1 else failed = failed + 1 end
+		end
+		for _, r in ipairs(results) do
+			local status = r.ok and PASS or FAIL
+			print(TAG .. "  " .. status .. " " .. r.name)
+		end
+		local color = failed == 0 and "|cff00FF00" or "|cffFF0000"
+		print(TAG .. color .. string.format("%d/%d passed|r", passed, passed + failed))
+	end
+
+	-- Hook to capture createEntry calls
+	local hook_calls = {}  -- { [name_lower] = { count, last_pd, last_cs } }
+	DeathNotificationLib.HookOnNewEntry(function(pd, cs, pc, ig, src)
+		if not test_tracking.active then return end
+		local n = pd and pd["name"] and pd["name"]:lower() or "?"
+		if not hook_calls[n] then
+			hook_calls[n] = { count = 0, last_pd = nil, last_cs = nil }
+		end
+		hook_calls[n].count = hook_calls[n].count + 1
+		hook_calls[n].last_pd = pd
+		hook_calls[n].last_cs = cs
+	end)
+
+	print(TAG .. "Starting dedup test suite...")
+
+	-- ================================================================
+	-- Phase 1: Cross-checksum inbound name dedup
+	-- Two peers broadcast for the same player with different guilds
+	-- → different checksums → should merge into one LRU entry
+	-- ================================================================
+	print(TAG .. "Phase 1: Cross-checksum inbound name dedup")
+	do
+		local dd_name = "DedupXcs" .. math.random(10000, 99999)
+		dd_name = dd_name:sub(1, 12)
+		local dd_name_lower = dd_name:lower()
+		_dnl.lru_by_name[dd_name_lower] = nil
+
+		-- Peer A sees the dead player as guild "AlphaGuild"
+		local pd_a = _dnl.playerData(dd_name, "AlphaGuild", 100, 1, 1, 30, nil, 1429, "0.3,0.4", GetServerTime(), nil, nil)
+		local cs_a = _dnl.fletcher16(pd_a)
+		-- Peer B sees no guild
+		local pd_b = _dnl.playerData(dd_name, "", 100, nil, nil, 30, nil, 1429, nil, GetServerTime(), nil, nil)
+		local cs_b = _dnl.fletcher16(pd_b)
+
+		record("phase1: different guilds → different checksums",
+			cs_a ~= cs_b,
+			string.format("%s vs %s", cs_a, cs_b))
+
+		-- Simulate inbound: Peer A's broadcast arrives first
+		local enc_a = _dnl.encodeMessage(pd_a)
+		if enc_a then
+			_dnl.handleDeathBroadcast("PeerAlpha", enc_a)
+		end
+
+		local lru_after_a = _dnl.lru_by_name[dd_name_lower]
+		record("phase1: first broadcast stored in LRU",
+			lru_after_a ~= nil and lru_after_a.checksum ~= nil)
+
+		-- Peer B's broadcast arrives — should merge, not create second entry
+		local enc_b = _dnl.encodeMessage(pd_b)
+		if enc_b then
+			_dnl.handleDeathBroadcast("PeerBeta", enc_b)
+		end
+
+		local lru_after_b = _dnl.lru_by_name[dd_name_lower]
+		record("phase1: second broadcast merged (same LRU name entry)",
+			lru_after_b ~= nil)
+
+		-- Verify only ONE LRU cache entry exists for this player
+		local cache_count = 0
+		for cs, entry in pairs(_dnl.death_ping_lru_cache_tbl) do
+			if entry["player_data"] and entry["player_data"]["name"] == dd_name then
+				cache_count = cache_count + 1
+			end
+		end
+		record("phase1: exactly 1 LRU cache entry (not 2)",
+			cache_count == 1,
+			string.format("found %d", cache_count))
+
+		-- The surviving entry should have the guild from A (richer data)
+		if lru_after_b and lru_after_b.checksum then
+			local cache = _dnl.death_ping_lru_cache_tbl[lru_after_b.checksum]
+			if cache and cache["player_data"] then
+				record("phase1: merged entry preserves guild",
+					cache["player_data"]["guild"] == "AlphaGuild",
+					string.format("got '%s'", tostring(cache["player_data"]["guild"])))
+			else
+				record("phase1: merged entry preserves guild", false, "no cache entry")
+			end
+		end
+	end
+
+	-- ================================================================
+	-- Phase 2: Outbound broadcastDeath name dedup across checksums
+	-- Simulates two party members: A calls broadcastDeath with guild,
+	-- then B calls with no guild → B should be suppressed
+	-- ================================================================
+	print(TAG .. "Phase 2: Outbound broadcastDeath cross-checksum dedup")
+	do
+		local bd_name = "DedupOutbd" .. math.random(10000, 99999)
+		bd_name = bd_name:sub(1, 12)
+		_dnl.lru_by_name[bd_name:lower()] = nil
+
+		local pd_with_guild = _dnl.playerData(bd_name, "SomeGuild", 200, 2, 3, 40, nil, 1426, nil, GetServerTime(), nil, "First words")
+		local pd_no_guild   = _dnl.playerData(bd_name, "", 200, nil, nil, 40, nil, 1426, nil, GetServerTime(), nil, nil)
+
+		local cs1 = _dnl.fletcher16(pd_with_guild)
+		local cs2 = _dnl.fletcher16(pd_no_guild)
+		_dnl.death_ping_lru_cache_tbl[cs1] = nil
+		_dnl.death_ping_lru_cache_tbl[cs2] = nil
+
+		local q_before = #_dnl.death_alert_out_queue
+
+		-- A's broadcast
+		_dnl.broadcastDeath(pd_with_guild)
+		local q_after_first = #_dnl.death_alert_out_queue
+		record("phase2: first broadcastDeath queues message",
+			q_after_first == q_before + 1,
+			string.format("before=%d, after=%d", q_before, q_after_first))
+
+		-- B's broadcast for same player, different checksum
+		_dnl.broadcastDeath(pd_no_guild)
+		local q_after_second = #_dnl.death_alert_out_queue
+		record("phase2: second broadcastDeath suppressed by name dedup",
+			q_after_second == q_after_first,
+			string.format("first=%d, second=%d", q_after_first, q_after_second))
+
+		-- Verify the data was merged (last_words from A should be in the surviving entry)
+		local lru = _dnl.lru_by_name[bd_name:lower()]
+		if lru and lru.checksum then
+			local c = _dnl.death_ping_lru_cache_tbl[lru.checksum]
+			if c and c["player_data"] then
+				record("phase2: suppressed broadcast data merged into existing",
+					c["player_data"]["guild"] == "SomeGuild",
+					string.format("guild='%s'", tostring(c["player_data"]["guild"])))
+			else
+				record("phase2: suppressed broadcast data merged into existing", false, "no cache")
+			end
+		else
+			record("phase2: suppressed broadcast data merged into existing", false, "no lru")
+		end
+	end
+
+	-- ================================================================
+	-- Phase 3: Equal-quality inbound merge (PEER + PEER)
+	-- Two PEER broadcasts with different checksums → same name →
+	-- should merge, not create parallel LRU entries
+	-- ================================================================
+	print(TAG .. "Phase 3: Equal-quality inbound merge")
+	do
+		local eq_name = "DedupEqQul" .. math.random(10000, 99999)
+		eq_name = eq_name:sub(1, 12)
+		_dnl.lru_by_name[eq_name:lower()] = nil
+
+		-- PEER A: has race/class but no last_words
+		local eq_a = _dnl.playerData(eq_name, "GuildA", 100, 2, 4, 35, nil, 1429, nil, GetServerTime(), nil, nil)
+		local eq_enc_a = _dnl.encodeMessage(eq_a)
+		if eq_enc_a then _dnl.handleDeathBroadcast("EqPeerA", eq_enc_a) end
+
+		-- PEER B: different guild (→ different checksum), has last_words
+		local eq_b = _dnl.playerData(eq_name, "", 100, nil, nil, 35, nil, 1429, "0.6,0.7", GetServerTime(), 5000, "Famous last words")
+		local eq_enc_b = _dnl.encodeMessage(eq_b)
+		if eq_enc_b then _dnl.handleDeathBroadcast("EqPeerB", eq_enc_b) end
+
+		-- Should still have exactly 1 cache entry
+		local eq_count = 0
+		for _, entry in pairs(_dnl.death_ping_lru_cache_tbl) do
+			if entry["player_data"] and entry["player_data"]["name"] == eq_name then
+				eq_count = eq_count + 1
+			end
+		end
+		record("phase3: equal-quality broadcasts → 1 LRU entry",
+			eq_count == 1,
+			string.format("found %d", eq_count))
+
+		-- Merged entry should have best of both: guild from A, last_words from B
+		local eq_lru = _dnl.lru_by_name[eq_name:lower()]
+		if eq_lru and eq_lru.checksum then
+			local eq_cache = _dnl.death_ping_lru_cache_tbl[eq_lru.checksum]
+			if eq_cache and eq_cache["player_data"] then
+				record("phase3: merged entry has guild from A",
+					eq_cache["player_data"]["guild"] == "GuildA",
+					string.format("got '%s'", tostring(eq_cache["player_data"]["guild"])))
+				record("phase3: merged entry has last_words from B",
+					eq_cache["player_data"]["last_words"] == "Famous last words",
+					string.format("got '%s'", tostring(eq_cache["player_data"]["last_words"])))
+				record("phase3: merged entry has map_pos from B",
+					eq_cache["player_data"]["map_pos"] == "0.6,0.7",
+					string.format("got '%s'", tostring(eq_cache["player_data"]["map_pos"])))
+			else
+				record("phase3: merged entry has guild from A", false, "no cache")
+				record("phase3: merged entry has last_words from B", false, "no cache")
+				record("phase3: merged entry has map_pos from B", false, "no cache")
+			end
+		end
+	end
+
+	-- ================================================================
+	-- Phase 4: SELF upgrade before commit (the fast path)
+	-- PEER arrives → SELF arrives within 3.5s → quality upgrade
+	-- ================================================================
+	print(TAG .. "Phase 4: SELF upgrade before commit")
+	do
+		local up_name = "DedupUpFst" .. math.random(10000, 99999)
+		up_name = up_name:sub(1, 12)
+		_dnl.lru_by_name[up_name:lower()] = nil
+
+		-- Peer broadcast (no guild, no last_words)
+		local up_peer = _dnl.playerData(up_name, "", 300, nil, nil, 45, nil, 1429, nil, GetServerTime(), nil, nil)
+		local up_peer_enc = _dnl.encodeMessage(up_peer)
+		if up_peer_enc then _dnl.handleDeathBroadcast("PeerSender", up_peer_enc) end
+
+		local up_lru = _dnl.lru_by_name[up_name:lower()]
+		local up_cs_before = up_lru and up_lru.checksum or nil
+
+		-- SELF broadcast (has guild, last_words, map_pos)
+		local up_self = _dnl.playerData(up_name, "SelfGuild", 300, 3, 5, 45, nil, 1429, "0.2,0.8", GetServerTime(), 12345, "My own death")
+		local up_self_enc = _dnl.encodeMessage(up_self)
+		if up_self_enc then _dnl.handleDeathBroadcast(up_name, up_self_enc) end
+
+		local up_lru2 = _dnl.lru_by_name[up_name:lower()]
+		if up_lru2 and up_lru2.checksum then
+			local up_cache = _dnl.death_ping_lru_cache_tbl[up_lru2.checksum]
+			record("phase4: quality upgraded to SELF",
+				up_cache and up_cache["quality"] == _dnl.QUALITY.SELF,
+				string.format("got %s", tostring(up_cache and up_cache["quality"])))
+			if up_cache and up_cache["player_data"] then
+				record("phase4: upgraded entry has guild",
+					up_cache["player_data"]["guild"] == "SelfGuild",
+					string.format("got '%s'", tostring(up_cache["player_data"]["guild"])))
+				record("phase4: upgraded entry has last_words",
+					up_cache["player_data"]["last_words"] == "My own death",
+					string.format("got '%s'", tostring(up_cache["player_data"]["last_words"])))
+			end
+		else
+			record("phase4: quality upgraded to SELF", false, "no lru")
+		end
+
+		-- Old PEER entry should be marked committed (blocked)
+		if up_cs_before then
+			local old_cache = _dnl.death_ping_lru_cache_tbl[up_cs_before]
+			record("phase4: old PEER entry marked committed",
+				old_cache and old_cache["committed"] == 1,
+				string.format("committed=%s", tostring(old_cache and old_cache["committed"])))
+		end
+	end
+
+	-- ================================================================
+	-- Phase 5: Late SELF upgrade AFTER commit (the race condition fix)
+	-- Manually commit a PEER entry, then send SELF → should re-fire
+	-- createEntry with upgraded data, not silently discard
+	-- ================================================================
+	print(TAG .. "Phase 5: Late SELF upgrade after commit (async)")
+	do
+		local late_name = "DedupLate" .. math.random(10000, 99999)
+		late_name = late_name:sub(1, 12)
+		local late_name_lower = late_name:lower()
+		_dnl.lru_by_name[late_name_lower] = nil
+		hook_calls[late_name_lower] = nil
+
+		-- Simulate a PEER broadcast that has already committed
+		local late_peer = _dnl.playerData(late_name, "", 400, nil, nil, 50, nil, 1429, nil, GetServerTime(), nil, nil)
+		local late_peer_cs = _dnl.fletcher16(late_peer)
+		_dnl.death_ping_lru_cache_tbl[late_peer_cs] = {
+			player_data = _dnl.deepCopy(late_peer),
+			quality = _dnl.QUALITY.PEER,
+			timestamp = GetServerTime(),
+			committed = 1,
+			source = _dnl.SOURCE.PEER_BROADCAST,
+		}
+		_dnl.updateLRUByName(late_name_lower, late_peer_cs, true)
+
+		-- Also fire createEntry so the addon DB has the PEER entry
+		_dnl.createEntry(
+			_dnl.deepCopy(late_peer),
+			late_peer_cs,
+			0, nil,
+			_dnl.SOURCE.PEER_BROADCAST
+		)
+
+		local hook_before = hook_calls[late_name_lower] and hook_calls[late_name_lower].count or 0
+		record("phase5: initial PEER committed to DB",
+			hook_before >= 1,
+			string.format("hook calls=%d", hook_before))
+
+		-- Now the SELF broadcast arrives late
+		local late_self = _dnl.playerData(late_name, "LateGuild", 400, 4, 7, 50, nil, 1429, "0.1,0.9", GetServerTime(), 99999, "Late but best")
+		local late_self_enc = _dnl.encodeMessage(late_self)
+		if late_self_enc then
+			_dnl.handleDeathBroadcast(late_name, late_self_enc)
+		end
+
+		-- The re-fire should have called createEntry again with upgraded data
+		local hook_after = hook_calls[late_name_lower] and hook_calls[late_name_lower].count or 0
+		record("phase5: createEntry re-fired after late upgrade",
+			hook_after > hook_before,
+			string.format("before=%d, after=%d", hook_before, hook_after))
+
+		-- Verify the re-fired data has SELF quality fields
+		local last_pd = hook_calls[late_name_lower] and hook_calls[late_name_lower].last_pd
+		if last_pd then
+			record("phase5: re-fired data has guild",
+				last_pd["guild"] == "LateGuild",
+				string.format("got '%s'", tostring(last_pd["guild"])))
+			record("phase5: re-fired data has last_words",
+				last_pd["last_words"] == "Late but best",
+				string.format("got '%s'", tostring(last_pd["last_words"])))
+			record("phase5: re-fired data has played",
+				last_pd["played"] == 99999,
+				string.format("got %s", tostring(last_pd["played"])))
+		else
+			record("phase5: re-fired data has guild", false, "no hook data")
+			record("phase5: re-fired data has last_words", false, "no hook data")
+			record("phase5: re-fired data has played", false, "no hook data")
+		end
+
+		-- The LRU cache entry should now reflect SELF quality
+		local late_cache = _dnl.death_ping_lru_cache_tbl[late_peer_cs]
+		record("phase5: LRU cache quality upgraded to SELF",
+			late_cache and late_cache["quality"] == _dnl.QUALITY.SELF,
+			string.format("got %s", tostring(late_cache and late_cache["quality"])))
+	end
+
+	-- ================================================================
+	-- Phase 6: Three PEERs with different data → only 1 commit
+	-- Simulates ZF scenario: 3 party members report same death
+	-- with different guild/source/map_pos → different checksums
+	-- ================================================================
+	print(TAG .. "Phase 6: ZF party scenario — 3 peers, 1 commit (async)")
+	do
+		local zf_name = "DedupZfRak" .. math.random(10000, 99999)
+		zf_name = zf_name:sub(1, 12)
+		local zf_name_lower = zf_name:lower()
+		_dnl.lru_by_name[zf_name_lower] = nil
+		hook_calls[zf_name_lower] = nil
+
+		-- Peer 1: has guild, saw the kill source
+		local zf_pd1 = _dnl.playerData(zf_name, "ZfGuild", 500, 1, 2, 44, nil, 1429, "0.5,0.5", GetServerTime(), nil, nil)
+		-- Peer 2: no guild, different source (-1 = reported), different pos
+		local zf_pd2 = _dnl.playerData(zf_name, "", -1, nil, nil, 0, nil, 1429, "0.51,0.49", GetServerTime(), nil, "Help me!")
+		-- Peer 3: different guild, same source, different pos
+		local zf_pd3 = _dnl.playerData(zf_name, "OtherGuild", 500, 3, 4, 44, nil, 1429, "0.49,0.51", GetServerTime(), 7200, nil)
+
+		-- All produce different checksums
+		local zf_cs1 = _dnl.fletcher16(zf_pd1)
+		local zf_cs2 = _dnl.fletcher16(zf_pd2)
+		local zf_cs3 = _dnl.fletcher16(zf_pd3)
+		_dnl.death_ping_lru_cache_tbl[zf_cs1] = nil
+		_dnl.death_ping_lru_cache_tbl[zf_cs2] = nil
+		_dnl.death_ping_lru_cache_tbl[zf_cs3] = nil
+
+		record("phase6: 3 peers produce different checksums",
+			zf_cs1 ~= zf_cs2 and zf_cs2 ~= zf_cs3 and zf_cs1 ~= zf_cs3,
+			string.format("%s / %s / %s", zf_cs1, zf_cs2, zf_cs3))
+
+		-- Send all three inbound
+		local zf_enc1 = _dnl.encodeMessage(zf_pd1)
+		local zf_enc2 = _dnl.encodeMessage(zf_pd2)
+		local zf_enc3 = _dnl.encodeMessage(zf_pd3)
+		if zf_enc1 then _dnl.handleDeathBroadcast("ZfPeer1", zf_enc1) end
+		if zf_enc2 then _dnl.handleDeathBroadcast("ZfPeer2", zf_enc2) end
+		if zf_enc3 then _dnl.handleDeathBroadcast("ZfPeer3", zf_enc3) end
+
+		-- Should have exactly 1 cache entry with uncommitted state
+		local zf_cache_count = 0
+		local zf_surviving_cs = nil
+		for cs, entry in pairs(_dnl.death_ping_lru_cache_tbl) do
+			if entry["player_data"] and entry["player_data"]["name"] == zf_name and not entry["committed"] then
+				zf_cache_count = zf_cache_count + 1
+				zf_surviving_cs = cs
+			end
+		end
+		record("phase6: exactly 1 uncommitted cache entry",
+			zf_cache_count == 1,
+			string.format("found %d", zf_cache_count))
+
+		-- The surviving entry should have the richest merged data
+		if zf_surviving_cs then
+			local zf_cache = _dnl.death_ping_lru_cache_tbl[zf_surviving_cs]
+			if zf_cache and zf_cache["player_data"] then
+				-- Guild from peer 1 (first, richer)
+				record("phase6: merged entry has guild",
+					zf_cache["player_data"]["guild"] == "ZfGuild",
+					string.format("got '%s'", tostring(zf_cache["player_data"]["guild"])))
+				-- last_words from peer 2
+				record("phase6: merged entry has last_words from peer 2",
+					zf_cache["player_data"]["last_words"] == "Help me!",
+					string.format("got '%s'", tostring(zf_cache["player_data"]["last_words"])))
+				-- played from peer 3
+				record("phase6: merged entry has played from peer 3",
+					zf_cache["player_data"]["played"] == 7200,
+					string.format("got %s", tostring(zf_cache["player_data"]["played"])))
+			end
+		end
+
+		-- Wait for auto-commit (3.5s + buffer)
+		C_Timer.After(5.0, function()
+			local zf_hook = hook_calls[zf_name_lower]
+			record("phase6: createEntry fired exactly 1 time",
+				zf_hook and zf_hook.count == 1,
+				string.format("count=%s", tostring(zf_hook and zf_hook.count)))
+
+			-- ================================================================
+			-- Phase 7: ZF + SELF (4 addon users, dying player has addon)
+			-- Same scenario but SELF broadcast arrives 1s after 3 PEERs
+			-- ================================================================
+			print(TAG .. "Phase 7: ZF + SELF — 4 addon users")
+			do
+				local zfs_name = "DdpZfSelf" .. math.random(10000, 99999)
+				zfs_name = zfs_name:sub(1, 12)
+				local zfs_lower = zfs_name:lower()
+				_dnl.lru_by_name[zfs_lower] = nil
+				hook_calls[zfs_lower] = nil
+
+				local zfs_pd1 = _dnl.playerData(zfs_name, "",         600, nil, nil, 38, nil, 1429, "0.4,0.4", GetServerTime(), nil, nil)
+				local zfs_pd2 = _dnl.playerData(zfs_name, "ZfsGuild", 600, 2,   3,   38, nil, 1429, "0.41,0.39", GetServerTime(), nil, nil)
+				-- SELF: dying player's own broadcast (richest data)
+				local zfs_self = _dnl.playerData(zfs_name, "ZfsGuild", 600, 2, 3, 38, nil, 1429, "0.4,0.4", GetServerTime(), 50000, "I died in ZF!")
+
+				-- Clear caches
+				for _, pd in ipairs({ zfs_pd1, zfs_pd2, zfs_self }) do
+					local cs = _dnl.fletcher16(pd)
+					_dnl.death_ping_lru_cache_tbl[cs] = nil
+				end
+
+				-- 2 PEERs arrive
+				local ze1 = _dnl.encodeMessage(zfs_pd1)
+				local ze2 = _dnl.encodeMessage(zfs_pd2)
+				if ze1 then _dnl.handleDeathBroadcast("ZfsPeer1", ze1) end
+				if ze2 then _dnl.handleDeathBroadcast("ZfsPeer2", ze2) end
+
+				-- SELF arrives (sender == name → is_self_report = true)
+				local ze_self = _dnl.encodeMessage(zfs_self)
+				if ze_self then _dnl.handleDeathBroadcast(zfs_name, ze_self) end
+
+				-- Should have exactly 1 active cache entry with SELF quality
+				local zfs_count = 0
+				local zfs_best_quality = 0
+				for _, entry in pairs(_dnl.death_ping_lru_cache_tbl) do
+					if entry["player_data"] and entry["player_data"]["name"] == zfs_name then
+						if not entry["committed"] then
+							zfs_count = zfs_count + 1
+						end
+						if (entry["quality"] or 0) > zfs_best_quality then
+							zfs_best_quality = entry["quality"] or 0
+						end
+					end
+				end
+				record("phase7: 2 PEERs + 1 SELF → 1 uncommitted entry",
+					zfs_count == 1,
+					string.format("found %d", zfs_count))
+				record("phase7: surviving entry is SELF quality",
+					zfs_best_quality == _dnl.QUALITY.SELF,
+					string.format("got %d", zfs_best_quality))
+
+				-- Wait for commit
+				C_Timer.After(5.0, function()
+					local zfs_hook = hook_calls[zfs_lower]
+					record("phase7: createEntry fired exactly 1 time",
+						zfs_hook and zfs_hook.count == 1,
+						string.format("count=%s", tostring(zfs_hook and zfs_hook.count)))
+					if zfs_hook and zfs_hook.last_pd then
+						record("phase7: committed data has played (SELF)",
+							zfs_hook.last_pd["played"] == 50000,
+							string.format("got %s", tostring(zfs_hook.last_pd["played"])))
+						record("phase7: committed data has last_words (SELF)",
+							zfs_hook.last_pd["last_words"] == "I died in ZF!",
+							string.format("got '%s'", tostring(zfs_hook.last_pd["last_words"])))
+					end
+
+					-- ============================================================
+					-- Phase 8: isNameAlreadyCommitted blocks duplicate commit
+					-- ============================================================
+					print(TAG .. "Phase 8: isNameAlreadyCommitted guard")
+					do
+						local dup_name = "DedupGuard" .. math.random(10000, 99999)
+						dup_name = dup_name:sub(1, 12)
+						local dup_lower = dup_name:lower()
+
+						-- Manually mark as committed in lru_by_name
+						_dnl.lru_by_name[dup_lower] = {
+							checksum = "fake-committed-cs",
+							timestamp = GetServerTime(),
+							committed = true,
+						}
+
+						record("phase8: isNameAlreadyCommitted returns true for committed name",
+							_dnl.isNameAlreadyCommitted(dup_name) == true)
+
+						-- After dedup window expires (no level stored → 120s default window), should return false
+						_dnl.lru_by_name[dup_lower].timestamp = GetServerTime() - _dnl.getDedupWindow(0) - 10
+						record("phase8: isNameAlreadyCommitted returns false after window expires",
+							_dnl.isNameAlreadyCommitted(dup_name) == false)
+
+						-- With a high-level entry, the window is wider
+						_dnl.lru_by_name[dup_lower].level = 40
+						_dnl.lru_by_name[dup_lower].timestamp = GetServerTime() - 600
+						record("phase8: isNameAlreadyCommitted returns true with level-scaled window",
+							_dnl.isNameAlreadyCommitted(dup_name) == true)
+
+						-- Beyond the level-40 window (1800s)
+						_dnl.lru_by_name[dup_lower].timestamp = GetServerTime() - 1810
+						record("phase8: isNameAlreadyCommitted returns false beyond level-scaled window",
+							_dnl.isNameAlreadyCommitted(dup_name) == false)
+
+						-- Nil/empty name → false
+						record("phase8: isNameAlreadyCommitted(nil) = false",
+							_dnl.isNameAlreadyCommitted(nil) == false)
+
+						-- Clean up
+						_dnl.lru_by_name[dup_lower] = nil
+					end
+
+					-- ============================================================
+					-- Phase 9: mergeLRUEntry field-level merge correctness
+					-- ============================================================
+					print(TAG .. "Phase 9: mergeLRUEntry field-level merge")
+					do
+						-- Higher quality incoming: overwrites everything
+						local existing_hi = _dnl.playerData("MergeLru", "OldGuild", 100, 1, 1, 30, nil, 1429, "0.5,0.5", GetServerTime(), 1000, "old words")
+						local incoming_hi = _dnl.playerData("MergeLru", "NewGuild", 200, 3, 5, 30, nil, 1426, "0.3,0.3", GetServerTime(), 5000, "new words")
+						_dnl.mergeLRUEntry(existing_hi, incoming_hi, _dnl.QUALITY.SELF, _dnl.QUALITY.PEER)
+						record("phase9: higher quality incoming overwrites guild",
+							existing_hi["guild"] == "NewGuild",
+							string.format("got '%s'", tostring(existing_hi["guild"])))
+						record("phase9: higher quality incoming overwrites source_id",
+							existing_hi["source_id"] == 200,
+							string.format("got %s", tostring(existing_hi["source_id"])))
+						record("phase9: higher quality incoming overwrites last_words",
+							existing_hi["last_words"] == "new words",
+							string.format("got '%s'", tostring(existing_hi["last_words"])))
+
+						-- Lower quality incoming: only fills gaps
+						local existing_lo = _dnl.playerData("MergeLru2", "KeepGuild", 300, 2, 4, 40, nil, 1429, nil, GetServerTime(), nil, nil)
+						local incoming_lo = _dnl.playerData("MergeLru2", "IgnoredGuild", 301, nil, nil, 40, nil, 1429, "0.7,0.7", GetServerTime(), 8000, "fill words")
+						_dnl.mergeLRUEntry(existing_lo, incoming_lo, _dnl.QUALITY.PEER, _dnl.QUALITY.SELF)
+						record("phase9: lower quality preserves existing guild",
+							existing_lo["guild"] == "KeepGuild",
+							string.format("got '%s'", tostring(existing_lo["guild"])))
+						record("phase9: lower quality fills missing map_pos",
+							existing_lo["map_pos"] == "0.7,0.7",
+							string.format("got '%s'", tostring(existing_lo["map_pos"])))
+						record("phase9: lower quality fills missing played",
+							existing_lo["played"] == 8000,
+							string.format("got %s", tostring(existing_lo["played"])))
+						record("phase9: lower quality fills missing last_words",
+							existing_lo["last_words"] == "fill words",
+							string.format("got '%s'", tostring(existing_lo["last_words"])))
+						record("phase9: lower quality does NOT overwrite source_id",
+							existing_lo["source_id"] == 300,
+							string.format("got %s", tostring(existing_lo["source_id"])))
+
+						-- source_id = -1 in existing: should be filled by real source_id from incoming lower-quality
+						local existing_src = _dnl.playerData("MergeLru3", "", -1, nil, nil, 20, nil, 1429, nil, GetServerTime(), nil, nil)
+						local incoming_src = _dnl.playerData("MergeLru3", "", 555, nil, nil, 20, nil, 1429, nil, GetServerTime(), nil, nil)
+						_dnl.mergeLRUEntry(existing_src, incoming_src, _dnl.QUALITY.PEER, _dnl.QUALITY.SELF)
+						record("phase9: lower quality fills source_id=-1 with real value",
+							existing_src["source_id"] == 555,
+							string.format("got %s", tostring(existing_src["source_id"])))
+					end
+
+					-- ============================================================
+					-- Phase 10: Dedup window boundary test
+					-- ============================================================
+					print(TAG .. "Phase 10: Dedup window boundary")
+					do
+						local bnd_name = "DedupBndry" .. math.random(10000, 99999)
+						bnd_name = bnd_name:sub(1, 12)
+						local bnd_lower = bnd_name:lower()
+
+						-- Place an entry at the edge of the dedup window
+						local bnd_pd = _dnl.playerData(bnd_name, "G", 100, 1, 1, 25, nil, 1429, nil, GetServerTime(), nil, nil)
+						local bnd_cs = _dnl.fletcher16(bnd_pd)
+						_dnl.death_ping_lru_cache_tbl[bnd_cs] = {
+							player_data = _dnl.deepCopy(bnd_pd),
+							quality = _dnl.QUALITY.PEER,
+							timestamp = GetServerTime(),
+							source = _dnl.SOURCE.PEER_BROADCAST,
+						}
+
+						-- Just inside window: should dedup
+						-- Level 25 → getDedupWindow(25) = 600s, so 115s ago is well within
+						_dnl.lru_by_name[bnd_lower] = {
+							checksum = bnd_cs,
+							timestamp = GetServerTime() - _dnl.getDedupWindow(25) + 5,
+							level = 25,
+						}
+						local bnd_inside = _dnl.playerData(bnd_name, "", 100, nil, nil, 25, nil, 1429, nil, GetServerTime(), nil, nil)
+						local bnd_inside_enc = _dnl.encodeMessage(bnd_inside)
+						local bnd_count_before = 0
+						for _, e in pairs(_dnl.death_ping_lru_cache_tbl) do
+							if e["player_data"] and e["player_data"]["name"] == bnd_name then
+								bnd_count_before = bnd_count_before + 1
+							end
+						end
+						if bnd_inside_enc then _dnl.handleDeathBroadcast("BndPeer", bnd_inside_enc) end
+						local bnd_count_after = 0
+						for _, e in pairs(_dnl.death_ping_lru_cache_tbl) do
+							if e["player_data"] and e["player_data"]["name"] == bnd_name then
+								bnd_count_after = bnd_count_after + 1
+							end
+						end
+						record("phase10: inside window → deduped (count unchanged)",
+							bnd_count_after == bnd_count_before,
+							string.format("before=%d, after=%d", bnd_count_before, bnd_count_after))
+
+						-- Just outside window: should create new entry
+						-- Level 26 → getDedupWindow(26) = 600s, set timestamp just beyond
+						_dnl.lru_by_name[bnd_lower] = {
+							checksum = bnd_cs,
+							timestamp = GetServerTime() - _dnl.getDedupWindow(26) - 5,
+							level = 26,
+						}
+						local bnd_outside = _dnl.playerData(bnd_name, "NewGuild", 101, nil, nil, 26, nil, 1429, nil, GetServerTime(), nil, nil)
+						local bnd_outside_cs = _dnl.fletcher16(bnd_outside)
+						_dnl.death_ping_lru_cache_tbl[bnd_outside_cs] = nil
+						local bnd_outside_enc = _dnl.encodeMessage(bnd_outside)
+						if bnd_outside_enc then _dnl.handleDeathBroadcast("BndPeer2", bnd_outside_enc) end
+						local bnd_new_entry = _dnl.death_ping_lru_cache_tbl[bnd_outside_cs]
+						record("phase10: outside window → new entry created",
+							bnd_new_entry ~= nil and bnd_new_entry["player_data"] ~= nil)
+
+						-- Clean up
+						_dnl.death_ping_lru_cache_tbl[bnd_cs] = nil
+						_dnl.death_ping_lru_cache_tbl[bnd_outside_cs] = nil
+						_dnl.lru_by_name[bnd_lower] = nil
+					end
+
+					-- Final summary
+					C_Timer.After(0.5, function()
+						print(TAG .. "=========================")
+						printSummary()
+						print(TAG .. "=========================")
+						testCleanup()
+					end)
+				end)
+			end
+		end)
+	end
+end
+
+-- ============================================================================
+-- testVersionCheck: version broadcast & notification tests
+-- ============================================================================
+
+--- Test the VersionCheck module: wire format, message dispatch,
+--- newer/older version handling, whisper-back, dedup, and cooldown.
+function _dnl.testVersionCheck()
+	if not _dnl.DEBUG then
+		print("|cffFF0000[Deathlog]|r testVersionCheck requires DEBUG mode")
+		return
+	end
+
+	testBegin()
+	local TAG  = "|cffFFAA00[DNL VersionCheck Test]|r "
+	local PASS = "|cff00FF00PASS|r"
+	local FAIL = "|cffFF0000FAIL|r"
+
+	local results = {}
+	local function record(name, ok, detail)
+		table.insert(results, { name = name, ok = ok, detail = detail })
+		if test_tracking.all_depth > 0 then
+			table.insert(test_tracking.global_results, { suite = "VersionCheck", name = name, ok = ok, detail = detail })
+		end
+		print(TAG .. (ok and PASS or FAIL) .. " " .. name .. (detail and (" — " .. detail) or ""))
+	end
+
+	local function printSummary()
+		print(TAG .. "--- Summary ---")
+		local passed, failed = 0, 0
+		for _, r in ipairs(results) do
+			if r.ok then passed = passed + 1 else failed = failed + 1 end
+		end
+		for _, r in ipairs(results) do
+			print(TAG .. "  " .. (r.ok and PASS or FAIL) .. " " .. r.name)
+		end
+		local color = failed == 0 and "|cff00FF00" or "|cffFF0000"
+		print(TAG .. color .. string.format("%d/%d passed|r", passed, passed + failed))
+	end
+
+	print(TAG .. "=========================")
+	print(TAG .. "Version Check Tests")
+	print(TAG .. "=========================")
+
+	-- Save state
+	local saved_addons              = _dnl.addons
+	local saved_tag_to_addon        = _dnl.tag_to_addon
+	local saved_hook_newer_version  = _dnl.hook_newer_version_functions
+
+	-- Capture whisper messages sent by the version check module
+	local whisper_log = {}
+	local saved_CTL = _G.ChatThrottleLib
+	local saved_SendAddonMessage = _G.SendAddonMessage
+	_G.ChatThrottleLib = nil  -- force raw path
+	_G.SendAddonMessage = function(prefix, text, chatType, target)
+		table.insert(whisper_log, {
+			prefix   = prefix,
+			text     = text,
+			chatType = chatType,
+			target   = target,
+		})
+	end
+
+	-- Register a mock addon
+	_dnl.addons = {}
+	_dnl.tag_to_addon = {}
+	_dnl.addons["__TestVC__"] = {
+		name          = "__TestVC__",
+		tag           = "VC1",
+		isUnitTracked = function() return true end,
+		settings      = {},
+		addon_version = "1.0.0",
+	}
+	_dnl.tag_to_addon["VC1"] = "__TestVC__"
+
+	-- Clear version check state
+	wipe(_dnl._vc_warned_versions)
+	wipe(_dnl._vc_last_announce_time)
+
+	-- Capture HookOnNewerVersion calls
+	local hook_calls = {}
+	_dnl.hook_newer_version_functions = {
+		function(addonName, newerVer, currentVer)
+			table.insert(hook_calls, {
+				addon   = addonName,
+				newer   = newerVer,
+				current = currentVer,
+			})
+		end,
+	}
+
+	-- ================================================================
+	-- Phase 1: Constants & prefix
+	-- ================================================================
+	print(TAG .. "Phase 1: Constants")
+
+	record("VERSION_CHECK_COMM_NAME defined",
+		_dnl.VERSION_CHECK_COMM_NAME ~= nil and _dnl.VERSION_CHECK_COMM_NAME == "HCDeathVer")
+
+	record("CMD_VERSION_ANNOUNCE is V",
+		_dnl._vc_CMD_VERSION_ANNOUNCE == "V")
+
+	record("CMD_NEWER_NOTIFY is N",
+		_dnl._vc_CMD_NEWER_NOTIFY == "N")
+
+	-- ================================================================
+	-- Phase 2: Receiving a NEWER version announcement
+	-- ================================================================
+	print(TAG .. "Phase 2: Newer version announcement")
+
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	-- Simulate receiving V$VC1~2.0.0~ from "RemotePeer" on GUILD
+	local msg_newer = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "2.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_newer,
+		"GUILD",
+		"RemotePeer",
+	})
+
+	record("newer version: hook fired",
+		#hook_calls == 1,
+		"count=" .. tostring(#hook_calls))
+
+	record("newer version: hook addon name correct",
+		#hook_calls >= 1 and hook_calls[1].addon == "__TestVC__")
+
+	record("newer version: hook newer version correct",
+		#hook_calls >= 1 and hook_calls[1].newer == "2.0.0")
+
+	record("newer version: hook current version correct",
+		#hook_calls >= 1 and hook_calls[1].current == "1.0.0")
+
+	record("newer version: newest_detected_version updated",
+		_dnl.addons["__TestVC__"].newest_detected_version == "2.0.0")
+
+	-- Should NOT whisper back (remote is newer, we don't tell them anything)
+	record("newer version: no whisper sent",
+		#whisper_log == 0,
+		"whispers=" .. tostring(#whisper_log))
+
+	-- ================================================================
+	-- Phase 3: Dedup — same version again should not re-fire
+	-- ================================================================
+	print(TAG .. "Phase 3: Dedup (same newer version)")
+
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	-- Same message again
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_newer,
+		"GUILD",
+		"AnotherPeer",
+	})
+
+	record("dedup: hook NOT fired for same version",
+		#hook_calls == 0,
+		"count=" .. tostring(#hook_calls))
+
+	record("dedup: no whisper sent",
+		#whisper_log == 0)
+
+	-- ================================================================
+	-- Phase 4: Even newer version should fire again
+	-- ================================================================
+	print(TAG .. "Phase 4: Even newer version")
+
+	wipe(hook_calls)
+
+	local msg_even_newer = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "3.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_even_newer,
+		"PARTY",
+		"ThirdPeer",
+	})
+
+	record("even newer: hook fires for 3.0.0",
+		#hook_calls == 1)
+
+	record("even newer: newest_detected_version updated to 3.0.0",
+		_dnl.addons["__TestVC__"].newest_detected_version == "3.0.0")
+
+	-- ================================================================
+	-- Phase 5: Receiving an OLDER version announcement → whisper back
+	-- ================================================================
+	print(TAG .. "Phase 5: Older version announcement (whisper back)")
+
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	local msg_older = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "0.5.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_older,
+		"RAID",
+		"OldPeer",
+	})
+
+	record("older version: no hook fired (we're not outdated)",
+		#hook_calls == 0)
+
+	record("older version: whisper sent",
+		#whisper_log == 1,
+		"whispers=" .. tostring(#whisper_log))
+
+	if #whisper_log >= 1 then
+		record("older version: whisper prefix correct",
+			whisper_log[1].prefix == _dnl.VERSION_CHECK_COMM_NAME)
+
+		record("older version: whisper target correct",
+			whisper_log[1].target == "OldPeer")
+
+		record("older version: whisper chatType is WHISPER",
+			whisper_log[1].chatType == "WHISPER")
+
+		-- Verify whisper message format: N$VC1~1.0.0~
+		local expected_whisper = "N" .. _dnl.COMM_COMMAND_DELIM
+			.. "VC1" .. _dnl.COMM_FIELD_DELIM
+			.. "1.0.0" .. _dnl.COMM_FIELD_DELIM
+		record("older version: whisper message format correct",
+			whisper_log[1].text == expected_whisper,
+			string.format("expected '%s', got '%s'", expected_whisper, tostring(whisper_log[1].text)))
+	end
+
+	-- ================================================================
+	-- Phase 6: Receiving a SAME version announcement → no action
+	-- ================================================================
+	print(TAG .. "Phase 6: Same version announcement")
+
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	local msg_same = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "1.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_same,
+		"PARTY",
+		"SamePeer",
+	})
+
+	record("same version: no hook fired",
+		#hook_calls == 0)
+
+	record("same version: no whisper sent",
+		#whisper_log == 0)
+
+	-- ================================================================
+	-- Phase 7: Receiving N$ (newer notify whisper) — we're outdated
+	-- ================================================================
+	print(TAG .. "Phase 7: Newer notify whisper (N$)")
+
+	-- Reset warned_versions so we can test the N$ path fresh
+	wipe(_dnl._vc_warned_versions)
+	_dnl.addons["__TestVC__"].newest_detected_version = nil
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	local msg_notify = "N" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "5.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_notify,
+		"WHISPER",
+		"HelperPeer",
+	})
+
+	record("N$ notify: hook fired",
+		#hook_calls == 1)
+
+	record("N$ notify: newest_detected_version updated",
+		_dnl.addons["__TestVC__"].newest_detected_version == "5.0.0")
+
+	-- N$ should NOT trigger a whisper back (it's already a whisper response)
+	record("N$ notify: no whisper sent",
+		#whisper_log == 0)
+
+	-- ================================================================
+	-- Phase 8: N$ with older/same version → ignored
+	-- ================================================================
+	print(TAG .. "Phase 8: N$ with not-newer version")
+
+	wipe(hook_calls)
+
+	local msg_notify_old = "N" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "0.1.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_notify_old,
+		"WHISPER",
+		"LiarPeer",
+	})
+
+	record("N$ old version: no hook fired",
+		#hook_calls == 0)
+
+	-- ================================================================
+	-- Phase 9: Self-messages are ignored
+	-- ================================================================
+	print(TAG .. "Phase 9: Self-messages ignored")
+
+	wipe(_dnl._vc_warned_versions)
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	local my_name = UnitName("player")
+	local msg_self = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "9.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_self,
+		"GUILD",
+		my_name,
+	})
+
+	record("self V$: no hook fired",
+		#hook_calls == 0)
+
+	record("self V$: no whisper sent",
+		#whisper_log == 0)
+
+	-- N$ from self
+	local msg_notify_self = "N" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "9.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_notify_self,
+		"WHISPER",
+		my_name,
+	})
+
+	record("self N$: no hook fired",
+		#hook_calls == 0)
+
+	-- ================================================================
+	-- Phase 10: Unknown tag → ignored
+	-- ================================================================
+	print(TAG .. "Phase 10: Unknown tag")
+
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	local msg_unk = "V" .. _dnl.COMM_COMMAND_DELIM .. "ZZZ" .. _dnl.COMM_FIELD_DELIM .. "2.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME,
+		msg_unk,
+		"GUILD",
+		"SomePeer",
+	})
+
+	record("unknown tag: no hook fired",
+		#hook_calls == 0)
+
+	record("unknown tag: no whisper sent",
+		#whisper_log == 0)
+
+	-- ================================================================
+	-- Phase 11: Malformed messages → no crash
+	-- ================================================================
+	print(TAG .. "Phase 11: Malformed messages")
+
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	-- Wrong prefix
+	_dnl.handleVersionCheckAddonMessage({ "WrongPrefix", "V$VC1~2.0.0~", "GUILD", "Peer" })
+	record("wrong prefix: no crash, no hook",
+		#hook_calls == 0)
+
+	-- Missing payload
+	_dnl.handleVersionCheckAddonMessage({ _dnl.VERSION_CHECK_COMM_NAME, "V", "GUILD", "Peer" })
+	record("missing payload: no crash",
+		#hook_calls == 0)
+
+	-- No command delimiter
+	_dnl.handleVersionCheckAddonMessage({ _dnl.VERSION_CHECK_COMM_NAME, "garbage", "GUILD", "Peer" })
+	record("no delimiter: no crash",
+		#hook_calls == 0)
+
+	-- Empty version
+	local msg_empty_ver = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({ _dnl.VERSION_CHECK_COMM_NAME, msg_empty_ver, "GUILD", "Peer" })
+	record("empty version: no crash",
+		#hook_calls == 0)
+
+	-- Invalid version string
+	local msg_bad_ver = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "notaversion" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({ _dnl.VERSION_CHECK_COMM_NAME, msg_bad_ver, "GUILD", "Peer" })
+	record("invalid version string: no crash, no hook",
+		#hook_calls == 0)
+
+	-- ================================================================
+	-- Phase 12: Multiple addons — each gets checked independently
+	-- ================================================================
+	print(TAG .. "Phase 12: Multiple addons")
+
+	_dnl.addons["__TestVC2__"] = {
+		name          = "__TestVC2__",
+		tag           = "VC2",
+		isUnitTracked = function() return true end,
+		settings      = {},
+		addon_version = "2.0.0",
+	}
+	_dnl.tag_to_addon["VC2"] = "__TestVC2__"
+
+	wipe(_dnl._vc_warned_versions)
+	wipe(hook_calls)
+	wipe(whisper_log)
+
+	-- VC1 gets a newer version
+	local msg_vc1_newer = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC1" .. _dnl.COMM_FIELD_DELIM .. "8.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME, msg_vc1_newer, "GUILD", "MultiPeer",
+	})
+
+	record("multi addon: VC1 hook fired",
+		#hook_calls == 1 and hook_calls[1].addon == "__TestVC__")
+
+	-- VC2 gets an older version → whisper back
+	local msg_vc2_older = "V" .. _dnl.COMM_COMMAND_DELIM .. "VC2" .. _dnl.COMM_FIELD_DELIM .. "1.0.0" .. _dnl.COMM_FIELD_DELIM
+	_dnl.handleVersionCheckAddonMessage({
+		_dnl.VERSION_CHECK_COMM_NAME, msg_vc2_older, "GUILD", "MultiPeer2",
+	})
+
+	record("multi addon: VC2 no extra hook (not outdated)",
+		#hook_calls == 1)
+
+	record("multi addon: VC2 whisper sent",
+		#whisper_log == 1 and whisper_log[1].target == "MultiPeer2")
+
+	-- ================================================================
+	-- Cleanup: restore original state
+	-- ================================================================
+	_dnl.addons                       = saved_addons
+	_dnl.tag_to_addon                 = saved_tag_to_addon
+	_dnl.hook_newer_version_functions = saved_hook_newer_version
+	_G.ChatThrottleLib                = saved_CTL
+	_G.SendAddonMessage               = saved_SendAddonMessage
+
+	wipe(_dnl._vc_warned_versions)
+	wipe(_dnl._vc_last_announce_time)
+
+	C_Timer.After(0.5, function()
+		print(TAG .. "=========================")
+		printSummary()
+		print(TAG .. "=========================")
+		testCleanup()
+	end)
+end
+
+-- ============================================================================
 -- testAll: run all test suites in sequence
 -- ============================================================================
 
 --- Run backwards compat → sync → integration → who → ultrahardcore → attachaddon
---- tests in sequence.  Uses staggered timers so each suite completes before
---- the next begins.  Cleanup and follow-up sweeps happen once at the very end.
+--- → watchlistquery → versioncheck → dedup tests in sequence.  Uses staggered
+--- timers so each suite completes before the next begins.  Cleanup and
+--- follow-up sweeps happen once at the very end.
 function _dnl.testAll()
 	if not _dnl.DEBUG then
 		print("|cffFF0000[Deathlog]|r testAll requires DEBUG mode")
@@ -4316,43 +5891,58 @@ function _dnl.testAll()
 	print(TAG .. "============================================")
 
 	-- Suite 1: V2 Backwards Compatibility (synchronous + 0.5s summary timer)
-	print(TAG .. "Suite 1/7: Backwards Compatibility")
+	print(TAG .. "Suite 1/10: Backwards Compatibility")
 	_dnl.testV2BackwardsCompat()
 
 	-- Suite 2: Sync Protocol (synchronous) — start after backwards finishes
 	C_Timer.After(2, function()
-		print(TAG .. "Suite 2/7: Sync Protocol")
+		print(TAG .. "Suite 2/10: Sync Protocol")
 		_dnl.testSync()
 
 		-- Suite 3: Sync End-to-End (async, ~10s) — start after sync unit tests
 		C_Timer.After(1, function()
-			print(TAG .. "Suite 3/7: Sync End-to-End")
+			print(TAG .. "Suite 3/10: Sync End-to-End")
 			_dnl.testSyncEndToEnd()
 
 			-- SyncE2E takes ~10s (3s + 1s + 2s + 2s nested timers + buffer).
 			-- Suite 4: Integration (async, ~8s) — start after sync e2e finishes
 			C_Timer.After(12, function()
-				print(TAG .. "Suite 4/7: Integration")
+				print(TAG .. "Suite 4/10: Integration")
 				_dnl.testIntegration()
 
 				-- Integration takes ~8s (5s + 2s + 0.5s nested timers).
 				-- Suite 5: Who system (async, ~15s) — start after integration finishes
 				C_Timer.After(12, function()
-					print(TAG .. "Suite 5/7: Who System")
+					print(TAG .. "Suite 5/10: Who System")
 					_dnl.testWho()
 
 					-- Who test takes ~15s (enqueue + user input + 0.5s summary).
 					C_Timer.After(18, function()
 						-- Suite 6: UltraHardcore bridge (synchronous + 0.5s summary)
-						print(TAG .. "Suite 6/7: UltraHardcore Bridge")
+print(TAG .. "Suite 6/10: UltraHardcore Bridge")
 						_dnl.testUltraHardcore()
 
 						C_Timer.After(2, function()
 							-- Suite 7: AttachAddon multi-addon tests (synchronous + 0.5s summary)
-							print(TAG .. "Suite 7/7: AttachAddon")
+print(TAG .. "Suite 7/10: AttachAddon")
 							_dnl.testAttachAddon()
 
 					C_Timer.After(3, function()
+						-- Suite 8: WatchlistQuery (synchronous + 0.5s summary)
+print(TAG .. "Suite 8/10: WatchlistQuery")
+						_dnl.testWatchlistQuery()
+
+					C_Timer.After(3, function()
+						-- Suite 9: VersionCheck (synchronous + 0.5s summary)
+						print(TAG .. "Suite 9/10: VersionCheck")
+						_dnl.testVersionCheck()
+
+					C_Timer.After(3, function()
+						-- Suite 10: Dedup (async, ~11s) — cross-checksum dedup, late upgrades, ZF scenario
+						print(TAG .. "Suite 10/10: Dedup")
+						_dnl.testDedup()
+
+					C_Timer.After(13, function()
 						test_tracking.all_depth = test_tracking.all_depth - 1
 						print(TAG .. "============================================")
 						print(TAG .. "GRAND SUMMARY")
@@ -4381,7 +5971,7 @@ function _dnl.testAll()
 							suite_counts[r.suite].fail = suite_counts[r.suite].fail + 1
 						end
 					end
-						for _, suite_name in ipairs({ "Backwards", "Sync", "SyncE2E", "Integration", "Who", "UltraHardcore", "AttachAddon" }) do
+						for _, suite_name in ipairs({ "Backwards", "Sync", "SyncE2E", "Integration", "Who", "UltraHardcore", "AttachAddon", "WatchlistQuery", "VersionCheck", "Dedup" }) do
 						local sc = suite_counts[suite_name]
 						if sc then
 							local c = sc.fail == 0 and "|cff00FF00" or "|cffFF0000"
@@ -4406,7 +5996,10 @@ function _dnl.testAll()
 
 					wipe(test_tracking.global_results)
 					testCleanup()
-					end)   -- close C_Timer.After(3, ...) — grand summary
+					end)   -- close C_Timer.After(13, ...) — grand summary
+					end)   -- close C_Timer.After(3, ...) — suite 10 (Dedup)
+					end)   -- close C_Timer.After(3, ...) — suite 9 (VersionCheck)
+					end)   -- close C_Timer.After(3, ...) — suite 8
 					end)   -- close C_Timer.After(2, ...) — suite 7
 					end)   -- close C_Timer.After(18, ...) — suite 6
 				end)       -- close C_Timer.After(12, ...) — suite 5
@@ -4416,6 +6009,19 @@ function _dnl.testAll()
 end
 
 --#region API
+
+---Manually fire all HookOnNewerVersion callbacks.  Intended for testing
+---from /run — e.g.  /run DeathNotificationLib.FireNewerVersionHook("Deathlog", "99.0.0", "0.4.0")
+---@param addonName string
+---@param newerVersion string
+---@param currentVersion string
+DeathNotificationLib.FireNewerVersionHook = function(addonName, newerVersion, currentVersion)
+	local addon = _dnl.addons[addonName]
+	if addon then addon.newest_detected_version = newerVersion end
+	for _, fn in ipairs(_dnl.hook_newer_version_functions) do
+		fn(addonName, newerVersion, currentVersion)
+	end
+end
 
 DeathNotificationLib.Tests = {
 	SelfDeathWithReportedDeath = _dnl.testSelfDeathWithReportedDeath,
@@ -4429,6 +6035,9 @@ DeathNotificationLib.Tests = {
 	Who = _dnl.testWho,
 	UltraHardcore = _dnl.testUltraHardcore,
 	AttachAddon = _dnl.testAttachAddon,
+	WatchlistQuery = _dnl.testWatchlistQuery,
+	Dedup = _dnl.testDedup,
+	VersionCheck = _dnl.testVersionCheck,
 	All = _dnl.testAll,
 }
 

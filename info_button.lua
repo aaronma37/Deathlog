@@ -11,15 +11,31 @@ deathlog_getHardcoreCharacterState() from hardcore_state.lua.
 local HC_STATE = DeathNotificationLib.HC_STATE
 local IS_SOUL_OF_IRON_REALM = DeathNotificationLib.IS_SOUL_OF_IRON_REALM
 
+--- Append "Update Available" lines to the current GameTooltip when a newer
+--- Deathlog version has been detected from peers.  Returns true if lines
+--- were added, false otherwise.
+---@return boolean
+local function appendUpdateAvailableTooltip()
+	local newer = DeathNotificationLib.GetNewerAddonVersion("Deathlog")
+	if not newer then return false end
+	local current = C_AddOns.GetAddOnMetadata("Deathlog", "Version") or "?"
+	GameTooltip:AddLine(" ")
+	GameTooltip:AddLine("|TInterface\\GossipFrame\\AvailableQuestIcon:0|t Update Available", 0.3, 1, 0.3)
+	GameTooltip:AddLine(string.format("v%s >> v%s", current, newer), 1, 0.8, 0)
+	GameTooltip:AddLine("Please update to the latest version!", 0.7, 0.7, 0.7)
+	return true
+end
+
 function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 	if container.info_button == nil then
-		container.info_button = CreateFrame("Button", nil, container.frame, "UIPanelCloseButton")
+		container.info_button = CreateFrame("Button", nil, container.frame)
 
 		local info_button = container.info_button
 		info_button.deathlog_hc_state = "NOT_DETERMINED"
 		info_button.deathlog_hc_state_func = nil
 		info_button:SetPoint("RIGHT", container.titletext, "RIGHT", offset_x or 32, offset_y or 0)
 		info_button:SetSize(32, 32)
+		info_button:SetHitRectInsets(0, 0, 0, 0)
 		info_button:EnableMouse(true)
 		info_button:SetFrameLevel(container.frame:GetFrameLevel() + 10)
 		info_button:SetNormalTexture("Interface\\common\\help-i")
@@ -45,13 +61,28 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 			end
 
 			local state = deathlog_getHardcoreCharacterState("player")
-			if info_button.deathlog_hc_state == state then
+			local has_update = DeathNotificationLib.GetNewerAddonVersion("Deathlog") ~= nil
+
+			-- Allow re-evaluation when update status changes
+			if info_button.deathlog_hc_state == state and info_button.deathlog_has_update == has_update then
 				return
 			end
 
 			info_button.deathlog_hc_state = state
+			info_button.deathlog_has_update = has_update
+
 			if state == HC_STATE.HARDCORE then
-				info_button:Hide()
+				if has_update then
+					-- Normally hidden when Hardcore — but show for update notification
+					info_button.deathlog_hc_state_func = function(self)
+						GameTooltip:ClearLines()
+						GameTooltip:AddLine("Deathlog", 1, 0.8, 0, 1)
+						appendUpdateAvailableTooltip()
+					end
+					info_button:Show()
+				else
+					info_button:Hide()
+				end
 			elseif state == HC_STATE.NOT_HARDCORE_ANYMORE then
 				local isExternal = deathlog_getExternalHardcoreAddon()
 				info_button.deathlog_hc_state_func = function(self)
@@ -70,6 +101,7 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 					GameTooltip:AddLine(" ")
 					GameTooltip:AddLine("As a result, your deaths will no longer be", 0.7, 0.7, 0.7)
 					GameTooltip:AddLine("logged to the Deathlog system.", 0.7, 0.7, 0.7)
+					appendUpdateAvailableTooltip()
 				end
 				info_button:Show()
 			elseif state == HC_STATE.UNDETERMINED then
@@ -86,6 +118,7 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 					GameTooltip:AddLine(" ")
 					GameTooltip:AddLine("Once active, your deaths will be logged to the", 0.7, 0.7, 0.7)
 					GameTooltip:AddLine("Deathlog system automatically.", 0.7, 0.7, 0.7)
+					appendUpdateAvailableTooltip()
 				end
 				info_button:Show()
 			else
@@ -106,6 +139,7 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 					GameTooltip:AddLine("• Hardcore", 0.5, 1, 1)
 					GameTooltip:AddLine("• HardcoreTBC", 0.5, 1, 1)
 					GameTooltip:AddLine("• Ultra", 0.5, 1, 1)
+					appendUpdateAvailableTooltip()
 				end
 				info_button:Show()
 			end
@@ -126,6 +160,11 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 				end
 			end)
 		end
+
+		-- React immediately when a newer addon version is confirmed.
+		DeathNotificationLib.HookOnNewerVersion(function()
+			if info_button then updateStateInfoButton() end
+		end)
 	end
 
 	return container.info_button

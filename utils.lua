@@ -27,6 +27,10 @@ local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
 
 local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 
+-- Weak-keyed cache so computed display sources are never saved to SavedVariables.
+-- Keys are entry tables; values are { cached = <string>, predicted = <string|nil> }.
+local source_cache = setmetatable({}, { __mode = "k" })
+
 deathlog_ALL_INSTANCES_ID = -2
 
 -- Top-level map IDs
@@ -271,13 +275,54 @@ function deathlogPredictSource(entry)
 	return DeathNotificationLib.PredictSource(entry, search_radius)
 end
 
+function deathlogGetCachedSource(entry)
+	if not entry then
+		return ""
+	end
+
+	local sc = source_cache[entry]
+	if not sc then
+		sc = {}
+		source_cache[entry] = sc
+	end
+
+	if sc.cached then
+		return sc.cached
+	end
+
+	-- clear old predicted_source / cached_source from entry
+	if entry.predicted_source then entry.predicted_source = nil end
+	if entry.cached_source then entry.cached_source = nil end
+
+	local _pvp_source_name = entry["extra_data"] and entry["extra_data"]["pvp_source_name"]
+	local _source = entry["source_id"] and (id_to_npc[entry["source_id"]]
+		or deathlog_environment_damage[entry["source_id"]]
+		or DeathNotificationLib.DecodePvPSource(entry["source_id"], _pvp_source_name)
+		or "") or ""
+
+	if _source == "" then
+		if sc.predicted then
+			_source = sc.predicted
+		else
+			local predicted = deathlogPredictSource(entry)
+			if predicted then
+				sc.predicted = predicted
+				_source = predicted
+			end
+		end
+	end
+
+	sc.cached = _source
+	return _source
+end
+
 -- Tue Apr 18 21:36:54 2023
 function deathlogConvertStringDateUnix(s)
 	if tonumber(s) then
 		return s
 	end
-	p = "%a+ (%a+) (%d+) (%d+):(%d+):(%d+) (%d+)"
-	month, day, hour, minute, sec, year = s:match(p)
+	local p = "%a+ (%a+) (%d+) (%d+):(%d+):(%d+) (%d+)"
+	local month, day, hour, minute, sec, year = s:match(p)
 	if month == nil or day == nil or hour == nil or minute == nil or sec == nil or year == nil then
 		p = "%a+ (%a+)  (%d+) (%d+):(%d+):(%d+) (%d+)"
 		month, day, hour, minute, sec, year = s:match(p)
@@ -285,7 +330,7 @@ function deathlogConvertStringDateUnix(s)
 	if month == nil or day == nil or hour == nil or minute == nil or sec == nil or year == nil then
 		return nil
 	end
-	MON = {
+	local MON = {
 		Jan = 1,
 		Feb = 2,
 		Mar = 3,
@@ -300,7 +345,7 @@ function deathlogConvertStringDateUnix(s)
 		Dec = 12,
 	}
 	month = MON[month]
-	offset = time() - time(date("!*t"))
+	local offset = time() - time(date("!*t"))
 	return time({ day = day, month = month, year = year, hour = hour, minute = minute, sec = sec }) + offset
 end
 
@@ -325,12 +370,31 @@ local function generate_player_metadata(metadata_list)
 	return metadata
 end
 
+--- Returns true if the entry should be visible given the current settings.
+--- Addonless entries (no class_id, no race_id) are hidden when addonless_logging
+--- is disabled, preventing synced low-quality entries from cluttering the view.
+function deathlog_shouldShowEntry(entry)
+	if entry == nil then
+		return false
+	end
+	-- If addonless_logging is enabled, show everything
+	if deathlog_settings and deathlog_settings["addonless_logging"] then
+		return true
+	end
+	-- Addonless gate: entries with neither class nor race are Blizzard-sourced
+	-- deaths from players not running the addon.
+	if not entry["class_id"] and not entry["race_id"] then
+		return false
+	end
+	return true
+end
+
 function deathlogFilter(_deathlog_data, filter)
 	local filtered_death_log = {}
 	for server_name, entry_tbl in pairs(_deathlog_data) do
 		filtered_death_log[server_name] = {}
 		for checksum, entry in pairs(entry_tbl) do
-			if filter(server_name, entry) then
+			if deathlog_shouldShowEntry(entry) and filter(server_name, entry) then
 				filtered_death_log[server_name][checksum] = entry
 			end
 		end
@@ -359,8 +423,10 @@ function deathlogOrderByFast(_deathlog)
 	local n = 0
 	for _, entry_tbl in pairs(_deathlog) do
 		for _, v in pairs(entry_tbl) do
-			n = n + 1
-			list[n] = v
+			if deathlog_shouldShowEntry(v) then
+				n = n + 1
+				list[n] = v
+			end
 		end
 	end
 	-- Sort descending by date (newest first) using native table.sort
@@ -637,10 +703,12 @@ function deathlog_calculate_statistics(_deathlog_data)
 	-- First pass
 	for server_name, entry_tbl in pairs(_deathlog_data) do
 		for checksum, entry in pairs(entry_tbl) do
-			instantiateIfMissing(stats, server_name, entry, metadata_list)
+			if deathlog_shouldShowEntry(entry) then
+				instantiateIfMissing(stats, server_name, entry, metadata_list)
 
-			local map_id = entry["map_id"] or entry["instance_id"] or "all"
-			updateStats(stats, server_name, entry)
+				local map_id = entry["map_id"] or entry["instance_id"] or "all"
+				updateStats(stats, server_name, entry)
+			end
 		end
 	end
 
@@ -742,8 +810,10 @@ local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
 	end
 
 	for k, v in pairs(deathlog_class_tbl) do
-		log_normal_params_for_map_id["ln_mean"][v] = log_normal_params_for_map_id["ln_mean"][v]
-			/ log_normal_params_for_map_id["total"][v]
+		if log_normal_params_for_map_id["total"][v] > 0 then
+			log_normal_params_for_map_id["ln_mean"][v] = log_normal_params_for_map_id["ln_mean"][v]
+				/ log_normal_params_for_map_id["total"][v]
+		end
 	end
 
 	for servername, entry_tbl in pairs(filtered_by_map) do
@@ -755,8 +825,10 @@ local function calculateLogNormalParametersForMap(_deathlog_data, map_id)
 	end
 
 	for k, v in pairs(deathlog_class_tbl) do
-		log_normal_params_for_map_id["ln_std_dev"][v] = log_normal_params_for_map_id["ln_std_dev"][v]
-			/ log_normal_params_for_map_id["total"][v]
+		if log_normal_params_for_map_id["total"][v] > 0 then
+			log_normal_params_for_map_id["ln_std_dev"][v] = log_normal_params_for_map_id["ln_std_dev"][v]
+				/ log_normal_params_for_map_id["total"][v]
+		end
 	end
 	return log_normal_params_for_map_id
 end
@@ -795,7 +867,7 @@ function deathlog_calculateSkullLocs(_deathlog_data)
 	local skull_locs = {}
 	for servername, entry_tbl in pairs(_deathlog_data) do
 		for _, v in pairs(entry_tbl) do
-			if v["map_id"] then
+			if v["map_id"] and v["map_pos"] then
 				if skull_locs[v["map_id"]] == nil then
 					skull_locs[v["map_id"]] = {}
 				end
@@ -816,22 +888,7 @@ function deathlog_setTooltipFromEntry(_entry)
 	local _guild = _entry["guild"] or ""
 	local _race = nil
 	local _class = nil
-	local _pvp_source_name = _entry["extra_data"] and _entry["extra_data"]["pvp_source_name"]
-	local _source = id_to_npc[_entry["source_id"]]
-		or deathlog_environment_damage[_entry["source_id"]]
-		or DeathNotificationLib.DecodePvPSource(_entry["source_id"], _pvp_source_name)
-		or ""
-	if _source == "" then
-		if _entry["predicted_source"] then
-			_source = _entry["predicted_source"]
-		else
-			local predicted = deathlogPredictSource(_entry)
-			if predicted then
-				_entry["predicted_source"] = predicted
-				_source = predicted
-			end
-		end
-	end
+	local _source = deathlogGetCachedSource(_entry)
 	local _zone = nil
 	local _loc = _entry["map_pos"]
 	local _date = nil

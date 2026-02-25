@@ -208,7 +208,6 @@ end
 
 options = {
 	name = widget_name,
-	handler = Minilog,
 	type = "group",
 	args = {
 		enable = {

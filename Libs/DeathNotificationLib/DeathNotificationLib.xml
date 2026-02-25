@@ -95,6 +95,7 @@
   <Script file="DeathNotificationLib~Cache.lua"/>
   <Script file="DeathNotificationLib~Broadcast.lua"/>
   <Script file="DeathNotificationLib~Sync.lua"/>
+  <Script file="DeathNotificationLib~VersionCheck.lua"/>
   <Script file="DeathNotificationLib~Events.lua"/>
   <Script file="DeathNotificationLib~Backwards.lua"/>
   <Script file="DeathNotificationLib~Transport.lua"/>

@@ -74,6 +74,7 @@ The library is split into focused modules, all loaded via `DeathNotificationLib.
 | `~Cache.lua` | Hook system, `createEntry`, LRU dedup cache, public hook API |
 | `~Broadcast.lua` | Outbound broadcast, `resolveDeathSource` |
 | `~Sync.lua` | Continuous background database sync between peers |
+| `~VersionCheck.lua` | Addon version broadcasting on party/raid/guild/instance channels |
 | `~Events.lua` | Event handlers, `AttachAddon` API |
 | `~Backwards.lua` | Backwards compatibility shims |
 | `~Transport.lua` | Send queues |

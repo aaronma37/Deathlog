@@ -18,8 +18,6 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 local addonName, addon = ...
 
-local id_to_npc = DeathNotificationLib.ID_TO_NPC
-local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
 local SOURCE = DeathNotificationLib.SOURCE
 
 local save_precompute = false
@@ -49,6 +47,8 @@ deathlog_settings = deathlog_settings or {}
 deathlog_char_data = deathlog_char_data or {}
 deathlog_dev_data = deathlog_dev_data or {}
 deathlog_entry_counts = deathlog_entry_counts or {}
+deathlog_purged = deathlog_purged or {}
+precomputed_purges = precomputed_purges or {}
 
 local sync_options -- forward declaration; populated after options table
 local deathlog_sync_options_registered = false
@@ -170,10 +170,25 @@ function Deathlog_LoadFromHardcore()
 end
 
 -- sync_options registered in handleEvent after loadWidgets() so it appears last in the sidebar
--- Deduplication window in seconds - deaths of the same player within this window are considered duplicates
--- This works alongside DeathNotificationLib's dedup mechanisms (lru_by_name)
--- but operates at the final entry point to catch duplicates from different sources (addon broadcast vs HARDCORE_DEATHS)
-local DEATHLOG_DEDUP_WINDOW = 60
+
+-- In-memory index: name_index[realmName][player_name] = { [checksum] = true, ... }
+-- Allows efficient lookup of ALL existing entries for a player name (not just the latest).
+-- Built lazily on first access per realm, maintained on insert/remove.
+local name_index = {}
+
+local function ensureNameIndex(realmName)
+	if name_index[realmName] then return end
+	name_index[realmName] = {}
+	for checksum, entry in pairs(deathlog_data[realmName] or {}) do
+		local n = entry["name"]
+		if n then
+			if not name_index[realmName][n] then
+				name_index[realmName][n] = {}
+			end
+			name_index[realmName][n][checksum] = true
+		end
+	end
+end
 
 local function newEntry(_player_data, _checksum, num_peer_checks, in_guild, source)
 	local realmName = GetRealmName()
@@ -193,44 +208,70 @@ local function newEntry(_player_data, _checksum, num_peer_checks, in_guild, sour
 		deathlog_data_map[realmName] = {}
 	end
 
+	ensureNameIndex(realmName)
+
 	local player_name = _player_data["name"]
-	local current_time = _player_data["date"] or time()
+	local current_time = _player_data["date"] or GetServerTime()
 
-	-- Check for existing entry for this player (deduplication)
-	local existing_checksum = deathlog_data_map[realmName][player_name]
-	if existing_checksum and deathlog_data[realmName][existing_checksum] then
-		local existing_entry = deathlog_data[realmName][existing_checksum]
-		local existing_time = existing_entry["date"] or 0
-		local time_diff = math.abs(current_time - existing_time)
+	-- Reject entries that were previously purged (e.g. false Feign Death)
+	local modified_cs = DeathNotificationLib.Fletcher16(_player_data)
 
-		-- If there's a recent entry for the same player, merge or skip
-		if time_diff <= DEATHLOG_DEDUP_WINDOW then
-			local existing_quality = DeathNotificationLib.EntryQuality(existing_entry)
-			local new_quality = DeathNotificationLib.EntryQuality(_player_data)
+	if deathlog_purged[realmName] and deathlog_purged[realmName][modified_cs] then
+		return
+	end
 
-			if new_quality > existing_quality then
-				-- New entry has more data - merge entries to preserve any unique data from existing
-				_player_data = DeathNotificationLib.MergeEntries(_player_data, existing_entry)
-				-- Remove old entry (will be replaced with merged entry under new checksum)
-				deathlog_data[realmName][existing_checksum] = nil
-			elseif new_quality < existing_quality then
-				-- Existing entry is better - merge any new unique data into existing, skip creating new
-				local merged = DeathNotificationLib.MergeEntries(existing_entry, _player_data)
-				deathlog_data[realmName][existing_checksum] = merged
-				return
+	if precomputed_purges[realmName] and precomputed_purges[realmName][modified_cs] then
+		return
+	end
+
+	-- Check ALL existing entries for this player name for near-duplicate deaths.
+	-- The old approach only checked the single latest entry via deathlog_data_map,
+	-- which missed duplicates when the latest entry was a different (newer) death.
+	local existing_checksums = name_index[realmName][player_name]
+	if existing_checksums then
+		for cs, _ in pairs(existing_checksums) do
+			local entry = deathlog_data[realmName][cs]
+			if entry then
+				local effective_level = math.max(tonumber(_player_data["level"]) or 0, tonumber(entry["level"]) or 0)
+				local time_diff = math.abs(current_time - (entry["date"] or 0))
+				if time_diff <= DeathNotificationLib.GetDedupWindow(effective_level) then
+					local existing_quality = DeathNotificationLib.EntryQuality(entry)
+					local new_quality = DeathNotificationLib.EntryQuality(_player_data)
+
+					if new_quality > existing_quality then
+						-- New entry has more data - merge and replace
+						_player_data = DeathNotificationLib.MergeEntries(_player_data, entry)
+						deathlog_data[realmName][cs] = nil
+						existing_checksums[cs] = nil
+						break
+					elseif new_quality < existing_quality then
+						-- Existing is better - merge new data into existing, skip
+						local merged = DeathNotificationLib.MergeEntries(entry, _player_data)
+						deathlog_data[realmName][cs] = merged
+						return
+					else
+						-- Equal quality - merge into existing, skip
+						local merged = DeathNotificationLib.MergeEntries(entry, _player_data)
+						deathlog_data[realmName][cs] = merged
+						return
+					end
+				end
 			else
-				-- Equal quality - merge and keep existing checksum, skip new entry
-				local merged = DeathNotificationLib.MergeEntries(existing_entry, _player_data)
-				deathlog_data[realmName][existing_checksum] = merged
-				return
+				-- Stale index entry, clean up
+				existing_checksums[cs] = nil
 			end
 		end
 	end
 
 	local modified_checksum = DeathNotificationLib.Fletcher16(_player_data)
 
-
 	deathlog_data[realmName][modified_checksum] = _player_data
+
+	-- Maintain name index
+	if not name_index[realmName][player_name] then
+		name_index[realmName][player_name] = {}
+	end
+	name_index[realmName][player_name][modified_checksum] = true
 
 	-- Only create widgets for self-reported deaths, peer broadcasts, and Blizzard notifications.
 	-- Death alert is now handled internally by DNL (~DeathAlert.lua) via createEntry().
@@ -247,9 +288,95 @@ local function newEntry(_player_data, _checksum, num_peer_checks, in_guild, sour
 	end
 end
 
+--- One-time cleanup: scan existing deathlog_data for near-duplicate entries
+--- (same player name, same level, date within getDedupWindow(level)) and merge
+--- them, keeping the highest-quality entry.  Runs synchronously on login.
+--- Marks completion in deathlog_settings so it only runs once.
+local DEDUP_CLEANUP_VERSION = 1  -- bump to re-run cleanup after future fixes
+
+local function deathlog_runDedupCleanup()
+	if deathlog_settings["dedup_cleanup_version"] and deathlog_settings["dedup_cleanup_version"] >= DEDUP_CLEANUP_VERSION then
+		return
+	end
+
+	local total_removed = 0
+
+	for realmName, entries in pairs(deathlog_data) do
+		if type(entries) == "table" then
+			-- Build a local name → [{checksum, date, level, quality}] index
+			local by_name = {}
+			for cs, entry in pairs(entries) do
+				local n = entry["name"]
+				if n then
+					if not by_name[n] then by_name[n] = {} end
+					by_name[n][#by_name[n] + 1] = {
+						cs = cs,
+						date = entry["date"] or 0,
+						level = entry["level"] or 0,
+						quality = DeathNotificationLib.EntryQuality(entry),
+					}
+				end
+			end
+
+			-- For each name, detect and merge near-duplicates
+			for player_name, entry_list in pairs(by_name) do
+				if #entry_list > 1 then
+					-- Sort by date ascending
+					table.sort(entry_list, function(a, b) return a.date < b.date end)
+
+					local i = 1
+					while i <= #entry_list do
+						local j = i + 1
+						while j <= #entry_list do
+							local effective_level = math.max(entry_list[i].level, entry_list[j].level)
+							local time_diff = math.abs(entry_list[j].date - entry_list[i].date)
+							if time_diff <= DeathNotificationLib.GetDedupWindow(effective_level) then
+								-- Near-duplicate: keep the higher quality entry, merge data
+								local keep = entry_list[i]
+								local remove = entry_list[j]
+								if remove.quality > keep.quality then
+									keep, remove = remove, keep
+									entry_list[i] = keep
+								end
+
+								local keep_entry = entries[keep.cs]
+								local remove_entry = entries[remove.cs]
+								if keep_entry and remove_entry then
+									local merged = DeathNotificationLib.MergeEntries(keep_entry, remove_entry)
+									entries[keep.cs] = merged
+									entries[remove.cs] = nil
+									-- Update name_index if it exists
+									if name_index[realmName] and name_index[realmName][player_name] then
+										name_index[realmName][player_name][remove.cs] = nil
+									end
+									total_removed = total_removed + 1
+								end
+								table.remove(entry_list, j)
+							else
+								j = j + 1
+							end
+						end
+						i = i + 1
+					end
+				end
+			end
+		end
+	end
+
+	deathlog_settings["dedup_cleanup_version"] = DEDUP_CLEANUP_VERSION
+
+	if total_removed > 0 then
+		print("|cFF00FF00[Deathlog]|r Database cleanup: removed " .. total_removed .. " duplicate entries.")
+	end
+end
+
+local deathlog_initialized = false
 local function handleEvent(self, event, ...)
 	if event == "PLAYER_ENTERING_WORLD" then
+		if deathlog_initialized then return end
+		deathlog_initialized = true
 		initMinimapButton()
+
 		-- Ensure realm sub-tables exist so AttachAddon receives valid table
 		-- references (not nil) that remain in sync with newEntry.
 		local realmName = GetRealmName()
@@ -259,6 +386,12 @@ local function handleEvent(self, event, ...)
 		if deathlog_data_map[realmName] == nil then
 			deathlog_data_map[realmName] = {}
 		end
+		if deathlog_purged[realmName] == nil then
+			deathlog_purged[realmName] = {}
+		end
+
+		-- One-time dedup cleanup of existing data (runs before stats/widgets)
+		deathlog_runDedupCleanup()
 
 		DeathNotificationLib.AttachAddon({
 			name             = "Deathlog",
@@ -268,6 +401,7 @@ local function handleEvent(self, event, ...)
 			db               = deathlog_data[realmName],
 			db_map           = deathlog_data_map[realmName],
 			dev_data         = deathlog_dev_data,
+			addon_version    = C_AddOns.GetAddOnMetadata("Deathlog", "Version"),
 		})
 		DeathNotificationLib.HookOnNewAddonEntry("Deathlog", newEntry)
 		if use_precomputed then
@@ -296,6 +430,7 @@ local function handleEvent(self, event, ...)
 		initEntryCounters()
 		C_Timer.After(2.5, function()
 			Deathlog_CheckCTA()
+			deathlog_startHunterCleanup()
 		end)
 
 		if not deathlog_sync_options_registered then
@@ -349,8 +484,8 @@ local options = {
 			width = 1.3,
 			order = 2,
 			func = function()
-				deathlog_data = {}
-				deathlog_data_map = {}
+				wipe(deathlog_data)
+				wipe(deathlog_data_map)
 			end,
 		},
 		peer_reporting = {
@@ -417,12 +552,28 @@ local options = {
 				deathlog_settings["auto_blizzard_deaths"] = not deathlog_settings["auto_blizzard_deaths"]
 			end,
 		},
+		auto_hide_chat_channels = {
+			type = "toggle",
+			name = "Auto-hide addon chat channels",
+			desc = "When enabled, Deathlog automatically hides its chat channels (death alerts, sync) from all chat frames so they don't clutter your chat windows. Disable this if you want to see the raw channel traffic for debugging.",
+			width = 1.3,
+			order = 36,
+			get = function()
+				if deathlog_settings["auto_hide_chat_channels"] == nil then
+					deathlog_settings["auto_hide_chat_channels"] = true
+				end
+				return deathlog_settings["auto_hide_chat_channels"]
+			end,
+			set = function()
+				deathlog_settings["auto_hide_chat_channels"] = not deathlog_settings["auto_hide_chat_channels"]
+			end,
+		},
 		share_playtime = {
 			type = "toggle",
 			name = "Include playtime in death report",
 			desc = "When enabled, your total /played time is included in your death broadcast so others can see how long you survived. Disable this if you prefer to keep your playtime private.",
 			width = 1.3,
-			order = 36,
+			order = 37,
 			get = function()
 				if deathlog_settings["share_playtime"] == nil then
 					deathlog_settings["share_playtime"] = true

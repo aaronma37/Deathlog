@@ -30,6 +30,7 @@ local DEATH_ALERTS_CHANNEL_PW = _dnl.DEATH_ALERTS_CHANNEL_BASE .. "pw"
 _dnl.broadcast_death_ping_queue = {}
 _dnl.death_alert_out_queue = {}
 _dnl.deathlog_request_duel_to_death_queue = {}
+_dnl.watchlist_query_queue = {}
 
 --- Max age (seconds) before a queued message is discarded.
 --- Queues are FIFO so oldest entry is always at index 1.
@@ -69,6 +70,7 @@ end
 
 
 function _dnl.deathlogJoinChannel()
+	_dnl.death_alerts_channel = _dnl.DEATH_ALERTS_CHANNEL_BASE
 	LeaveChannelByName(_dnl.death_alerts_channel)
 
 	C_Timer.After(3.0, function()
@@ -104,7 +106,7 @@ local function sendChatMessageDebug(prefix, text)
 
 	local decoded = _dnl.decodeMessage(msg)
 	if decoded and decoded.name then
-		decoded.date = decoded.date or time()
+		decoded.date = decoded.date or GetServerTime()
 		print(string.format("|cffFF6600[DNL DEBUG]|r Processing death locally for: %s", decoded.name))
 		_dnl.createEntry(decoded, nil, 0, nil, _dnl.SOURCE.DEBUG)
 	end
@@ -133,6 +135,20 @@ local function sendNextInQueue()
 		local commMessage = _dnl.COMM_COMMANDS["REQUEST_DUEL_TO_DEATH"] .. _dnl.COMM_COMMAND_DELIM .. entry[1]
 		if doSend(commMessage, channel_num) then
 			table.remove(_dnl.deathlog_request_duel_to_death_queue, 1)
+		end
+		return
+	end
+
+	if #_dnl.watchlist_query_queue > 0 then
+		local channel_num = GetChannelName(_dnl.death_alerts_channel)
+		if channel_num == 0 then
+			_dnl.deathlogJoinChannel()
+			return
+		end
+		local entry = _dnl.watchlist_query_queue[1]
+		local commMessage = _dnl.COMM_COMMANDS["WATCHLIST_QUERY"] .. _dnl.COMM_COMMAND_DELIM .. entry[1]
+		if doSend(commMessage, channel_num) then
+			table.remove(_dnl.watchlist_query_queue, 1)
 		end
 		return
 	end
@@ -179,7 +195,7 @@ _dnl.registerInputDrain(sendNextInQueue)
 ---Trim stale entries from the front of a timestamped queue.
 ---@param queue table  Array of {text, enqueue_time}
 local function trimStaleEntries(queue)
-	local now = time()
+	local now = GetServerTime()
 	while #queue > 0 and (now - queue[1][2]) >= QUEUE_MAX_AGE do
 		table.remove(queue, 1)
 	end
@@ -189,6 +205,7 @@ C_Timer.NewTicker(1, function()
 	trimStaleEntries(_dnl.broadcast_death_ping_queue)
 	trimStaleEntries(_dnl.death_alert_out_queue)
 	trimStaleEntries(_dnl.deathlog_request_duel_to_death_queue)
+	trimStaleEntries(_dnl.watchlist_query_queue)
 	-- sync_out_queue is NOT trimmed here — sync has its own 60s
 	-- response timeout in the protocol state machine, and manifest
 	-- responses can legitimately queue 100+ messages that take time

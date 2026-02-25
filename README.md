@@ -2,7 +2,7 @@
 
 A WoW Hardcore addon that provides a UI for exploring the deathlog and death statistics. Works on **Classic Era** Hardcore realms and **TBC Anniversary** Soul of Iron servers!
 
-**Over 910,000 death records** collected and counting!
+**Over 1,000,000 death records** collected and counting!
 
 **[SEE WIKI FOR OFFLINE STATS](https://github.com/aaronma37/Deathlog/wiki)**  The wiki will be updated as the database grows
 

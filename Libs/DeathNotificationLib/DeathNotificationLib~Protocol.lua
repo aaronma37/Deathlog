@@ -39,6 +39,7 @@ _dnl.SOURCE = {
 	HARDCORE_TBC_SYNC = "hardcore_tbc_sync", -- Imported from HardcoreTBC addon
 	QUERY            = "query",            -- Response to a targeted player query
 	DEBUG            = "debug",            -- Injected via debug / LOCAL_DEBUG_ONLY path
+	UPGRADE          = "upgrade",          -- Late quality upgrade re-fire (no duplicate alert)
 	UNKNOWN          = "unknown",          -- Fallback when source is nil
 }
 
@@ -64,6 +65,7 @@ _dnl.COMM_COMMANDS = {
 	["BROADCAST_DEATH_PING"] = "1",
 	["BROADCAST_DEATH_PING_CHECKSUM"] = "2",
 	["REQUEST_DUEL_TO_DEATH"] = "5",
+	["WATCHLIST_QUERY"] = "6",
 }
 _dnl.COMM_QUERY = "Q"
 _dnl.COMM_QUERY_ACK = "R"
@@ -409,7 +411,7 @@ function _dnl.validatePlayerData(pd)
 		if date < 1072915200 then
 			return false, "date timestamp is before 2004"
 		end
-		if date > time() + 60 then
+		if date > GetServerTime() + 60 then
 			return false, "date timestamp is more than 60 seconds in the future"
 		end
 	end
@@ -468,7 +470,7 @@ end
 function _dnl.mergeEntries(entry_a, entry_b)
 	local merged = {}
 	local fields = {"name", "guild", "source_id", "race_id", "class_id", "level",
-		"instance_id", "map_id", "map_pos", "played", "last_words", "date", "extra_data", "predicted_source"}
+		"instance_id", "map_id", "map_pos", "played", "last_words", "date", "extra_data"}
 	for _, field in ipairs(fields) do
 		local val_a = entry_a[field]
 		local val_b = entry_b[field]
@@ -512,7 +514,7 @@ function _dnl.encodeMessage(player_data, extra_overhead)
 	local map_pos = player_data["map_pos"]
 	local played = player_data["played"]
 	local last_words = player_data["last_words"]
-	local date = player_data["date"] or time()
+	local date = player_data["date"] or GetServerTime()
 	local extra_data = player_data["extra_data"]
 
 	if name == nil then
