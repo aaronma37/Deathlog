@@ -4,7 +4,7 @@
 ## Author: Yazpad & Deathwing
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.4.1
+## Version: 0.4.2
 
 
 ## DefaultState: enabled

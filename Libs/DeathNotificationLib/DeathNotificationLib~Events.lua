@@ -44,7 +44,6 @@ local displayTimePlayed = ChatFrameUtil and ChatFrameUtil.DisplayTimePlayed or C
 
 local function displayTimePlayedOverride(...)
 	if playtime_suppression_counter > 0 then
-		playtime_suppression_counter = playtime_suppression_counter - 1
 		return
 	end
 	return displayTimePlayed(...)
@@ -462,9 +461,15 @@ local function onTimePlayedMsg(arg)
 	last_playtime = arg[1]
 	last_playtime_updated_at = GetServerTime()
 
-	if _dnl.DEBUG then
-		print("Received new time played:", last_playtime)
-	end
+	C_Timer.After(0, function()
+		if playtime_suppression_counter > 0 then
+			playtime_suppression_counter = playtime_suppression_counter - 1
+
+			if _dnl.DEBUG then
+				print("Received new time played:", last_playtime)
+			end
+		end
+	end)
 end
 
 ---@param arg table
