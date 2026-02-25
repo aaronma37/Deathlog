@@ -38,7 +38,7 @@ local CTL = _G.ChatThrottleLib
 
 local comm_query_locks = {}
 local last_playtime = 0
-local last_playtime_updated_at = time()
+local last_playtime_updated_at = GetServerTime()
 local playtime_suppression_counter = 0
 local displayTimePlayed = ChatFrameUtil and ChatFrameUtil.DisplayTimePlayed or ChatFrame_DisplayTimePlayed
 
@@ -65,7 +65,7 @@ hooksecurefunc("StaticPopup_Show", function(which, text_arg1, text_arg2, data)
 end)
 
 local function getPlaytime()
-	return last_playtime + (time() - last_playtime_updated_at)
+	return last_playtime + (GetServerTime() - last_playtime_updated_at)
 end
 
 local function requestTimePlayed()
@@ -170,6 +170,56 @@ local function onChatMsgChannel(arg)
 		return
 	end
 
+	if command == _dnl.COMM_COMMANDS["WATCHLIST_QUERY"] then
+		local sender_full = arg[2]
+		local player_name_short, _ = string.split("-", sender_full)
+		if _dnl.throttleCheck(player_name_short) then return end
+		-- Don't respond to our own queries
+		if player_name_short == UnitName("player") then return end
+
+		-- Parse: TAG~name1,name2,...
+		local query_tag, name_list = nil, msg
+		if msg and #msg > 4 and msg:sub(4, 4) == _dnl.COMM_FIELD_DELIM then
+			query_tag = msg:sub(1, 3)
+			name_list = msg:sub(5)
+		end
+		if not query_tag or not _dnl.tag_to_addon[query_tag] then return end
+
+		local addon_entry = _dnl.addons[_dnl.tag_to_addon[query_tag]]
+		if not addon_entry or not addon_entry.db_map or not addon_entry.db then return end
+
+		local response_count = 0
+		local MAX_RESPONSES = 10
+		for query_name in name_list:gmatch("([^,]+)") do
+			if response_count >= MAX_RESPONSES then break end
+			local checksum = addon_entry.db_map[query_name]
+			if checksum and addon_entry.db[checksum] then
+				local found_data = addon_entry.db[checksum]
+				local response_data = _dnl.playerData(
+					found_data.name, found_data.guild, found_data.source_id, found_data.race_id, found_data.class_id,
+					found_data.level, found_data.instance_id, found_data.map_id, found_data.map_pos,
+					found_data.date, found_data.played, found_data.last_words, found_data.extra_data
+				)
+				local tag_overhead = 4  -- "TAG~" = 4 bytes
+				local encoded = _dnl.encodeMessage(response_data, tag_overhead)
+				if encoded then
+					local resp_prefix = query_tag .. _dnl.COMM_FIELD_DELIM
+					local commMessage = _dnl.COMM_QUERY_ACK .. _dnl.COMM_COMMAND_DELIM .. resp_prefix .. encoded
+					if CTL then
+						CTL:SendAddonMessage("BULK", _dnl.COMM_NAME, commMessage, "WHISPER", sender_full)
+					else
+						_G.SendAddonMessage(_dnl.COMM_NAME, commMessage, "WHISPER", sender_full)
+					end
+					response_count = response_count + 1
+				end
+			end
+		end
+		if _dnl.DEBUG then
+			print("[DNL] Watchlist query from", player_name_short, "- responded with", response_count, "entries")
+		end
+		return
+	end
+
 --#region Backwards compatible API
 
 	if _dnl.backwards_dispatch[command] and _dnl.anyAddonAllows("legacy_messages") then
@@ -232,7 +282,7 @@ local function onPlayerDead(arg)
 		instance_id,
 		map,
 		position,
-		time(),
+		GetServerTime(),
 		getPlaytime(),
 		userState.recent_msg,
 		extra_data
@@ -274,8 +324,14 @@ local function onChatMsg(arg)
 	end
 end
 
+local _pew_initialized = false
 ---@param arg table
 local function onPlayerEnteringWorld(arg)
+	if _pew_initialized then
+		updateChannels()
+		return
+	end
+	_pew_initialized = true
 	requestTimePlayed()
 	C_Timer.After(5.0, function()
 		_dnl.deathlogJoinChannel()
@@ -283,6 +339,7 @@ local function onPlayerEnteringWorld(arg)
 	end)
 	C_Timer.NewTicker(60, requestTimePlayed)
 	updateChannels()
+	_dnl.versionCheckOnSocialJoin()
 end
 
 ---@param arg table
@@ -312,13 +369,18 @@ local function onDuelToTheDeathRequested(arg)
 		.. _dnl.COMM_FIELD_DELIM
 		.. _dnl.PROTOCOL_VERSION
 		.. _dnl.COMM_FIELD_DELIM
-	table.insert(_dnl.deathlog_request_duel_to_death_queue, {msg, time()})
+	table.insert(_dnl.deathlog_request_duel_to_death_queue, {msg, GetServerTime()})
 end
 
 ---@param arg table
 local function onChatMsgAddon(arg)
 	if arg[1] == _dnl.SYNC_COMM_NAME then
 		_dnl.handleSyncAddonMessage(arg)
+		return
+	end
+
+	if arg[1] == _dnl.VERSION_CHECK_COMM_NAME then
+		_dnl.handleVersionCheckAddonMessage(arg)
 		return
 	end
 
@@ -376,7 +438,7 @@ local function onChatMsgAddon(arg)
 			ack_data = msg:sub(5)
 		end
 		local _player_data, _protocol_version = _dnl.decodeMessage(ack_data)
-		if _protocol_version and _protocol_version < _dnl.MIN_SUPPORTED_PROTOCOL_VERSION then
+		if _protocol_version and (_protocol_version < _dnl.MIN_SUPPORTED_PROTOCOL_VERSION or _protocol_version > _dnl.PROTOCOL_VERSION) then
 			return
 		end
 		if _player_data and _player_data["name"] and _dnl.expect_ack[_player_data["name"]] then
@@ -398,11 +460,16 @@ end
 ---@param arg table
 local function onTimePlayedMsg(arg)
 	last_playtime = arg[1]
-	last_playtime_updated_at = time()
+	last_playtime_updated_at = GetServerTime()
 
 	if _dnl.DEBUG then
 		print("Received new time played:", last_playtime)
 	end
+end
+
+---@param arg table
+local function onGroupRosterUpdate(arg)
+	_dnl.versionCheckOnSocialJoin()
 end
 
 ---@param arg table
@@ -415,16 +482,12 @@ local function onChatMsgMonsterEmote(arg)
 		return
 	end
 
-	if _dnl.isNameAlreadyCommitted(player_name) then
+	if player_name == UnitName("player") then
 		return
 	end
 
 	if _dnl.DEBUG then
 		print("Soul of Iron death detected via emote:", player_name, "GUID:", player_guid)
-	end
-
-	if player_name == UnitName("player") then
-		return
 	end
 
 	local _, englishClass, _, englishRace, _, _, _ = GetPlayerInfoByGUID(player_guid)
@@ -435,17 +498,22 @@ local function onChatMsgMonsterEmote(arg)
 	local level = nil
 	local guild = nil
 
-	local instance_id, map, position = _dnl.guessLocationForUnit(found_unit)
-	if position then
-		position = string.format("%.4f,%.4f", position.x, position.y)
-	end
-
 	if found_unit then
 		local unit_level = UnitLevel(found_unit)
 		level = (unit_level and unit_level > 0) and unit_level or nil
 		guild = GetGuildInfo(found_unit)
 	end
 
+	if _dnl.isNameAlreadyCommitted(player_name, level) then
+		return
+	end
+
+	local instance_id, map, position = _dnl.guessLocationForUnit(found_unit)
+	if position then
+		position = string.format("%.4f,%.4f", position.x, position.y)
+	end
+
+	local reported_time = GetServerTime()
 	local function doReportedDeathBroadcast(_level, _guild, _race_id, _class_id)
 		local _player_data = _dnl.playerData(
 			player_name,
@@ -457,7 +525,7 @@ local function onChatMsgMonsterEmote(arg)
 			instance_id,
 			map,
 			position,
-			time(),
+			reported_time,
 			nil,
 			nil
 		)
@@ -521,6 +589,7 @@ local dispatch = {
 	["CHAT_MSG_ADDON"]               = onChatMsgAddon,
 	["WHO_LIST_UPDATE"]              = onWhoListUpdate,
 	["TIME_PLAYED_MSG"]              = onTimePlayedMsg,
+	["GROUP_ROSTER_UPDATE"]          = onGroupRosterUpdate,
 }
 
 if _dnl.IS_SOUL_OF_IRON_REALM then
@@ -547,6 +616,17 @@ end
 death_notification_lib_event_handler:SetScript("OnEvent", handleEvent)
 C_ChatInfo.RegisterAddonMessagePrefix(_dnl.COMM_NAME)
 C_ChatInfo.RegisterAddonMessagePrefix(_dnl.SYNC_COMM_NAME)
+C_ChatInfo.RegisterAddonMessagePrefix(_dnl.VERSION_CHECK_COMM_NAME)
+
+if RaidWarningFrame then
+	local origRWF = RaidWarningFrame:GetScript("OnEvent")
+	if origRWF then
+		RaidWarningFrame:SetScript("OnEvent", function(self, event, ...)
+			if event == "HARDCORE_DEATHS" then return end
+			return origRWF(self, event, ...)
+		end)
+	end
+end
 
 ---------------------------------------------------------------------------
 -- AttachAddon
@@ -564,6 +644,7 @@ C_ChatInfo.RegisterAddonMessagePrefix(_dnl.SYNC_COMM_NAME)
 ---@field db DNL_Database|nil                  READ-ONLY by DNL: { [checksum] = PlayerData } for sync/query
 ---@field db_map DNL_DatabaseMap|nil           READ-ONLY by DNL: { [name] = checksum } for sync/query
 ---@field dev_data DNL_DevData|nil             Optional debug data
+---@field addon_version string|nil             Semantic version string (e.g. "0.4.0") for upgrade notifications
 ---@param options DNL_AttachAddonOptions
 function _dnl.attachAddon(options)
 	assert(type(options) == "table", "[DNL] AttachAddon: options must be a table")
@@ -587,6 +668,7 @@ function _dnl.attachAddon(options)
 		db                = options.db,
 		db_map            = options.db_map,
 		dev_data          = options.dev_data,
+		addon_version     = options.addon_version,
 	}
 
 	_dnl.addons[options.name] = addon
@@ -603,6 +685,29 @@ end
 --#region API
 
 DeathNotificationLib.AttachAddon = _dnl.attachAddon
+
+---Return the newest addon version string detected from peers for the
+---given registered addon, or nil if no newer version has been seen yet.
+---@param addonName string  The name used in AttachAddon (e.g. "Deathlog")
+---@return string|nil newerVersion  e.g. "0.5.0", or nil
+DeathNotificationLib.GetNewerAddonVersion = function(addonName)
+	local addon = _dnl.addons[addonName]
+	if addon then return addon.newest_detected_version end
+	return nil
+end
+
+--- Callbacks registered via HookOnNewerVersion.
+---@type fun(addonName: string, newerVersion: string, currentVersion: string)[]
+local hook_newer_version_functions = {}
+_dnl.hook_newer_version_functions = hook_newer_version_functions
+
+---Register a hook that fires when a confirmed newer addon version is
+---detected from peers.  The callback receives the addon name, the newer
+---version string, and the current local version string.
+---@param fn fun(addonName: string, newerVersion: string, currentVersion: string)
+DeathNotificationLib.HookOnNewerVersion = function(fn)
+	hook_newer_version_functions[#hook_newer_version_functions + 1] = fn
+end
 
 ---Register a hook that fires when the local player dies, before broadcast.
 ---The hook receives a **shallow copy** of the PlayerData table.  Mutate it

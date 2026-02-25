@@ -2,7 +2,7 @@
 DeathNotificationLib~Init.lua
 --]]
 
-local VERSION = 4
+local VERSION = 5
 
 if DeathNotificationLib and (DeathNotificationLib.VERSION or 0) >= VERSION then return end
 
@@ -21,6 +21,9 @@ do
 	local dir = stack:match("^(.+[/\\])DeathNotificationLib~Init%.lua") or ""
 	-- Normalise to backslash (WoW media paths use backslashes)
 	dir = dir:gsub("/", "\\")
+	-- Strip everything before "Interface\" — PlaySoundFile / SetFont
+	-- require paths rooted at "Interface\\" not the full disk path.
+	dir = dir:gsub("^.*(Interface\\)", "%1")
 	--- Base Interface path to this DeathNotificationLib folder (trailing backslash).
 	--- Example: "Interface\\AddOns\\Deathlog\\Libs\\DeathNotificationLib\\"
 	---@type string
@@ -45,6 +48,38 @@ _dnl.DEBUG = false
 _dnl.LOCAL_DEBUG_ONLY = false
 
 ---------------------------------------------------------------------------
+-- Version comparison utility
+---------------------------------------------------------------------------
+
+--- Parse a semantic version string ("major.minor.patch") into a comparable
+--- numeric tuple.  Returns nil if the string is not a valid version.
+---@param ver string|nil  e.g. "0.4.0", "1.2.3"
+---@return number|nil major
+---@return number|nil minor
+---@return number|nil patch
+function _dnl.parseVersion(ver)
+	if type(ver) ~= "string" then return nil, nil, nil end
+	local major, minor, patch = ver:match("^(%d+)%.(%d+)%.(%d+)$")
+	if not major then return nil, nil, nil end
+	return tonumber(major), tonumber(minor), tonumber(patch)
+end
+
+--- Compare two semantic version strings.
+--- Returns  1 if a > b,  -1 if a < b,  0 if equal,  nil if either is invalid.
+---@param a string|nil
+---@param b string|nil
+---@return number|nil  1, -1, 0, or nil
+function _dnl.compareVersions(a, b)
+	local a1, a2, a3 = _dnl.parseVersion(a)
+	local b1, b2, b3 = _dnl.parseVersion(b)
+	if not a1 or not b1 then return nil end
+	if a1 ~= b1 then return a1 > b1 and 1 or -1 end
+	if a2 ~= b2 then return a2 > b2 and 1 or -1 end
+	if a3 ~= b3 then return a3 > b3 and 1 or -1 end
+	return 0
+end
+
+---------------------------------------------------------------------------
 -- Shared utility: hide a channel from all chat frames
 ---------------------------------------------------------------------------
 
@@ -53,11 +88,69 @@ _dnl.LOCAL_DEBUG_ONLY = false
 ---@param channelName string  Channel name to hide
 function _dnl.hideChannelFromChatFrames(channelName)
 	if not channelName then return end
+	if not _dnl.anyAddonAllows("auto_hide_chat_channels") then return end
 	for i = 1, 10 do
 		if _G["ChatFrame" .. i] then
 			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], channelName)
 		end
 	end
+end
+
+---------------------------------------------------------------------------
+-- Blizzard chat-frame filter — prevent HistoryKeeper memory leak
+---------------------------------------------------------------------------
+-- Blizzard's HistoryKeeper.lua creates a permanent accessID entry for
+-- every unique (chatType, chatTarget, chanSender) tuple seen on any
+-- channel message.  On a high-traffic channel with hundreds of unique
+-- senders this causes monotonically growing memory and CPU cost EVEN IF
+-- the addon is doing nothing with the messages.
+--
+-- ChatFrame_AddMessageEventFilter runs BEFORE HistoryKeeper and the
+-- per-frame AddMessage path.  By returning true for messages on our
+-- channels we short-circuit the entire Blizzard chat pipeline,
+-- eliminating:
+--   • ChatHistory_GetAccessID allocations  (the primary leak)
+--   • ChatFrame:AddMessage buffer growth
+--   • GetColoredName / formatting overhead
+--
+-- The filter is installed at file-load time so it is active even before
+-- the channels are joined (e.g. if the player was still in a channel
+-- from a previous session).
+--
+-- Channel name prefixes (upper-cased for fast comparison):
+--   "HCDEATHLOGSYNCCHANNEL"   – sync channel (and fallback suffixed variants)
+--   "HCDEATHALERTSCHANNEL"    – death-alerts channel (and fallback variants)
+---------------------------------------------------------------------------
+
+local DNL_CHANNEL_PREFIXES = {
+	"HCDEATHLOGSYNCCHANNEL",
+	"HCDEATHALERTSCHANNEL",
+}
+
+--- ChatFrame_AddMessageEventFilter callback.
+--- arg9 (11th parameter) is the channel name without number prefix.
+---@return boolean true to suppress, false to pass through
+local function dnlChannelChatFilter(self, event, arg1, arg2, arg3, arg4,
+		arg5, arg6, arg7, arg8, arg9, ...)
+	if arg9 then
+		local upper = arg9:upper()
+		for _, prefix in ipairs(DNL_CHANNEL_PREFIXES) do
+			if upper:sub(1, #prefix) == prefix then
+				return true  -- suppress: prevent HistoryKeeper + AddMessage processing
+			end
+		end
+	end
+	return false
+end
+
+local addMessageEventFilter = ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter or ChatFrame_AddMessageEventFilter
+
+if not _dnl.DEBUG then
+	addMessageEventFilter("CHAT_MSG_CHANNEL", dnlChannelChatFilter)
+	addMessageEventFilter("CHAT_MSG_CHANNEL_NOTICE", dnlChannelChatFilter)
+	addMessageEventFilter("CHAT_MSG_CHANNEL_NOTICE_USER", dnlChannelChatFilter)
+	addMessageEventFilter("CHAT_MSG_CHANNEL_JOIN", dnlChannelChatFilter)
+	addMessageEventFilter("CHAT_MSG_CHANNEL_LEAVE", dnlChannelChatFilter)
 end
 
 ---------------------------------------------------------------------------
@@ -102,6 +195,7 @@ input_frame:SetPropagateKeyboardInput(true)
 ---@field db DNL_Database|nil        READ-ONLY by DNL: { [checksum] = PlayerData } for sync/query
 ---@field db_map DNL_DatabaseMap|nil READ-ONLY by DNL: { [name] = checksum } for sync/query
 ---@field dev_data DNL_DevData|nil   Optional debug data
+---@field addon_version string|nil   Semantic version string (e.g. "0.4.0") for upgrade notifications
 
 --- Registry of all attached addons, keyed by addon name.
 ---@type table<string, DNL_RegisteredAddon>
@@ -118,6 +212,7 @@ _dnl.tag_to_addon = {}
 ---@field peer_reporting boolean|nil Accept peer-reported deaths when true (default true)
 ---@field addonless_logging boolean|nil Accept Blizzard-only deaths with missing class/race when true (default false)
 ---@field auto_blizzard_deaths boolean|nil Auto-join/configure HardcoreDeaths channel when not false
+---@field auto_hide_chat_channels boolean|nil Automatically hide addon chat channels from all chat frames when not false
 ---@field legacy_messages boolean|nil Accept legacy protocol messages (v0-v2) when not false
 ---@field share_playtime boolean|nil Include /played in hook copies (default true; set false to strip played from this addon's hooks)
 ---@field sync_enabled boolean|nil Enable background database sync when not false
@@ -126,7 +221,6 @@ _dnl.tag_to_addon = {}
 ---@field sync_max_entries number|nil Max entries streamed per sync session (default 500)
 ---@field sync_cooldown number|nil Cooldown between sync sessions in seconds (default 300)
 ---@field death_alert_priority number|nil Higher number wins when multiple addons provide settings (default 0)
----@field prediction_radius number|nil Search radius for heatmap source prediction (default 5)
 ---@field DeathAlert DNL_DeathAlertSettings|nil Sub-table consumed by ~DeathAlert.lua (auto-populated with defaults)
 
 --- Settings sub-table for the built-in Death Alert widget.

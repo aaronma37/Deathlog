@@ -1,6 +1,4 @@
-local id_to_npc = DeathNotificationLib.ID_TO_NPC
 local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
-local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
 local deathlog_class_colors = DeathNotificationLib.CLASS_ID_TO_COLOR
 
 local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
@@ -166,7 +164,8 @@ local subtitle_metadata = {
 		function(_entry)
 			if _entry.player_data["map_id"] then
 				local mapinfo = C_Map.GetMapInfo(_entry.player_data["map_id"])
-				return mapinfo.name or ""
+				if mapinfo then return mapinfo.name or "" end
+				return ""
 			end
 			if _entry.player_data["instance_id"] then
 				return id_to_instance[_entry.player_data["instance_id"]] or nil
@@ -188,24 +187,7 @@ local subtitle_metadata = {
 			if _entry.player_data["source_id"] == nil then
 				return ""
 			end
-			local _pvp_source_name = _entry.player_data["extra_data"] and _entry.player_data["extra_data"]["pvp_source_name"]
-			local _source = id_to_npc[_entry.player_data["source_id"]]
-				or deathlog_environment_damage[_entry.player_data["source_id"]]
-				or DeathNotificationLib.DecodePvPSource(_entry.player_data["source_id"], _pvp_source_name)
-				or ""
-
-			if _source == "" then
-				if _entry.player_data["predicted_source"] then
-					_source = _entry.player_data["predicted_source"]
-				else
-					local predicted = deathlogPredictSource(_entry.player_data)
-					if predicted then
-						_entry.player_data["predicted_source"] = predicted
-						_source = predicted
-					end
-				end
-			end
-			return _source
+			return deathlogGetCachedSource(_entry.player_data)
 		end,
 	},
 	["Class"] = {
@@ -501,6 +483,7 @@ local function setupRowEntries()
 		_entry.background:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
 
 		_entry:SetHeight(40)
+		_entry:SetFullWidth(true)
 		_entry:SetFont(main_font, 16, "")
 		_entry:SetColor(1, 1, 1)
 		_entry:SetText(" ")
@@ -544,10 +527,11 @@ local function setupRowEntries()
 				death_tomb_frame.coordinates = _entry["player_data"]["map_pos"] and strsplit(",", _entry["player_data"]["map_pos"], 2) or nil
 				death_tomb_frame.clicked_name = _entry["player_data"]["name"]
 				
-				local dropDown = CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
-				-- Bind an initializer function to the dropdown; see previous sections for initializer function examples.
-				UIDropDownMenu_Initialize(dropDown, WPDropDownDemo_Menu, "MENU")
-				ToggleDropDownMenu(1, nil, dropDown, "cursor", 3, -3)
+				if not _G["WPDemoContextMenu"] then
+					CreateFrame("Frame", "WPDemoContextMenu", UIParent, "UIDropDownMenuTemplate")
+				end
+				UIDropDownMenu_Initialize(WPDemoContextMenu, WPDropDownDemo_Menu, "MENU")
+				ToggleDropDownMenu(1, nil, WPDemoContextMenu, "cursor", 3, -3)
 			end
 		end)
 
@@ -585,8 +569,8 @@ function deathlog_widget_minilog_createEntry(player_data)
 	if
 		player_data["level"]
 		and (
-			player_data["level"] < deathlog_settings[widget_name]["min_lvl"]
-			or player_data["level"] > deathlog_settings[widget_name]["max_lvl"]
+			tonumber(player_data["level"]) < deathlog_settings[widget_name]["min_lvl"]
+			or tonumber(player_data["level"]) > deathlog_settings[widget_name]["max_lvl"]
 		)
 	then
 		return
@@ -736,13 +720,14 @@ local options = nil
 local optionsframe = nil
 local function applyFont()
 	local success = true
+	local title_font_path = fonts[deathlog_settings[widget_name]["font"]] or default_font
 	death_log_frame.titletext:SetFont(
-		fonts[deathlog_settings[widget_name]["font"]],
+		title_font_path,
 		deathlog_settings[widget_name]["title_font_size"],
 		"THICK"
 	)
 
-	if fonts[deathlog_settings[widget_name]["font"]] ~= death_log_frame.titletext:GetFont() then
+	if title_font_path ~= death_log_frame.titletext:GetFont() then
 		success = false
 	end
 	death_log_frame.titletext:SetTextColor(
@@ -759,15 +744,16 @@ local function applyFont()
 		deathlog_settings[widget_name]["title_y_offset"] - 10
 	)
 
+	local entry_font_path = fonts[deathlog_settings[widget_name]["entry_font"]] or default_font
 	for i = 1, 20 do
 		for idx, v in ipairs(subtitle_data) do
 			row_entry[i].font_strings[v[1]]:SetFont(
-				fonts[deathlog_settings[widget_name]["entry_font"]],
+				entry_font_path,
 				deathlog_settings[widget_name]["entry_font_size"],
 				""
 			)
 
-			if fonts[deathlog_settings[widget_name]["entry_font"]] ~= row_entry[i].font_strings[v[1]]:GetFont() then
+			if entry_font_path ~= row_entry[i].font_strings[v[1]]:GetFont() then
 				success = false
 			end
 		end
@@ -834,6 +820,11 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
 	death_log_frame.frame:SetFrameStrata("BACKGROUND")
 	death_log_frame.frame:Lower()
+
+	-- Match icon frame strata so its children (entries) at higher frame levels
+	-- get click priority over the icon frame in the overlap region.
+	death_log_icon_frame:SetFrameStrata("BACKGROUND")
+	death_log_icon_frame:SetFrameLevel(death_log_frame.frame:GetFrameLevel() + 1)
 
 	if deathlog_settings[widget_name]["hide_subtitle_heading"] then
 		for _, v in pairs(death_log_frame.subtitletext_tbl) do
@@ -930,7 +921,6 @@ end
 
 options = {
 	name = widget_name,
-	handler = Minilog,
 	type = "group",
 	args = {
 		show_death_log = {
@@ -1462,7 +1452,7 @@ options = {
 					end,
 					set = function(self, value)
 						deathlog_settings[widget_name]["min_lvl"] = value
-						Deathlog_DeathAlertWidget_applySettings()
+						Deathlog_minilog_applySettings()
 					end,
 				},
 				max_lvl = {

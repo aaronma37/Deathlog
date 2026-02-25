@@ -4,7 +4,7 @@ Shown once per session (with cooldown) when the player has collected enough
 death entries to be valuable for the community database.
 --]]
 
-local CTA_THRESHOLD_DEFAULT = 25000
+local CTA_THRESHOLD_DEFAULT = WOW_PROJECT_ID ~= WOW_PROJECT_CLASSIC and 1000 or 25000
 local CTA_REMIND_COOLDOWN = 7 * 24 * 3600 -- 7 days in seconds
 local SOURCE = DeathNotificationLib.SOURCE
 
@@ -234,7 +234,7 @@ function Deathlog_CheckCTA()
 	end
 
 	local last_shown = deathlog_settings["cta_last_shown"] or 0
-	if (time() - last_shown) < CTA_REMIND_COOLDOWN then
+	if (GetServerTime() - last_shown) < CTA_REMIND_COOLDOWN then
 		return
 	end
 
@@ -242,7 +242,7 @@ function Deathlog_CheckCTA()
         return
     end
 
-	deathlog_settings["cta_last_shown"] = time()
+	deathlog_settings["cta_last_shown"] = GetServerTime()
 
 	showCTA(getTotalEntryCount())
 end

@@ -49,6 +49,9 @@ local function sendQuery(name, channelType, target, tag)
         comm_query_lock_out = nil
     end)
     _dnl.expect_ack[name] = 1
+    C_Timer.After(60, function()
+        _dnl.expect_ack[name] = nil
+    end)
     if channelType == "WHISPER" then
         if CTL then
             CTL:SendAddonMessage("BULK", _dnl.COMM_NAME, commMessage, channelType, target)
@@ -168,6 +171,7 @@ end
 ---@param callback fun(info: WhoInfo|nil)
 ---@return fun(): boolean cancel  Remove this entry; returns true if it was still queued.
 function _dnl.enqueueWhoPlayer(name, callback)
+	if not name or name == "" then return function() return false end end
 	if _dnl.DEBUG then
 		print("Enqueuing WHO lookup for", name)
 	end
@@ -197,6 +201,50 @@ end
 
 _dnl.registerInputDrain(whoNextInQueue)
 
+---------------------------------------------------------------------------
+-- Channel-based watchlist query
+---------------------------------------------------------------------------
+
+--- Queue a batch watchlist query on the death alerts channel.
+--- Sends all names in a single channel message so every connected addon
+--- user can check their local DB and whisper back any matches.
+--- Responses arrive via the existing COMM_QUERY_ACK handler.
+---@param names string[]  Player names to look up
+---@param tag string      3-char addon tag (e.g. "DLG")
+function _dnl.queryChannel(names, tag)
+	if not tag or not _dnl.tag_to_addon[tag] then
+		if _dnl.DEBUG then
+			print("[DNL] queryChannel: valid tag is required")
+		end
+		return
+	end
+	if not names or #names == 0 then return end
+
+	local D = _dnl.COMM_FIELD_DELIM
+	local prefix = tag .. D
+	-- Wire limit: "6$TAG~name1,name2,..." must fit in 255 bytes
+	local overhead = #(_dnl.COMM_COMMANDS["WATCHLIST_QUERY"]) + #_dnl.COMM_COMMAND_DELIM + #prefix
+	local budget = 255 - overhead
+
+	local parts = {}
+	local len = 0
+	for _, name in ipairs(names) do
+		local cost = #name + (len > 0 and 1 or 0)  -- +1 for comma separator
+		if len + cost > budget then break end
+		table.insert(parts, name)
+		len = len + cost
+		_dnl.expect_ack[name] = 1
+	end
+	if #parts == 0 then return end
+
+	local msg = prefix .. table.concat(parts, ",")
+	table.insert(_dnl.watchlist_query_queue, { msg, GetServerTime() })
+
+	if _dnl.DEBUG then
+		print("[DNL] Queued watchlist channel query for", #parts, "names")
+	end
+end
+
 --#region API
 
 ---@param _name string
@@ -217,5 +265,11 @@ DeathNotificationLib.QueryYell = function(_name, _tag) sendQuery(_name, "YELL", 
 DeathNotificationLib.QuerySay = function(_name, _tag) sendQuery(_name, "SAY", nil, _tag) end
 
 DeathNotificationLib.WhoPlayer = _dnl.whoPlayer
+
+---Queue a batch watchlist query on the death alerts channel.
+---All connected addon users will check their DB and whisper back matches.
+---@param names string[]  Player names to query
+---@param tag string      3-char addon tag (e.g. "DLG")
+DeathNotificationLib.QueryChannel = function(names, tag) _dnl.queryChannel(names, tag) end
 
 --#endregion

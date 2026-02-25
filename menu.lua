@@ -241,24 +241,7 @@ local subtitle_data = {
 		"Death Source",
 		140,
 		function(_entry, _server_name)
-			local _pvp_source_name = _entry["extra_data"] and _entry["extra_data"]["pvp_source_name"]
-			local _source = id_to_npc[_entry["source_id"]]
-				or deathlog_environment_damage[_entry["source_id"]]
-				or DeathNotificationLib.DecodePvPSource(_entry["source_id"], _pvp_source_name)
-				or ""
-
-			if _source == "" then
-				if _entry["predicted_source"] then
-					_source = _entry["predicted_source"]
-				else
-					local predicted = deathlogPredictSource(_entry)
-					if predicted then
-						_entry["predicted_source"] = predicted
-						_source = predicted
-					end
-				end
-			end
-			return _source
+			return deathlogGetCachedSource(_entry)
 		end,
 	},
 	{
@@ -288,6 +271,7 @@ local font_strings = {} -- idx/columns
 local header_strings = {} -- columns
 local row_backgrounds = {} --idx
 
+local last_font_string = nil
 for idx, v in ipairs(subtitle_data) do
 	header_strings[v[1]] = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	if idx == 1 then
@@ -460,17 +444,19 @@ local function setDeathlogMenuLogData(data)
 	end
 
 	if #ordered == 1 then
+		local total_str = (precomputed_general_stats and precomputed_general_stats["all"] and precomputed_general_stats["all"]["all"] and precomputed_general_stats["all"]["all"]["all"] and precomputed_general_stats["all"]["all"]["all"]["all"] and precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]) or "?"
 		deathlog_menu:SetStatusText(
 			#ordered
 				.. " search result/"
-				.. precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]
+				.. total_str
 				.. " preprocessed"
 		)
 	else
+		local total_str = (precomputed_general_stats and precomputed_general_stats["all"] and precomputed_general_stats["all"]["all"] and precomputed_general_stats["all"]["all"]["all"] and precomputed_general_stats["all"]["all"]["all"]["all"] and precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]) or "?"
 		deathlog_menu:SetStatusText(
 			#ordered
 				.. " search results/"
-				.. precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]
+				.. total_str
 				.. " preprocessed"
 		)
 	end
@@ -494,7 +480,6 @@ local function drawLogTab(container)
 
 	local server_filter = nil
 	local name_filter = nil
-	local guidl_filter = nil
 	local class_filter = nil
 	local race_filter = nil
 	local zone_filter = nil
@@ -1758,14 +1743,14 @@ local function drawWatchListTab(container)
 
 	local title_label = AceGUI:Create("Heading")
 	title_label:SetFullWidth(true)
-	title_label:SetText("Watch List (Experimental)")
+	title_label:SetText("Watch List")
 	title_label.label:SetFont(Deathlog_L.menu_font, 24, "")
 	scroll_frame:AddChild(title_label)
 
 	local description_label = AceGUI:Create("Label")
 	description_label:SetFullWidth(true)
 	description_label:SetText(
-		"[Experimental] Add players of interest to a watch list.  If a player on this list dies while you are logged off, the deathlog system will try to notify you when you log in.  Add a description and icon to remember the player by."
+		"Add players of interest to a watch list.  If a player on this list dies while you are logged off, the deathlog system will try to notify you when you log in.  Add a description and icon to remember the player by."
 	)
 	description_label.label:SetFont(Deathlog_L.menu_font, 14, "")
 	description_label.label:SetTextColor(0.6, 0.6, 0.6, 1.0)

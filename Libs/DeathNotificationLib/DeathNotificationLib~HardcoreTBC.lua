@@ -185,7 +185,7 @@ local function convertEvent(event)
 		instance_id,
 		(not instance_id) and map_id or nil,
 		(not instance_id) and map_pos or nil,
-		timestamp or time(),
+		timestamp or GetServerTime(),
 		data.t and tonumber(data.t) or nil,
 		nil,                  -- last_words: not available
 		extra_data
@@ -322,7 +322,9 @@ local function setupRealtime()
 
 		-- Anti-spoofing: sender must be the dying player
 		-- (HardcoreTBC enforces this on its side too)
-		if sender ~= event.player then return end
+		local sender_name = strsplit("-", sender)
+		local event_player_name = strsplit("-", event.player or "")
+		if sender_name ~= event_player_name then return end
 
 		-- Dedup key: matches HardcoreTBC's GenerateEventId logic
 		local dedup_key = table.concat({
@@ -370,7 +372,7 @@ local function startPeriodicRescan()
 	C_Timer.NewTicker(RESCAN_INTERVAL, function()
 		if not HardcoreTBC_DistributedLogDB then return end
 
-		local cutoff = time() - HISTORY_WINDOW
+		local cutoff = GetServerTime() - HISTORY_WINDOW
 
 		-- Collect unseen events into a flat list
 		local pending = {}

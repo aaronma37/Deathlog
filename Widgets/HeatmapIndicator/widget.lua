@@ -74,6 +74,13 @@ heatmap_indicator_frame:SetScript("OnShow", function()
 	startUpdate()
 end)
 
+heatmap_indicator_frame:SetScript("OnHide", function()
+	if heatmap_indicator_frame.ticker then
+		heatmap_indicator_frame.ticker:Cancel()
+		heatmap_indicator_frame.ticker = nil
+	end
+end)
+
 heatmap_indicator_frame:RegisterForDrag("LeftButton")
 heatmap_indicator_frame:SetScript("OnDragStart", function(self, button)
 	self:StartMoving()
@@ -168,7 +175,6 @@ end
 
 options = {
 	name = widget_name,
-	handler = Minilog,
 	type = "group",
 	args = {
 		enable = {

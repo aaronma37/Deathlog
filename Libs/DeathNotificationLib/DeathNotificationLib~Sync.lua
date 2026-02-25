@@ -28,6 +28,8 @@ local CTL = _G.ChatThrottleLib
 
 _dnl.SYNC_CHANNEL_BASE = "hcdeathlogsyncchannel"
 
+_dnl.sync_channel = _dnl.SYNC_CHANNEL_BASE
+
 local SYNC_CHANNEL_PW       = _dnl.SYNC_CHANNEL_BASE .. "pw"
 
 --- Return the channel number for the sync channel we actually joined.
@@ -49,8 +51,12 @@ local DEFAULT_SYNC_COOLDOWN = 300
 --- How long to collect watermarks before picking a peer (seconds)
 local WATERMARK_COLLECT_WINDOW = 10
 
---- Random jitter range before becoming the requester (seconds)
-local JITTER_MAX            = 5
+--- Random jitter range before becoming the requester (seconds).
+--- Needs to be large enough that the first requester's E$ responses
+--- appear on the channel before later jitter timers fire — E$ goes
+--- through the hardware-event-gated queue so there is a 1-3s delay
+--- between the M$ whisper and the first visible E$.
+local JITTER_MAX            = 15
 
 --- Timeout waiting for entry data (seconds)
 local RESPONSE_TIMEOUT      = 60
@@ -124,6 +130,14 @@ local collect_timer      = nil
 local jitter_timer       = nil
 local response_timer     = nil
 local responding_timer   = nil
+
+--- Timestamp of the last E$ message seen on the channel (from any peer).
+--- Used to suppress new sync triggers while the channel is already busy
+--- streaming entries — prevents multiple responders from overlapping.
+local last_entry_seen_time = 0
+
+--- How long after seeing E$ traffic to suppress new sync triggers (seconds).
+local CHANNEL_BUSY_COOLDOWN = 30
 
 --- Absolute timeout: if the state machine stays non-IDLE for longer
 --- than this many seconds, force-reset to IDLE as a safety net.
@@ -208,12 +222,12 @@ local function sendSyncChannel(text)
 		for i = 1, #_dnl.sync_out_queue do
 			local existing = _dnl.sync_out_queue[i][1]
 			if existing:sub(1, 6) == tag_prefix then
-				_dnl.sync_out_queue[i] = {text, time()}
+				_dnl.sync_out_queue[i] = {text, GetServerTime()}
 				return
 			end
 		end
 	end
-	_dnl.sync_out_queue[#_dnl.sync_out_queue + 1] = {text, time()}
+	_dnl.sync_out_queue[#_dnl.sync_out_queue + 1] = {text, GetServerTime()}
 end
 
 ---Drain one queued sync-channel message.  Called from hardware events.
@@ -266,6 +280,7 @@ local function resetToIdle()
 	response_timer   = nil
 	responding_timer = nil
 	absolute_timer   = nil
+	last_entry_seen_time = 0
 end
 
 --- Start the absolute timeout safety net.  Called whenever the state
@@ -320,7 +335,7 @@ end
 ---@return number count             Number of entries in window
 local function computeLocalWatermark(db, window_days)
 	if not db then return 0, 0 end
-	local cutoff = (window_days == -1) and 0 or (time() - window_days * 86400)
+	local cutoff = (window_days == -1) and 0 or (GetServerTime() - window_days * 86400)
 	local latest = 0
 	local count  = 0
 	for _, entry in pairs(db) do
@@ -339,7 +354,7 @@ end
 ---@return number count
 local function countLocalEntries(db, days)
 	if not db then return 0 end
-	local cutoff = (days == -1) and 0 or (time() - days * 86400)
+	local cutoff = (days == -1) and 0 or (GetServerTime() - days * 86400)
 	local count = 0
 	for _, entry in pairs(db) do
 		if (entry.date or 0) >= cutoff then
@@ -351,7 +366,7 @@ end
 
 ---Broadcast watermarks on the sync channel — one per addon with a database.
 ---Each addon's own settings determine whether it syncs and its window.
----Format: "W$TAG~ts~count~window~"
+---Format: "W$TAG~ts~count~window~addon_version~"
 local function broadcastWatermark()
 	local ch = getSyncChannelNum()
 	if ch == 0 then return end
@@ -365,6 +380,7 @@ local function broadcastWatermark()
 				.. ts .. _dnl.COMM_FIELD_DELIM
 				.. count .. _dnl.COMM_FIELD_DELIM
 				.. window .. _dnl.COMM_FIELD_DELIM
+				.. (addon.addon_version or "") .. _dnl.COMM_FIELD_DELIM
 			sendSyncChannel(msg)
 		end
 	end
@@ -398,7 +414,7 @@ end
 ---@return table  { [day_index] = { count=N, hash=H, entries={{checksum,data},...} } }
 local function buildDayIndex(db, window_days)
 	if not db then return {} end
-	local cutoff = (window_days == -1) and 0 or (time() - window_days * 86400)
+	local cutoff = (window_days == -1) and 0 or (GetServerTime() - window_days * 86400)
 	local index = {}
 	local bxor = bit.bxor
 	for cs, entry in pairs(db) do
@@ -426,11 +442,78 @@ local function buildDayIndex(db, window_days)
 end
 
 ---------------------------------------------------------------------------
+-- Addon version upgrade hints
+---------------------------------------------------------------------------
+
+--- Per-tag tracking for addon version upgrade notifications.
+--- Mirrors the protocol-version hint logic in ~Cache.lua, but operates
+--- per-addon (keyed by tag) and uses the semantic version string from
+--- the watermark rather than the protocol_version integer.
+---
+--- Structure:  { [tag] = { senders = { [sender] = true }, warned = { [ver] = true } } }
+---@type table<string, { senders: table<string, boolean>, warned: table<string, boolean> }>
+local addon_version_hint_state = {}
+
+--- Number of unique senders advertising a newer addon version before
+--- we print a chat notification.
+local ADDON_VERSION_HINT_THRESHOLD = 3
+
+---Check whether a remote peer's addon version is newer than ours and,
+---after enough unique senders confirm, print a one-time chat hint.
+---@param tag string           3-char addon tag
+---@param sender string        Sender's character name
+---@param remote_ver string|nil  Remote addon version string (may be nil/"")
+function _dnl._checkAddonVersionHint(tag, sender, remote_ver)
+	if not remote_ver or remote_ver == "" then return end
+
+	local local_addon = _dnl.addons[_dnl.tag_to_addon[tag]]
+	if not local_addon or not local_addon.addon_version then return end
+
+	local cmp = _dnl.compareVersions(remote_ver, local_addon.addon_version)
+	if not cmp or cmp <= 0 then return end  -- not newer or invalid
+
+	if not addon_version_hint_state[tag] then
+		addon_version_hint_state[tag] = { senders = {}, warned = {} }
+	end
+	local hint_state = addon_version_hint_state[tag]
+
+	if hint_state.warned[remote_ver] then return end
+
+	hint_state.senders[sender] = true
+	local count = 0
+	for _ in pairs(hint_state.senders) do count = count + 1 end
+
+	if count >= ADDON_VERSION_HINT_THRESHOLD then
+		hint_state.warned[remote_ver] = true
+		wipe(hint_state.senders)
+
+		-- Store the newest detected version on the addon entry so consumers
+		-- (e.g. info_button) can query it via GetNewerAddonVersion().
+		if not local_addon.newest_detected_version
+			or _dnl.compareVersions(remote_ver, local_addon.newest_detected_version) == 1 then
+			local_addon.newest_detected_version = remote_ver
+		end
+
+		print(string.format(
+			"|cffFFFF00[%s]|r A newer version (v%s) is available — you are running v%s. Please update!",
+			local_addon.name, remote_ver, local_addon.addon_version))
+
+		-- Fire HookOnNewerVersion callbacks so consumers (e.g. info_button)
+		-- can react immediately without polling.
+		if _dnl.hook_newer_version_functions then
+			for _, fn in ipairs(_dnl.hook_newer_version_functions) do
+				fn(local_addon.name, remote_ver, local_addon.addon_version)
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------------
 -- Incoming watermark handler
 ---------------------------------------------------------------------------
 
 ---Handle a watermark broadcast from another peer.
----Format: "TAG~ts~count~window~"
+---Format: "TAG~ts~count~window~addon_version~"
 ---@param sender string
 ---@param payload string
 function _dnl.handleSyncWatermark(sender, payload)
@@ -444,7 +527,11 @@ function _dnl.handleSyncWatermark(sender, payload)
 	local ts     = tonumber(values[2])
 	local count  = tonumber(values[3])
 	local window = tonumber(values[4])
+	local remote_addon_version = values[5]  -- may be nil or "" for old clients
 	if not tag or not ts or not count or not window then return end
+
+	-- ── Addon version upgrade hint ──────────────────────────────────
+	_dnl._checkAddonVersionHint(tag, sender, remote_addon_version)
 
 	-- Find the local addon matching this tag
 	local local_addon = addonForTag(tag)
@@ -458,7 +545,10 @@ function _dnl.handleSyncWatermark(sender, payload)
 	-- If we're already syncing, just store the watermark
 	if state ~= SYNC_STATE.IDLE then return end
 	-- Per-addon cooldown: skip if THIS addon is still on cooldown
-	if time() < (sync_cooldown_per_addon[tag] or 0) then return end
+	if GetServerTime() < (sync_cooldown_per_addon[tag] or 0) then return end
+	-- Channel-busy cooldown: skip if E$ traffic was seen recently,
+	-- meaning another sync session is already streaming entries.
+	if GetServerTime() - last_entry_seen_time < CHANNEL_BUSY_COOLDOWN then return end
 
 	local local_window = getSyncWindowDays(local_addon.settings)
 	local cmp_window = math.min(
@@ -493,10 +583,20 @@ end
 function _dnl._syncPickPeerAndJitter()
 	if state ~= SYNC_STATE.COLLECTING_WATERMARKS then return end
 
+	-- Abort if E$ traffic appeared during the collect window — another
+	-- sync session is already streaming and we should just consume passively.
+	if GetServerTime() - last_entry_seen_time < CHANNEL_BUSY_COOLDOWN then
+		if _dnl.DEBUG then
+			print("[DNL Sync] Channel busy (E$ seen recently) — aborting sync trigger")
+		end
+		resetToIdle()
+		return
+	end
+
 	-- Pick the peer:addon combination with the largest entry gap,
 	-- skipping addons that are still on their own cooldown.
 	local best_key, best_gap, best_tag = nil, 0, nil
-	local now = time()
+	local now = GetServerTime()
 	for key, info in pairs(watermark_peers) do
 		local addon = addonForTag(info.tag)
 		if addon and addon.db and isSyncEnabled(addon.settings) then
@@ -886,15 +986,38 @@ function _dnl._processSyncEntry(single_payload, tag)
 
 	local decoded, protocol_version = _dnl.decodeMessage(single_payload)
 	if not decoded then return end
+	if protocol_version and (protocol_version < _dnl.MIN_SUPPORTED_PROTOCOL_VERSION or protocol_version > _dnl.PROTOCOL_VERSION) then return end
 	if not _dnl.isValidEntry(decoded) then return end
 
 	local checksum = _dnl.fletcher16(decoded)
 
-	-- Skip if the target addon already has this entry
+	-- Skip if the target addon already has this entry (exact checksum match)
 	if target_addon.db[checksum] then return end
 
+	-- Name-based dedup: skip if the addon's db already contains an entry
+	-- for this player name with a date within the dedup window.
+	-- This catches duplicates where different guild/source info produces
+	-- a different fletcher16 checksum for the same death event.
+	local dead_name = decoded["name"]
+	local dead_date = decoded["date"] or 0
+	if dead_name and target_addon.db_map then
+		-- Quick check via db_map (latest entry for this name)
+		local mapped_cs = target_addon.db_map[dead_name]
+		if mapped_cs and target_addon.db[mapped_cs] then
+			local existing = target_addon.db[mapped_cs]
+			local effective_level = math.max(tonumber(decoded["level"]) or 0, tonumber(existing["level"]) or 0)
+			local dedup_window = _dnl.getDedupWindow(effective_level)
+			if math.abs(dead_date - (existing["date"] or 0)) <= dedup_window then
+				-- Near-duplicate exists — merge into existing, skip
+				local merged = _dnl.mergeEntries(existing, decoded)
+				target_addon.db[mapped_cs] = merged
+				return
+			end
+		end
+	end
+
 	-- Feed through createEntry targeting only this addon
-	decoded["date"] = decoded["date"] or time()
+	decoded["date"] = decoded["date"] or GetServerTime()
 	_dnl.createEntry(decoded, checksum, 0, nil, _dnl.SOURCE.SYNC, target_addon.name)
 
 	stats.entries_received = stats.entries_received + 1
@@ -971,6 +1094,10 @@ function _dnl.handleSyncEntry(sender, payload)
 			print("[DNL Sync] Another requester active — consuming passively")
 		end
 	end
+
+	-- Track when we last saw E$ traffic so we can suppress new sync
+	-- triggers while the channel is busy (CHANNEL_BUSY_COOLDOWN).
+	last_entry_seen_time = GetServerTime()
 end
 
 ---------------------------------------------------------------------------
@@ -986,7 +1113,7 @@ function _dnl._syncFinish(reason)
 	local sync_addon = finished_tag and addonForTag(finished_tag) or nil
 	local cooldown = getSyncCooldown(sync_addon and sync_addon.settings or nil)
 
-	stats.last_sync_time    = time()
+	stats.last_sync_time    = GetServerTime()
 	stats.last_sync_entries = received
 	stats.entries_received  = 0
 
@@ -996,7 +1123,7 @@ function _dnl._syncFinish(reason)
 
 	resetToIdle()
 	if finished_tag then
-		sync_cooldown_per_addon[finished_tag] = time() + cooldown
+		sync_cooldown_per_addon[finished_tag] = GetServerTime() + cooldown
 	end
 end
 
@@ -1007,7 +1134,9 @@ end
 local sync_channel_join_attempts = 5
 
 function _dnl.joinSyncChannel()
-	if not anySyncEnabled() then return end
+	-- Always join the sync channel even when sync is disabled:
+	-- we still need to receive watermark broadcasts that carry
+	-- addon-version upgrade hints from other players.
 
 	local channel_name = _dnl.SYNC_CHANNEL_BASE
 	LeaveChannelByName(channel_name)
@@ -1041,16 +1170,26 @@ end
 -- Watermark ticker (starts after successfully joining the sync channel)
 ---------------------------------------------------------------------------
 
+function _dnl._stopSyncWatermarkTicker()
+	if watermark_ticker then
+		cancelTimer(watermark_ticker)
+		watermark_ticker = nil
+		if _dnl.DEBUG then
+			print("[DNL Sync] Watermark ticker stopped")
+		end
+	end
+end
+
 function _dnl._startSyncWatermarkTicker()
 	if watermark_ticker then return end
 
-	-- Use the minimum sync_interval across all sync-enabled addons
+	-- Use the minimum sync_interval across all registered addons
+	-- (not gated on isSyncEnabled so watermarks carrying addon-version
+	-- hints from peers are still received on the channel listener).
 	local min_interval = DEFAULT_SYNC_INTERVAL
 	for _, addon in pairs(_dnl.addons) do
-		if isSyncEnabled(addon.settings) then
-			local iv = getSyncInterval(addon.settings)
-			if iv < min_interval then min_interval = iv end
-		end
+		local iv = getSyncInterval(addon.settings)
+		if iv < min_interval then min_interval = iv end
 	end
 
 	-- Jitter the first watermark (10-40s) so clients that log in at
@@ -1105,7 +1244,7 @@ function _dnl.syncStatus()
 		if addon.db then
 			_, count = computeLocalWatermark(addon.db, wd)
 		end
-		local cd = (sync_cooldown_per_addon[addon.tag] or 0) - time()
+		local cd = (sync_cooldown_per_addon[addon.tag] or 0) - GetServerTime()
 		local cd_str = cd > 0 and string.format(", cd=%ds", math.floor(cd)) or ""
 		print(string.format("  [%s] (%s): sync=%s, window=%s, entries=%d%s",
 			name, addon.tag, tostring(enabled),
@@ -1199,6 +1338,13 @@ if _dnl.DEBUG then
 	_dnl._checksumNumeric       = checksumNumeric
 	_dnl._dayIndex              = dayIndex
 	_dnl._syncCooldownPerAddon  = sync_cooldown_per_addon
+
+	_dnl._drainSyncBacklogAll   = function()
+		while #sync_entry_backlog > 0 do
+			local item = table.remove(sync_entry_backlog, 1)
+			_dnl._processSyncEntry(item[1], item[2])
+		end
+	end
 
 	_dnl.SYNC_CMD_WATERMARK     = SYNC_CMD_WATERMARK
 	_dnl.SYNC_CMD_BUCKET_REQ    = SYNC_CMD_BUCKET_REQ

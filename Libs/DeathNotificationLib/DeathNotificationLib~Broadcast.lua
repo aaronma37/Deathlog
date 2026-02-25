@@ -34,10 +34,12 @@ local function getInstanceIdForUnit(unit)
 		for i = 1, GetNumGroupMembers() do
 			local memb_name, _, _, _, _, _, memb_zone = GetRaidRosterInfo(i)
 			if memb_name == uname then
-				for _, instances in pairs(_dnl.D.INSTANCE_TO_ID) do
-					for inst_name, inst_id in pairs(instances) do
-						if memb_zone == inst_name then
-							return inst_id
+				if _dnl.D.INSTANCE_TO_ID then
+					for _, instances in pairs(_dnl.D.INSTANCE_TO_ID) do
+						for inst_name, inst_id in pairs(instances) do
+							if memb_zone == inst_name then
+								return inst_id
+							end
 						end
 					end
 				end
@@ -110,7 +112,7 @@ function _dnl.resolveDeathSource(death_source_name, death_source_guid, try_all_l
 		local unit_type = strsplit("-", death_source_guid)
 		if unit_type == "Creature" or unit_type == "Vehicle" then
 			local _, _, _, _, _, npc_id, _ = strsplit("-", death_source_guid)
-			death_source = tonumber(npc_id)
+			death_source = tonumber(npc_id) or death_source
 		elseif unit_type == "Player" then
 			local success, pvp_source, pvp_source_name = _dnl.encodePvpSource(death_source_name, death_source_guid)
 			if success then
@@ -188,12 +190,36 @@ function _dnl.broadcastDeath(player_data)
 	if not player_data or not player_data["name"] then return end
 
 	local death_ping_lru_cache_tbl = _dnl.death_ping_lru_cache_tbl
-	local NAME_DEDUP_WINDOW = _dnl.NAME_DEDUP_WINDOW
+
+	-- Name-based outbound dedup: if we already have ANY entry (under any
+	-- checksum) for this player within the dedup window, skip the broadcast.
+	-- This prevents multiple party members' slightly-different payloads
+	-- (different guild, source, map_pos, last_words) from each generating
+	-- a separate broadcast for the same death.
+	local name_lower = player_data["name"]:lower()
+	local name_entry = _dnl.lru_by_name[name_lower]
+	if name_entry and name_entry.timestamp then
+		local effective_level = math.max(tonumber(player_data["level"]) or 0, tonumber(name_entry.level) or 0)
+		if math.abs(GetServerTime() - name_entry.timestamp) <= _dnl.getDedupWindow(effective_level) then
+			if _dnl.DEBUG then
+				print("Outbound name-dedup: skipping broadcast for", player_data["name"], "- name already in LRU")
+			end
+			-- Still merge our data into the existing entry if ours is better
+			local existing_cs = name_entry.checksum
+			if existing_cs and death_ping_lru_cache_tbl[existing_cs] and death_ping_lru_cache_tbl[existing_cs]["player_data"] then
+				local existing_quality = death_ping_lru_cache_tbl[existing_cs]["quality"] or _dnl.QUALITY.PEER
+				local is_self = (UnitName("player") == player_data["name"])
+				local our_quality = is_self and _dnl.QUALITY.SELF or _dnl.QUALITY.PEER
+				_dnl.mergeLRUEntry(death_ping_lru_cache_tbl[existing_cs]["player_data"], player_data, our_quality, existing_quality)
+			end
+			return
+		end
+	end
 
 	local checksum = _dnl.fletcher16(player_data)
 	if death_ping_lru_cache_tbl[checksum] and death_ping_lru_cache_tbl[checksum]["player_data"] then
 		local existing_time = death_ping_lru_cache_tbl[checksum]["timestamp"] or 0
-		if math.abs(time() - existing_time) <= NAME_DEDUP_WINDOW then
+		if math.abs(GetServerTime() - existing_time) <= _dnl.getDedupWindow(player_data["level"]) then
 			if _dnl.DEBUG then
 				print("Outbound dedup: skipping broadcast for", player_data["name"], "- already in LRU cache")
 			end
@@ -205,15 +231,17 @@ function _dnl.broadcastDeath(player_data)
 		death_ping_lru_cache_tbl[checksum] = {}
 	end
 	death_ping_lru_cache_tbl[checksum]["player_data"] = player_data
-	death_ping_lru_cache_tbl[checksum]["timestamp"] = time()
+	death_ping_lru_cache_tbl[checksum]["timestamp"] = GetServerTime()
+	death_ping_lru_cache_tbl[checksum]["quality"] = _dnl.QUALITY and _dnl.QUALITY.SELF or nil
+	death_ping_lru_cache_tbl[checksum]["source"] = SOURCE.SELF_DEATH
 
-	_dnl.updateLRUByName(player_data["name"]:lower(), checksum, nil)
+	_dnl.updateLRUByName(name_lower, checksum, nil, player_data["level"])
 
 	local msg = _dnl.encodeMessage(player_data)
 	if msg == nil then
 		return
 	end
-	table.insert(_dnl.death_alert_out_queue, {msg, time()})
+	table.insert(_dnl.death_alert_out_queue, {msg, GetServerTime()})
 end
 
 ---Public API: broadcast a reported death.
@@ -299,7 +327,7 @@ function _dnl.reportPartyRaidDeath(unit)
 		instance_id,
 		map,
 		position,
-		time(),
+		GetServerTime(),
 		nil,
 		last_words,
 		extra_data

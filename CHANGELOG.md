@@ -2,6 +2,38 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.4.1] - 2026-02-24
+
+### Bug Fixes
+- Fixed watchlist queries not being sent correctly
+- Fixed a crash when death alerts played before the alert style was fully loaded
+- Fixed minilog font errors when a custom font wasn't available yet — falls back to the default font until it loads
+- Fixed minilog entries not being clickable or highlightable — several invisible UI elements were blocking mouse input across the entry area; all resolved
+- Fixed duplicate death log entries caused by party members and sync each producing different checksums for the same death — name-based dedup now covers all paths, dedup window widened to 120s, and a one-time cleanup merges existing duplicates on login
+- Fixed late-arriving high-quality broadcasts (e.g. SELF from the dying player) being silently discarded when a lower-quality entry had already committed due to network timing spread
+
+### Improvements
+- New **Auto-hide addon chat channels** setting — when disabled, Deathlog's chat channels (death alerts, sync) remain visible in your chat frames for debugging; enabled by default
+- Watchlist now reactively detects deaths from **all** sources (sync manager, peer broadcasts, guild queries) via `HookOnNewEntry`, instead of relying solely on active polling when the tab is open
+- The watchlist now broadcasts all watched player names over the death alerts channel so every connected addon user can check their local DB and whisper back matches — dramatically improves detection speed across the realm; per-name guild/say queries still run as a fallback
+- On login, the watchlist scans the local death database for any watched players who died while you were offline and prints a chat notification
+- The `addonless_logging` setting is now respected in all display paths — addonless entries (no class/race) synced from other players are hidden in the search log, minilog, and statistics when the setting is disabled; entries remain stored so toggling the setting back on reveals them instantly
+- Info button now shows an **"Update Available"** tooltip when a newer Deathlog version is detected from peers, including the current and new version numbers
+- On Hardcore characters (where the info button is normally hidden), it re-appears specifically to surface the update notification
+
+### DeathNotificationLib V5
+- Fixed a Blizzard-side memory leak caused by high-traffic addon channels — eliminates the gradual lag increase some players experienced even with sync disabled
+- Sync no longer causes frame-rate drops when processing large databases
+- Sync sessions no longer overlap when multiple peers trigger them simultaneously
+- Multiple fixes for duplicate death entries from party members and sync
+- Fixed a race condition that could show a predicted killer instead of the real one when the actual killer was known
+- Fixed late-arriving higher-quality death reports being discarded when a lower-quality report had already been saved
+- Addon version checks now also work over party, raid, guild, and instance chat — you'll see update notifications faster
+- New watchlist channel query lets all connected users help find watched player deaths across the realm
+- Messages from newer protocol versions are now safely rejected to prevent processing incompatible data
+
+---
+
 ## [0.4.0] - 2026-02-22
 
 ### Bug Fixes

@@ -105,7 +105,6 @@ SlashCmdList["DEATHLOGREPORT"] = function()
 	
 	-- The macro already did /target <name>, so just read current target
 	local target_name = UnitName("target")
-    target_name = "test"
 
 	if target_name and target_name:lower() == entry.name:lower() then
 		-- Successfully targeted! Gather all the info
@@ -161,7 +160,7 @@ function Deathlog_ReportWidget_CreateEntry(name, level, guild, race_id, class_id
 		return
 	end
 
-	local success, error_message = DeathNotificationLib.BroadcastReportedDeath(name, guild, -1, race_id, class_id, level, instance_id, map_id, map_pos, time(), nil, nil)
+	local success, error_message = DeathNotificationLib.BroadcastReportedDeath(name, guild, -1, race_id, class_id, level, instance_id, map_id, map_pos, GetServerTime(), nil, nil)
 	if not success then
 		print("|cffFF6600[Deathlog]|r ReportWidget: Failed to broadcast death - " .. (error_message or "unknown error"))
 	end
@@ -189,7 +188,7 @@ local function reportWidgetQueuePlayer(name, guid, race_id, class_id, guild, map
 		map_id = map_id,
 		map_pos = map_pos,
 		instance_id = instance_id,
-		timestamp = time()
+		timestamp = GetServerTime()
 	}
 	table.insert(report_queue_order, name)
 	

@@ -101,7 +101,7 @@ end
 local function dedupKey(sender, level)
 	-- Floor time to 10-second buckets so emote + guild messages for the
 	-- same death (sent within seconds of each other) match.
-	return sender .. ":" .. tostring(level) .. ":" .. tostring(math.floor(time() / 10))
+	return sender .. ":" .. tostring(level) .. ":" .. tostring(math.floor(GetServerTime() / 10))
 end
 
 --- Process a potential UltraHardcore death message.
@@ -183,7 +183,7 @@ local function processDeathMessage(text, sender, senderGUID)
 		instance_id,
 		(not instance_id) and map_id or nil,
 		nil,          -- map_pos: not available from chat message
-		time(),
+		GetServerTime(),
 		nil,          -- played: not available
 		nil,          -- last_words: not available
 		extra_data
@@ -236,7 +236,7 @@ handlerFrame:SetScript("OnEvent", function(self, event, ...)
 
 		-- Periodic cleanup of the dedup table
 		C_Timer.NewTicker(CLEANUP_INTERVAL, function()
-			local cutoff_bucket = math.floor(time() / 10) - 3 -- keep ~30s window
+			local cutoff_bucket = math.floor(GetServerTime() / 10) - 3 -- keep ~30s window
 			for k in pairs(processed) do
 				-- Extract the time bucket from the key (last colon-separated segment)
 				local bucket = tonumber(k:match(":(%d+)$"))
