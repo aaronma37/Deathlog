@@ -2,6 +2,14 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.4.2] - 2026-02-25
+
+### Bug Fixes
+- Fixed /played time message showing up in secondary chat tabs — players with multiple chat windows no longer see unwanted "Time Played" spam
+
+### DeathNotificationLib V6
+- Fixed played-time suppression for players with multiple chat tabs
+
 ## [0.4.1] - 2026-02-24
 
 ### Bug Fixes

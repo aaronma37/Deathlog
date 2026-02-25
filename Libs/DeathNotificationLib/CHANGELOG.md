@@ -1,5 +1,12 @@
 # Changelog
 
+## V6 — 2026-02-25
+
+### Bug Fix: Played-Time Suppression Across Multiple Chat Tabs
+- `TIME_PLAYED_MSG` is part of the `SYSTEM` ChatTypeGroup and is dispatched to **every** chat frame that has System messages enabled via `ChatFrame_SystemEventHandler`, each calling `ChatFrame_DisplayTimePlayed`
+- The old suppression decremented the counter inside `displayTimePlayedOverride` on each call, so only the first chat frame was suppressed — secondary tabs leaked the played-time message
+- The override now checks the counter without decrementing; the counter is decremented in `onTimePlayedMsg` via `C_Timer.After(0)`, which fires on the next frame after all per-chatframe dispatches are complete
+
 ## V5 — 2026-02-24
 
 ### Critical Performance Fix: Blizzard HistoryKeeper Memory Leak Mitigation
