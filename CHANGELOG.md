@@ -2,6 +2,15 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.4.3] - 2026-02-26
+
+### Bug Fixes
+- Fixed multiple "newer version available" messages appearing per session — now only one notification per addon per `/reload`, regardless of how many different newer versions are detected from peers
+
+### DeathNotificationLib V7
+- Unified version notification logic across VersionCheck and Sync modules into a single shared function (`notifyNewerVersion`)
+- Sync's watermark-based version hint now delegates to the same once-per-session notification path used by social-channel broadcasts
+
 ## [0.4.2] - 2026-02-25
 
 ### Bug Fixes

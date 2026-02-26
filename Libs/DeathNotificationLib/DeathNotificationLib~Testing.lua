@@ -5583,9 +5583,10 @@ function _dnl.testVersionCheck()
 		#whisper_log == 0)
 
 	-- ================================================================
-	-- Phase 4: Even newer version should fire again
+	-- Phase 4: Even newer version — no second warning (once per tag)
+	--          but newest_detected_version still updates silently
 	-- ================================================================
-	print(TAG .. "Phase 4: Even newer version")
+	print(TAG .. "Phase 4: Even newer version (silent update)")
 
 	wipe(hook_calls)
 
@@ -5597,8 +5598,9 @@ function _dnl.testVersionCheck()
 		"ThirdPeer",
 	})
 
-	record("even newer: hook fires for 3.0.0",
-		#hook_calls == 1)
+	record("even newer: hook NOT fired (already warned for tag)",
+		#hook_calls == 0,
+		"count=" .. tostring(#hook_calls))
 
 	record("even newer: newest_detected_version updated to 3.0.0",
 		_dnl.addons["__TestVC__"].newest_detected_version == "3.0.0")

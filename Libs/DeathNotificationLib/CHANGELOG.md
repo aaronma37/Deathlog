@@ -1,5 +1,18 @@
 # Changelog
 
+## V7 — 2026-02-26
+
+### Unified Version Notification
+- Extracted a shared `_dnl.notifyNewerVersion(tag, remote_ver)` function in `~VersionCheck.lua` that owns all version-upgrade logic: updating `newest_detected_version`, printing the chat warning (once per addon per session), and firing `HookOnNewerVersion` callbacks
+- `~VersionCheck.lua` handlers (`handleVersionAnnounce`, `handleNewerNotify`) now delegate to `notifyNewerVersion` instead of duplicating the print/hook logic inline
+- `~Sync.lua` `_checkAddonVersionHint` now delegates to `notifyNewerVersion` after its 3-peer quorum is met, removing its own duplicate `warned` table, `newest_detected_version` update, `print`, and hook-firing code
+- Both modules share the same `warned_versions` table (keyed by tag), so a notification from **any** source (social-channel V$/N$ or sync-watermark quorum) permanently suppresses further warnings for that addon until `/reload`
+- Swapped load order in `DeathNotificationLib.xml`: `~VersionCheck.lua` now loads before `~Sync.lua` so the shared function is available when Sync initialises
+
+### Bug Fix: Multiple Version Warnings Per Session
+- Previously, each distinct newer version string produced a separate chat warning (e.g. v2.0 then v3.0 would print twice); now only **one** warning per addon per session is shown
+- `newest_detected_version` continues to be silently updated if an even newer version is seen later
+
 ## V6 — 2026-02-25
 
 ### Bug Fix: Played-Time Suppression Across Multiple Chat Tabs
