@@ -2,6 +2,18 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.4.4] - 2026-02-27
+
+### New Features
+- **In-game changelog popup** — see what's new after each update! Use `/dl changelog` to open it anytime
+- **Death filter** — filter the minilog and death alerts to show only guild deaths, or disable notifications entirely
+- **GreenWall support** — if you use GreenWall, you can filter by your entire guild confederation
+
+### Bug Fixes
+- Fixed various crashes related to minilog settings and tooltips
+- Fixed "Playtime" column causing errors
+- Improved stability when widgets load before settings are ready
+
 ## [0.4.3] - 2026-02-26
 
 ### Bug Fixes

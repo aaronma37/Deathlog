@@ -1,7 +1,7 @@
 --[[-----------------------------------------------------------------------------
 Deathlog Container
 -------------------------------------------------------------------------------]]
-local Type, Version = "Deathlog_MiniLog", 30
+local Type, Version = "Deathlog_MiniLog", 31
 local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
 if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then
 	return
@@ -29,6 +29,7 @@ local column_types = {
 	"ClassLogo1",
 	"ClassLogo2",
 	"RaceLogoSquare",
+	"Playtime",
 	"LastWords",
 }
 
@@ -144,19 +145,25 @@ local methods = {
 			self.subtitletext_tbl[v]:SetText("")
 		end
 		for _, v in ipairs(subtitle_data) do
-			if v[1] == "ClassLogo1" or v[1] == "ClassLogo2" or v[1] == "RaceLogoSquare" then
+			if self.subtitletext_tbl[v[1]] == nil then
+				column_offset = column_offset + v[2]
+			elseif v[1] == "ClassLogo1" or v[1] == "ClassLogo2" or v[1] == "RaceLogoSquare" then
 				self.subtitletext_tbl[v[1]]:SetText("")
+				self.subtitletext_tbl[v[1]]:SetPoint("LEFT", self.frame, "TOPLEFT", column_offset, -26)
+				column_offset = column_offset + v[2]
 			else
 				self.subtitletext_tbl[v[1]]:SetText(v[1])
+				self.subtitletext_tbl[v[1]]:SetPoint("LEFT", self.frame, "TOPLEFT", column_offset, -26)
+				column_offset = column_offset + v[2]
 			end
-			self.subtitletext_tbl[v[1]]:SetPoint("LEFT", self.frame, "TOPLEFT", column_offset, -26)
-			column_offset = column_offset + v[2]
 		end
 	end,
 	["SetSubTitleOffset"] = function(self, _x, _y, subtitle_data)
 		local column_offset = 17
 		for _, v in ipairs(subtitle_data) do
-			self.subtitletext_tbl[v[1]]:SetPoint("LEFT", self.frame, "TOPLEFT", column_offset + _x, -26 + _y)
+			if self.subtitletext_tbl[v[1]] then
+				self.subtitletext_tbl[v[1]]:SetPoint("LEFT", self.frame, "TOPLEFT", column_offset + _x, -26 + _y)
+			end
 			column_offset = column_offset + v[2]
 		end
 	end,

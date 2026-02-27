@@ -233,6 +233,11 @@ function Deathlog_CheckCTA()
 		return
 	end
 
+	-- Don't show CTA while changelog is visible
+	if Deathlog_IsChangelogVisible and Deathlog_IsChangelogVisible() then
+		return
+	end
+
 	local last_shown = deathlog_settings["cta_last_shown"] or 0
 	if (GetServerTime() - last_shown) < CTA_REMIND_COOLDOWN then
 		return

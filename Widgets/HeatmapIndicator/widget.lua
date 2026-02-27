@@ -57,7 +57,7 @@ local function startUpdate()
 					heatmap_indicator_frame.tex:SetVertexColor(1, 0, 0, 1)
 				end
 				heatmap_indicator_frame.numeric_text:SetText(string.format("%.1f", intensity * 10))
-				if deathlog_settings[widget_name]["show_value"] then
+				if deathlog_settings[widget_name] and deathlog_settings[widget_name]["show_value"] then
 					heatmap_indicator_frame.numeric_text:Show()
 				else
 					heatmap_indicator_frame.numeric_text:Hide()
@@ -88,6 +88,7 @@ heatmap_indicator_frame:SetScript("OnDragStart", function(self, button)
 end)
 heatmap_indicator_frame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing()
+	if deathlog_settings[widget_name] == nil then deathlog_settings[widget_name] = {} end
 	local x, y = self:GetCenter()
 	local px = (GetScreenWidth() * UIParent:GetEffectiveScale()) / 2
 	local py = (GetScreenHeight() * UIParent:GetEffectiveScale()) / 2

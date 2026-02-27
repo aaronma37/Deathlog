@@ -1,5 +1,28 @@
 # Changelog
 
+## V8 — 2026-02-27
+
+### New Module: Guild Filter (`~GuildFilter.lua`)
+- New module providing unified guild filtering with GreenWall multi-guild confederation support
+- Handles all guild membership checking internally — no dependency on host addon code
+- Periodically refreshes guild roster cache (every 10 seconds) for accurate filtering
+- GreenWall detection via `gw.config.valid` — automatically enables confederation filtering when available
+
+### New Public API
+- `DeathNotificationLib.PassesGuildFilterMode(entry, filter_mode)` — check if a PlayerData entry passes the specified filter mode ("all", "guild_only", "guild_confederation", or "none")
+- `DeathNotificationLib.GetGuildFilterModeOptions()` — returns dropdown options table; includes "Guild + Confederation" only when GreenWall is detected
+- `DeathNotificationLib.GetGreenWallStatus()` — returns human-readable status string showing GreenWall detection state and confederation peer count
+
+### Death Alert Changes
+- Removed `guild_only` toggle — replaced with unified `filter_mode` dropdown (same options as minilog)
+- Death alert now uses `_dnl.passesGuildFilterMode()` for filtering instead of custom inline logic
+- Removed redundant guild member cache from `~DeathAlert.lua` (now centralized in `~GuildFilter.lua`)
+- Options panel simplified: single "Death Filter" dropdown with GreenWall status indicator
+
+### Internal
+- `~GuildFilter.lua` loads before `~DeathAlert.lua` in XML load order
+- Internal functions: `_dnl.passesGuildFilterMode()`, `_dnl.getGuildFilterModeOptions()`, `_dnl.getGreenWallStatus()`
+
 ## V7 — 2026-02-26
 
 ### Unified Version Notification

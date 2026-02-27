@@ -15,7 +15,7 @@ function Deathlog_activateCreatureRankingTooltip()
 			local a, b = GameTooltip:GetUnit()
 			if UnitIsPlayer(b) then return end
 
-			if deathlog_settings[widget_name]["enable_crt"] then
+			if deathlog_settings[widget_name] and deathlog_settings[widget_name]["enable_crt"] then
 				if creature_ranking then
 					local rank = creature_ranking[a]
 					if rank then
@@ -24,7 +24,7 @@ function Deathlog_activateCreatureRankingTooltip()
 				end
 			end
 
-			if deathlog_settings[widget_name]["by_zone"] then
+			if deathlog_settings[widget_name] and deathlog_settings[widget_name]["by_zone"] then
 				local _zone = C_Map.GetBestMapForUnit("player")
 				local instance_id = nil
 				local zone_name = ""
@@ -54,7 +54,7 @@ function Deathlog_activateCreatureRankingTooltip()
 				end
 			end
 
-			if deathlog_settings[widget_name]["enable_avg_lvl"] then
+			if deathlog_settings[widget_name] and deathlog_settings[widget_name]["enable_avg_lvl"] then
 				if creature_avg_lvl[a] then
 					GameTooltip:AddLine(
 						"Avg. victim lvl. " .. string.format("%.1f", creature_avg_lvl[a]),

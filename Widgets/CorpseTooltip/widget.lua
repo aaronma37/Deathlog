@@ -26,7 +26,7 @@ local function checkForEntryAndSetTooltip()
 	end)
 end
 function Deathlog_activateCorpseTooltip()
-	if loaded_ctt == false and deathlog_settings[widget_name]["enable_ctt"] then
+	if loaded_ctt == false and deathlog_settings[widget_name] and deathlog_settings[widget_name]["enable_ctt"] then
 		GameTooltip:HookScript("OnTooltipCleared", function(self, button)
 			checkForEntryAndSetTooltip()
 		end)

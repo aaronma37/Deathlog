@@ -327,13 +327,16 @@ local subtitle_data = {}
 
 local function setSubtitleData()
 	subtitle_data = {}
+	if deathlog_settings[widget_name] == nil or deathlog_settings[widget_name]["columns"] == nil then
+		return
+	end
 	for _, k in ipairs(deathlog_settings[widget_name]["columns"]) do
 		subtitle_data[#subtitle_data + 1] = subtitle_metadata[k]
 	end
 	death_log_frame:SetSubTitle(subtitle_data)
 
-	local _x_offset = deathlog_settings[widget_name]["entry_x_offset"]
-	local _y_offset = deathlog_settings[widget_name]["entry_y_offset"]
+	local _x_offset = deathlog_settings[widget_name]["entry_x_offset"] or 0
+	local _y_offset = deathlog_settings[widget_name]["entry_y_offset"] or 0
 	death_log_frame.content:SetPoint("TOPLEFT", 3 + _x_offset, -33 + _y_offset)
 	death_log_frame.content:SetPoint("BOTTOMRIGHT", 15, 6)
 	death_log_frame:SetSubTitleOffset(_x_offset, _y_offset, subtitle_data)
@@ -566,15 +569,26 @@ function deathlog_widget_minilog_createEntry(player_data)
 		return
 	end
 	entry_cache[player_data["name"]] = 1
+	local ws = deathlog_settings[widget_name]
 	if
-		player_data["level"]
+		ws
+		and player_data["level"]
 		and (
-			tonumber(player_data["level"]) < deathlog_settings[widget_name]["min_lvl"]
-			or tonumber(player_data["level"]) > deathlog_settings[widget_name]["max_lvl"]
+			tonumber(player_data["level"]) < (ws["min_lvl"] or 1)
+			or tonumber(player_data["level"]) > (ws["max_lvl"] or 60)
 		)
 	then
 		return
 	end
+
+	-- Guild filter check (using DeathNotificationLib)
+	if ws then
+		local filter_mode = ws["filter_mode"] or "all"
+		if not DeathNotificationLib.PassesGuildFilterMode(player_data, filter_mode) then
+			return
+		end
+	end
+
 	for i = 1, 19 do
 		if row_entry[i + 1].player_data ~= nil then
 			shiftEntry(row_entry[i + 1], row_entry[i])
@@ -588,7 +602,7 @@ function deathlog_widget_minilog_createEntry(player_data)
 end
 death_log_icon_frame:RegisterForDrag("LeftButton")
 death_log_icon_frame:SetScript("OnDragStart", function(self, button)
-	if deathlog_settings[widget_name]["lock"] ~= nil and deathlog_settings[widget_name]["lock"] == true then
+	if deathlog_settings[widget_name] and deathlog_settings[widget_name]["lock"] then
 		return
 	end
 	death_log_frame.frame:ClearAllPoints()
@@ -596,10 +610,11 @@ death_log_icon_frame:SetScript("OnDragStart", function(self, button)
 	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
 end)
 death_log_icon_frame:SetScript("OnDragStop", function(self)
-	if deathlog_settings[widget_name]["lock"] ~= nil and deathlog_settings[widget_name]["lock"] == true then
+	if deathlog_settings[widget_name] and deathlog_settings[widget_name]["lock"] then
 		return
 	end
 	self:StopMovingOrSizing()
+	if deathlog_settings[widget_name] == nil then deathlog_settings[widget_name] = {} end
 	local x, y = self:GetCenter()
 	local px = (GetScreenWidth() * UIParent:GetEffectiveScale()) / 2
 	local py = (GetScreenHeight() * UIParent:GetEffectiveScale()) / 2
@@ -609,6 +624,7 @@ death_log_icon_frame:SetScript("OnDragStop", function(self)
 end)
 
 hooksecurefunc(death_log_frame.frame, "StopMovingOrSizing", function()
+	if deathlog_settings[widget_name] == nil then deathlog_settings[widget_name] = {} end
 	deathlog_settings[widget_name]["size_x"] = death_log_frame.frame:GetWidth()
 	deathlog_settings[widget_name]["size_y"] = death_log_frame.frame:GetHeight()
 end)
@@ -703,6 +719,7 @@ local defaults = {
 	["tooltip_playtime"] = true,
 	["tooltip_lastwords"] = true,
 	["lock"] = false,
+	["filter_mode"] = "all",  -- "all", "guild_only", "guild_confederation", "none"
 }
 
 local function applyDefaults(_defaults, force)
@@ -720,10 +737,12 @@ local options = nil
 local optionsframe = nil
 local function applyFont()
 	local success = true
-	local title_font_path = fonts[deathlog_settings[widget_name]["font"]] or default_font
+	local ws = deathlog_settings[widget_name]
+	if ws == nil then return end
+	local title_font_path = fonts[ws["font"]] or default_font
 	death_log_frame.titletext:SetFont(
 		title_font_path,
-		deathlog_settings[widget_name]["title_font_size"],
+		ws["title_font_size"] or 19,
 		"THICK"
 	)
 
@@ -731,25 +750,25 @@ local function applyFont()
 		success = false
 	end
 	death_log_frame.titletext:SetTextColor(
-		deathlog_settings[widget_name]["title_color_r"],
-		deathlog_settings[widget_name]["title_color_g"],
-		deathlog_settings[widget_name]["title_color_b"],
-		deathlog_settings[widget_name]["title_color_a"]
+		ws["title_color_r"] or 1,
+		ws["title_color_g"] or 1,
+		ws["title_color_b"] or 1,
+		ws["title_color_a"] or 1
 	)
 	death_log_frame.titletext:SetPoint(
 		"LEFT",
 		death_log_frame.frame,
 		"TOPLEFT",
-		deathlog_settings[widget_name]["title_x_offset"] + 32,
-		deathlog_settings[widget_name]["title_y_offset"] - 10
+		(ws["title_x_offset"] or 0) + 32,
+		(ws["title_y_offset"] or 0) - 10
 	)
 
-	local entry_font_path = fonts[deathlog_settings[widget_name]["entry_font"]] or default_font
+	local entry_font_path = fonts[ws["entry_font"]] or default_font
 	for i = 1, 20 do
 		for idx, v in ipairs(subtitle_data) do
 			row_entry[i].font_strings[v[1]]:SetFont(
 				entry_font_path,
-				deathlog_settings[widget_name]["entry_font_size"],
+				ws["entry_font_size"] or 14,
 				""
 			)
 
@@ -1462,6 +1481,7 @@ options = {
 					min = 1,
 					max = MAX_PLAYER_LEVEL,
 					step = 1,
+					order = 2,
 					get = function()
 						return deathlog_settings[widget_name]["max_lvl"]
 					end,
@@ -1469,6 +1489,29 @@ options = {
 						deathlog_settings[widget_name]["max_lvl"] = value
 						Deathlog_minilog_applySettings()
 					end,
+				},
+				filter_mode = {
+					type = "select",
+					name = "Death Filter",
+					desc = "Filter which deaths to display. 'Guild Only' shows only deaths from your guild. 'Guild + Confederation' also includes GreenWall confederation guilds.",
+					order = 3,
+					values = function()
+						return DeathNotificationLib.GetGuildFilterModeOptions()
+					end,
+					get = function()
+						return deathlog_settings[widget_name]["filter_mode"] or "all"
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["filter_mode"] = value
+						Deathlog_minilog_applySettings()
+					end,
+				},
+				greenwall_status = {
+					type = "description",
+					name = function()
+						return "|cFF888888" .. DeathNotificationLib.GetGreenWallStatus() .. "|r"
+					end,
+					order = 4,
 				},
 			},
 		},

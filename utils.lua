@@ -968,47 +968,50 @@ function deathlog_setTooltip(_name, _lvl, _guild, _race, _class, _source, _zone,
 		)
 	end
 
-	if deathlog_settings["minilog"]["tooltip_name"] and _name then
+	local ml = deathlog_settings["minilog"]
+	if ml == nil then return end
+
+	if ml["tooltip_name"] and _name then
 		GameTooltip:AddLine(Deathlog_L.name_word .. ": " .. _name, 1, 1, 1)
 	end
-	if deathlog_settings["minilog"]["tooltip_guild"] and _guild and _guild ~= "" then
+	if ml["tooltip_guild"] and _guild and _guild ~= "" then
 		GameTooltip:AddLine(Deathlog_L.guild_word .. ": " .. _guild, 1, 1, 1)
 	end
 
-	if deathlog_settings["minilog"]["tooltip_race"] and _race and _race ~= "" then
+	if ml["tooltip_race"] and _race and _race ~= "" then
 		GameTooltip:AddLine(Deathlog_L.race_word .. ": " .. _race, 1, 1, 1)
 	end
 
-	if deathlog_settings["minilog"]["tooltip_class"] and _class and _class ~= "" then
+	if ml["tooltip_class"] and _class and _class ~= "" then
 		GameTooltip:AddLine(Deathlog_L.class_word .. ": " .. _class, 1, 1, 1)
 	end
 	if deathlog_settings["colored_tooltips"] == nil or deathlog_settings["colored_tooltips"] == false then
-		if deathlog_settings["minilog"]["tooltip_killedby"] and _source then
+		if ml["tooltip_killedby"] and _source then
 			GameTooltip:AddLine(Deathlog_L.killed_by_word .. ": " .. _source, 1, 1, 1)
 		end
-		if deathlog_settings["minilog"]["tooltip_zone"] and _zone then
+		if ml["tooltip_zone"] and _zone then
 			GameTooltip:AddLine(Deathlog_L.zone_instance_word .. ": " .. _zone, 1, 1, 1)
 		end
 	else
-		if deathlog_settings["minilog"]["tooltip_killedby"] and _source then
+		if ml["tooltip_killedby"] and _source then
 			GameTooltip:AddLine(Deathlog_L.killed_by_word .. ": |cfffda172" .. _source .. "|r", 1, 1, 1)
 		end
-		if deathlog_settings["minilog"]["tooltip_zone"] and _zone then
+		if ml["tooltip_zone"] and _zone then
 			GameTooltip:AddLine(Deathlog_L.zone_instance_word .. ": |cff9fe2bf" .. _zone .. "|r", 1, 1, 1)
 		end
 	end
 
-	if deathlog_settings["minilog"]["tooltip_date"] and _date then
+	if ml["tooltip_date"] and _date then
 		GameTooltip:AddLine(Deathlog_L.date_word .. ": " .. _date, 1, 1, 1)
 	end
 
-	if deathlog_settings["minilog"]["tooltip_playtime"] then
+	if ml["tooltip_playtime"] then
 		if _playtime and _playtime ~= "" then
 			GameTooltip:AddLine(Deathlog_L.playtime_word .. ": " .. _playtime, 1, 1, 1)
 		end
 	end
 
-	if deathlog_settings["minilog"]["tooltip_lastwords"] then
+	if ml["tooltip_lastwords"] then
 		if _last_words and _last_words ~= "" then
 			GameTooltip:AddLine(Deathlog_L.last_words_word .. ": " .. _last_words, 1, 1, 0, true)
 		end

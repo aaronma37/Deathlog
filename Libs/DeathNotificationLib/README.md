@@ -78,6 +78,7 @@ The library is split into focused modules, all loaded via `DeathNotificationLib.
 | `~Events.lua` | Event handlers, `AttachAddon` API |
 | `~Backwards.lua` | Backwards compatibility shims |
 | `~Transport.lua` | Send queues |
+| `~GuildFilter.lua` | Guild membership filtering with GreenWall multi-guild support |
 | `~DeathAlert.lua` | Built-in death alert popup (BossBanner UI, sounds, AceConfig options panel) |
 | `~HardcoreTBC.lua` | Bridge for HardcoreTBC addon death events |
 | `~UltraHardcore.lua` | Bridge for UltraHardcore addon death events |

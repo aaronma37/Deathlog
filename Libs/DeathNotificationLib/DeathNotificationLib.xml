@@ -99,6 +99,7 @@
   <Script file="DeathNotificationLib~Events.lua"/>
   <Script file="DeathNotificationLib~Backwards.lua"/>
   <Script file="DeathNotificationLib~Transport.lua"/>
+  <Script file="DeathNotificationLib~GuildFilter.lua"/>
   <Script file="DeathNotificationLib~DeathAlert.lua"/>
   <Script file="DeathNotificationLib~HardcoreTBC.lua"/>
   <Script file="DeathNotificationLib~UltraHardcore.lua"/>

@@ -427,6 +427,11 @@ local function handleEvent(self, event, ...)
 		most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
 		loadWidgets()
 
+		-- Check if we should show changelog popup (version upgrade)
+		if Deathlog_CheckShowChangelog then
+			Deathlog_CheckShowChangelog()
+		end
+
 		initEntryCounters()
 		C_Timer.After(2.5, function()
 			Deathlog_CheckCTA()
@@ -448,6 +453,10 @@ local function SlashHandler(msg, editbox)
 		DeathNotificationLib.TestDeathAlert()
 	elseif msg == "sync" then
 		DeathNotificationLib.SyncStatus()
+	elseif msg == "changelog" then
+		if Deathlog_ShowChangelog then
+			Deathlog_ShowChangelog()
+		end
 	else
 		deathlogShowMenu(deathlog_data, general_stats, log_normal_params)
 	end

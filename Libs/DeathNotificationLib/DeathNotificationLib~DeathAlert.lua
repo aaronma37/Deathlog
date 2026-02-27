@@ -133,7 +133,7 @@ local defaults = {
 	["min_lvl"]             = 1,
 	["min_lvl_player"]      = false,
 	["max_lvl"]             = MAX_PLAYER_LEVEL,
-	["guild_only"]          = false,
+	["filter_mode"]         = "all",  -- "all", "guild_only", "guild_confederation", "none"
 	["accent_color_r"]      = 1,
 	["accent_color_g"]      = 1,
 	["accent_color_b"]      = 1,
@@ -195,21 +195,7 @@ C_Timer.NewTicker(30, function()
 	end
 end)
 
--- ── guild member cache (for guild_only filter) ───────────────────────
-local _guild_members = {}
-local function _refreshGuildList()
-	local numTotal = GetNumGuildMembers()
-	for i = 1, numTotal do
-		local name = GetGuildRosterInfo(i)
-		if name then
-			local _short_name = string.split("-", name)
-			if _short_name then
-				_guild_members[_short_name] = 1
-			end
-		end
-	end
-end
-C_Timer.NewTicker(10, _refreshGuildList)
+-- Guild filter now handled by DeathNotificationLib~GuildFilter.lua
 
 -- ── random sound ─────────────────────────────────────────────────────
 local function PlayRandomSound()
@@ -459,10 +445,9 @@ function _dnl.playDeathAlert(entry)
 		if entry["map_id"] ~= my_current_map then return end
 	end
 
-	-- Guild only filter
-	if s["guild_only"] then
-		local guildName = GetGuildInfo("player")
-		if entry["guild"] ~= guildName or _guild_members[entry["name"]] == nil then return end
+	-- Guild filter (supports GreenWall confederation)
+	if not _dnl.passesGuildFilterMode(entry, s["filter_mode"]) then
+		return
 	end
 
 	-- Name dedup
@@ -763,10 +748,21 @@ function _dnl.applyDeathAlertSettings()
 					get = function() return S()["enable_sound"] end,
 					set = function() S()["enable_sound"] = not S()["enable_sound"]; _dnl.applyDeathAlertSettings() end,
 				},
-				guild_only_toggle = {
-					type = "toggle", name = "Guild only alerts", desc = "Only show alerts for deaths within the player's guild.", order = 1,
-					get = function() return S()["guild_only"] end,
-					set = function() S()["guild_only"] = not S()["guild_only"]; _dnl.applyDeathAlertSettings() end,
+				filter_mode = {
+					type = "select", name = "Death Filter", 
+					desc = "Filter which alerts to display. 'Guild Only' shows only deaths from your guild. 'Guild + Confederation' also includes GreenWall confederation guilds.",
+					order = 1,
+					values = function()
+						return _dnl.getGuildFilterModeOptions()
+					end,
+					get = function() return S()["filter_mode"] or "all" end,
+					set = function(_, value) S()["filter_mode"] = value; _dnl.applyDeathAlertSettings() end,
+				},
+				greenwall_status = {
+					type = "description", order = 1.5,
+					name = function()
+						return "|cFF888888" .. _dnl.getGreenWallStatus() .. "|r"
+					end,
 				},
 				my_zone_only_toggle = {
 					type = "toggle", name = "Current zone only alerts", desc = "Only show alerts for deaths within the player's current zone.", order = 1,
