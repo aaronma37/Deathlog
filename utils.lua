@@ -1025,6 +1025,8 @@ local record_econ_timer = nil
 local record_econ_start_time = GetServerTime()
 local logged_already = {}
 
+local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+
 -- Only enable recording if guild opts in, e.g. :M:Hardcore:
 local function registerRecorders()
 	local guild_info_text = GetGuildInfoText()
@@ -1033,7 +1035,7 @@ local function registerRecorders()
 		if g and g == "M" and k then
 			record_econ_handler = CreateFrame("Frame")
 			local start_gold = GetMoney()
-			local _v = IsAddOnLoaded(k)
+			local _v = isLoaded(k)
 			if _v == false then
 				deathlog_record_econ_stats[GetServerTime() .. "general"] = UnitName("player")
 					.. ": Logged without "

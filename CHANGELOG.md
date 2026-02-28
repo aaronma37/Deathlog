@@ -2,6 +2,15 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.4.5] - 2026-02-28
+
+### Performance
+- Fixed major FPS drop caused by heatmaps — textures are now created on-demand and hidden when empty, instead of rendering all 10,000 cells every frame (applies to both the world map overlay and the statistics map)
+- Added "Heatmap Resolution" setting (Low / Medium / High / Ultra) to reduce grid density for better performance on slower machines
+
+### Bug Fixes
+- Fixed API compatibility for older clients (pre-1.14.4) that lack `C_AddOns` namespace
+
 ## [0.4.4] - 2026-02-27
 
 ### New Features

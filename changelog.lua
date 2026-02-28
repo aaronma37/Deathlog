@@ -10,12 +10,20 @@ This file is part of Deathlog.
 local addonName, addon = ...
 local AceGUI = LibStub("AceGUI-3.0")
 
+-- API compatibility: Classic Era uses GetAddOnMetadata, TBC Anniversary uses C_AddOns.GetAddOnMetadata
+local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+
 -- Current version from TOC
-local CURRENT_VERSION = C_AddOns.GetAddOnMetadata("Deathlog", "Version") or "0.0.0"
+local CURRENT_VERSION = GetAddOnMetadata("Deathlog", "Version") or "0.0.0"
 
 -- Changelog content (update this with each release)
 local CHANGELOG_CONTENT = [[
 |cFFFFD700Deathlog Changelog|r
+
+|cFF00FF00[0.4.5] - 2026-02-28|r
+- Fixed major FPS drop when heatmap is enabled (world map and statistics map)
+- New "Heatmap Resolution" setting in options (Low / Medium / High / Ultra)
+- Fixed API compatibility for older clients
 
 |cFF00FF00[0.4.4] - 2026-02-27|r
 

@@ -18,6 +18,9 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 local addonName, addon = ...
 
+-- API compatibility: Classic Era uses GetAddOnMetadata, TBC Anniversary uses C_AddOns.GetAddOnMetadata
+local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+
 local SOURCE = DeathNotificationLib.SOURCE
 
 local save_precompute = false
@@ -401,7 +404,7 @@ local function handleEvent(self, event, ...)
 			db               = deathlog_data[realmName],
 			db_map           = deathlog_data_map[realmName],
 			dev_data         = deathlog_dev_data,
-			addon_version    = C_AddOns.GetAddOnMetadata("Deathlog", "Version"),
+			addon_version    = GetAddOnMetadata("Deathlog", "Version"),
 		})
 		DeathNotificationLib.HookOnNewAddonEntry("Deathlog", newEntry)
 		if use_precomputed then

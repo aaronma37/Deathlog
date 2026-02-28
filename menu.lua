@@ -17,6 +17,9 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+-- API compatibility: Classic Era uses GetAddOnMetadata, TBC Anniversary uses C_AddOns.GetAddOnMetadata
+local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+
 local id_to_npc = DeathNotificationLib.ID_TO_NPC
 local instance_to_id = DeathNotificationLib.INSTANCE_TO_ID
 local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
@@ -2119,7 +2122,7 @@ local function createDeathlogMenu()
 	tinsert(UISpecialFrames, "AceDeathlogMenu")
 
 	ace_deathlog_menu:SetTitle("Deathlog")
-	ace_deathlog_menu:SetVersion(C_AddOns.GetAddOnMetadata("Deathlog", "Version"))
+	ace_deathlog_menu:SetVersion(GetAddOnMetadata("Deathlog", "Version"))
 	ace_deathlog_menu:SetStatusText("")
 	ace_deathlog_menu:SetLayout("Flow")
 	ace_deathlog_menu:SetHeight(_menu_height)
