@@ -3,6 +3,7 @@ Copyright 2026 Yazpad & Deathwing
 The Deathlog AddOn is distributed under the terms of the GNU General Public License.
 This file is part of Deathlog.
 --]]
+---@diagnostic disable: invisible
 
 -- In-game changelog popup
 -- Shows automatically on first load after a version upgrade
@@ -19,6 +20,32 @@ local CURRENT_VERSION = GetAddOnMetadata("Deathlog", "Version") or "0.0.0"
 -- Changelog content (update this with each release)
 local CHANGELOG_CONTENT = [[
 |cFFFFD700Deathlog Changelog|r
+
+|cFF00FF00[0.5.0] - 2026-03-06|r
+
+|cFFFFFFFFNew Features|r
+- Resizable & scalable menu — drag the bottom-right corner to resize; position and scale persist between sessions
+- Precomputed purge data, split by expansion
+- Guild filter for the search log
+- DeathlogData is now a separate addon (auto-installed as a dependency)
+- Instance min-level enforcement — deaths too low-level for a dungeon/raid are filtered out
+- We now have an official Discord! Click the invite link in the changelog status bar to copy it: `discord.com/invite/NphuAv75vy`
+
+|cFFFFFFFFBug Fixes|r
+- Fixed HardcoreDeaths channel pushing General/Trade/LocalDefense to wrong positions
+- Fixed death alert crashes when settings weren't customized
+- Fixed empty graphs with sparse data (division by zero)
+- Fixed "Mouseover for metric details" tooltip positioning
+- Fixed watchlist click-hitbox alignment for Name/Note/Icon columns
+- Fixed watchlist remove behavior so only clicking the visible `X` removes an entry
+- Fixed watchlist icon dropdown to show the currently selected icon
+- Fixed watchlist `Last Checked` staying at "Never" due to refresh flow timing
+- Cleaned up redundant guards in UI code
+- Faster channel join on login
+- Updated NPC data and statistics
+
+|cFFFFFFFFImprovements|r
+- Watchlist refresh cooldown text now updates live each second
 
 |cFF00FF00[0.4.5] - 2026-02-28|r
 - Fixed major FPS drop when heatmap is enabled (world map and statistics map)
@@ -69,9 +96,9 @@ local function showChangelog()
 		return
 	end
 
-	changelog_frame = AceGUI:Create("Frame")
+	changelog_frame = AceGUI:Create("Frame") ---@type AceGUIFrame
 	changelog_frame:SetTitle("Deathlog - What's New")
-	changelog_frame:SetStatusText("Version " .. CURRENT_VERSION)
+	changelog_frame:SetStatusText("Version " .. CURRENT_VERSION .. "  |  discord.com/invite/NphuAv75vy (click to copy)")
 	changelog_frame:SetLayout("Fill")
 	changelog_frame:SetWidth(500)
 	changelog_frame:SetHeight(450)
@@ -80,18 +107,27 @@ local function showChangelog()
 		changelog_frame = nil
 	end)
 
-	local scrollFrame = AceGUI:Create("ScrollFrame")
+	-- Make the status bar clickable to copy Discord invite URL
+	local statusbar = changelog_frame.statustext:GetParent()
+	if statusbar then
+		statusbar:EnableMouse(true)
+		statusbar:SetScript("OnMouseUp", function()
+			Deathlog_ShowCopyPopup("discord.com/invite/NphuAv75vy")
+		end)
+	end
+
+	local scrollFrame = AceGUI:Create("ScrollFrame") ---@type AceGUIScrollFrame
 	scrollFrame:SetLayout("Flow")
 	changelog_frame:AddChild(scrollFrame)
 
-	local label = AceGUI:Create("Label")
+	local label = AceGUI:Create("Label") ---@type AceGUILabel
 	label:SetText(CHANGELOG_CONTENT)
 	label:SetFullWidth(true)
 	label:SetFont(GameFontNormal:GetFont(), 12, "")
 	scrollFrame:AddChild(label)
 
 	-- Add "Don't show again for this version" checkbox at the bottom
-	local checkbox = AceGUI:Create("CheckBox")
+	local checkbox = AceGUI:Create("CheckBox") ---@type AceGUICheckBox
 	checkbox:SetLabel("Don't show this changelog again")
 	checkbox:SetValue(false)
 	checkbox:SetCallback("OnValueChanged", function(widget, event, value)
@@ -104,10 +140,6 @@ end
 
 --- Checks if we should show the changelog (version upgrade detected)
 local function checkShowChangelog()
-	if deathlog_settings == nil then
-		deathlog_settings = {}
-	end
-
 	local last_version = deathlog_settings["last_seen_version"]
 	local last_changelog_version = deathlog_settings["last_changelog_version"]
 

@@ -943,6 +943,7 @@ local precomputed_heatmap_intensity = DeathNotificationLib.HEATMAP_INTENSITY
 local precomputed_heatmap_creature_subset = DeathNotificationLib.HEATMAP_CREATURE_SUBSET
 
 local world_map_overlay = {}
+---@type MenuElementContainer
 local map_container = CreateFrame("Frame")
 map_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 map_container:SetSize(100, 100)
@@ -1177,11 +1178,13 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	this_map_id = current_map_id
 	if scroll_frame.frame then
 		map_container:SetParent(scroll_frame.frame)
+		map_container:ClearAllPoints()
 		map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -65)
 		map_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
 		map_container:SetWidth(scroll_frame.frame:GetWidth() * 0.6)
 	else
 		map_container:SetParent(scroll_frame)
+		map_container:ClearAllPoints()
 		map_container:SetPoint("TOPLEFT", scroll_frame, "TOPLEFT", 0, -65)
 		map_container:SetHeight(scroll_frame:GetWidth() * 0.6 * 3 / 4)
 		map_container:SetWidth(scroll_frame:GetWidth() * 0.6)
@@ -1258,7 +1261,6 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	for _, v in ipairs(world_map_overlay) do
 		v:Hide()
 	end
-	other_texs = {}
 
 	local function getOverlayTextures(current_map_id)
 		local textures = {}
@@ -1387,7 +1389,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		end
 	end
 
-	local should_hide = deathlog_should_hide_heatmap and deathlog_should_hide_heatmap(current_map_id)
+	local should_hide = Deathlog_should_hide_heatmap and Deathlog_should_hide_heatmap(current_map_id)
 	if not should_hide and precomputed_heatmap_intensity[current_map_id] ~= nil then
 		local checked = map_container.heatmap_checkbox and map_container.heatmap_checkbox:GetChecked()
 		-- Bucket the data into the current granularity
@@ -1446,7 +1448,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		end
 		
 		local x, y = GetCursorPosition()
-		local s = UIParent:GetEffectiveScale()
+		local s = map_container:GetEffectiveScale()
 		local ratio = GetScreenWidth() / GetScreenHeight()
 		local modified_width = map_container:GetWidth() * 0.98
 		local modified_height = map_container:GetHeight() * 0.87
@@ -1463,7 +1465,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		local l_x = (x - map_container:GetLeft()) / modified_width
 		local l_y = -(y - map_container:GetTop()) / modified_height
 
-		info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
+		local info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 
 		if info ~= nil then
 			local fileDataID, atlasID, texturePercentageX, texturePercentageY, textureX, textureY, scrollChildX, scrollChildY =
@@ -1519,9 +1521,9 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		end
 
 		if button == "RightButton" then
-			info = C_Map.GetMapInfo(current_map_id)
+			local info = C_Map.GetMapInfo(current_map_id)
 			if info and info.parentMapID then
-				parent_info = C_Map.GetMapInfo(info.parentMapID)
+				local parent_info = C_Map.GetMapInfo(info.parentMapID)
 				if parent_info then
 					-- Clear heatmap only when navigating
 					if map_container.tomb_tex then
@@ -1544,7 +1546,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		end
 		if button == "LeftButton" then
 			local x, y = GetCursorPosition()
-			local s = UIParent:GetEffectiveScale()
+			local s = map_container:GetEffectiveScale()
 			local ratio = GetScreenWidth() / GetScreenHeight()
 			local modified_width = map_container:GetWidth() * 0.98
 			local modified_height = map_container:GetHeight() * 0.87
@@ -1561,7 +1563,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 			local l_x = (x - map_container:GetLeft()) / modified_width
 			local l_y = -(y - map_container:GetTop()) / modified_height
 
-			info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
+			local info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 			if info then
 				-- Clear heatmap only when navigating to a valid zone
 				if map_container.tomb_tex then

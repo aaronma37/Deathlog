@@ -85,7 +85,7 @@
   <Script file="Zones\zone_to_id_ru.lua"/>
 
   <!-- Module files (load order matters) -->
-  <Script file="DeathNotificationLib~Localization.lua"/>
+  <Script file="DeathNotificationLib~Tables.lua"/>
   <Script file="DeathNotificationLib~Protocol.lua"/>
   <Script file="DeathNotificationLib~PvP.lua"/>
   <Script file="DeathNotificationLib~BlizzardParser.lua"/>
@@ -103,7 +103,7 @@
   <Script file="DeathNotificationLib~DeathAlert.lua"/>
   <Script file="DeathNotificationLib~HardcoreTBC.lua"/>
   <Script file="DeathNotificationLib~UltraHardcore.lua"/>
-  <Script file="DeathNotificationLib~Testing.lua"/>
+  <Script file="DeathNotificationLib~Testing.lua"/> <!-- DEATHLOG_REMOVE_LINE -->
 
   <!-- Cleanup -->
   <Script file="DeathNotificationLib~Finalizer.lua"/>

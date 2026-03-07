@@ -9,7 +9,7 @@ by combining multiple signals:
   2. Soul of Iron realms (BCA — buff scanning via C_UnitAuras)
   3. External addon detection (Hardcore, HardcoreTBC, UltraHardcore)
 
-Also provides deathlog_getHardcoreCharacterState() for the info button.
+Also provides Deathlog_getHardcoreCharacterState() for the info button.
 
 All Soul of Iron / Tarnished Soul / External Hardcore state is managed
 here in a local table.  The player's record is bound to the
@@ -248,7 +248,7 @@ local function runExternalDetection()
 	if IS_HARDCORE_REALM then return end
 
 	-- Also skip if status is already determined via other means (e.g. Soul of Iron buff)
-	local state = deathlog_getHardcoreCharacterState("player")
+	local state = Deathlog_getHardcoreCharacterState("player")
 	if state == HC_STATE.HARDCORE or state == HC_STATE.NOT_HARDCORE_ANYMORE then
 		return
 	end
@@ -270,7 +270,7 @@ end
 --- the unit state table.  These fields are managed by this file, not by DNL.
 ---@param unit UnitToken|nil  defaults to "player"
 ---@return integer  One of HC_STATE values
-function deathlog_getHardcoreCharacterState(unit)
+function Deathlog_getHardcoreCharacterState(unit)
 	unit = unit or "player"
 
 	if IS_HARDCORE_REALM then
@@ -308,7 +308,7 @@ end
 
 --- Returns the name of the external HC addon the player had, or nil.
 ---@return string|nil
-function deathlog_getExternalHardcoreAddon()
+function Deathlog_getExternalHardcoreAddon()
 	return getHcState("player").hadExternalHardcore
 end
 
@@ -316,8 +316,8 @@ end
 --- This is the callback passed to DeathNotificationLib.AttachAddon().
 ---@param unit string  Unit token (e.g. "player", "party1")
 ---@return boolean
-function deathlog_isUnitTracked(unit)
-	return deathlog_getHardcoreCharacterState(unit) == HC_STATE.HARDCORE
+function Deathlog_isUnitTracked(unit)
+	return Deathlog_getHardcoreCharacterState(unit) == HC_STATE.HARDCORE
 end
 
 ---------------------------------------------------------------------------
@@ -373,7 +373,6 @@ initFrame:SetScript("OnEvent", function(self, event)
 
 	-- Bind the per-character SavedVariable as the player's HC state so
 	-- Soul of Iron / Tarnished Soul / External HC fields persist across sessions.
-	deathlog_char_data = deathlog_char_data or {}
 	hc_states["player"] = deathlog_char_data
 	updateSoulOfIronTracking("player")
 

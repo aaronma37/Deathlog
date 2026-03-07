@@ -1,4 +1,4 @@
-deathlog_strings_cn = {
+DEATHLOG_STRINGS_CN = {
 	-- fonts
 	main_font = "Fonts\\FRIZQT__.TTF",
 	class_font = "Fonts\\blei00d.TTF",
@@ -7,7 +7,8 @@ deathlog_strings_cn = {
 	deadliest_creature_container_font = "Fonts\\blei00d.TTF",
 	creature_model_quote_font = "Fonts\\MORPHEUS.TTF",
 	-- words
-	minimap_btn_left_click = "|cFF666666左键点击:|r 查看日志",
+	minimap_btn_left_click = "|cFF666666左键点击:|r 切换日志",
+	minimap_btn_shift_click = "|cFF666666Shift-点击:|r 重置位置/缩放",
 	minimap_btn_right_click = "|cFF666666右键点击:|r ",
 	class_word = "职业",
 	killed_by_word = "被击杀",

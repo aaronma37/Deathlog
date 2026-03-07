@@ -17,6 +17,10 @@ This addon is completely safe to run alongside the `Hardcore` addon.  Alternativ
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
+## Contact & Feedback
+
+- Deathlog Discord: http://discord.com/invite/NphuAv75vy
+
 ## Features
 
 ### Death Detection & Enrichment

@@ -6,7 +6,6 @@ local loaded_crt = false
 local widget_name = "Creature Ranking Tooltip"
 
 local creature_ranking = {}
-local creature_ranking_by_zone = {}
 local creature_avg_lvl = {}
 
 function Deathlog_activateCreatureRankingTooltip()
@@ -26,7 +25,6 @@ function Deathlog_activateCreatureRankingTooltip()
 
 			if deathlog_settings[widget_name] and deathlog_settings[widget_name]["by_zone"] then
 				local _zone = C_Map.GetBestMapForUnit("player")
-				local instance_id = nil
 				local zone_name = ""
 				if _zone then
 					local map_info = C_Map.GetMapInfo(_zone)
@@ -36,12 +34,21 @@ function Deathlog_activateCreatureRankingTooltip()
 						zone_name = ""
 					end
 				else
-					local _, _, _, _, _, _, _, _instance_id, _, _ = GetInstanceInfo()
-					zone_name = (id_to_instance[_instance_id] or _instance_id)
+					local instance_name, _, _, _, _, _, _, _instance_id, _, _ = GetInstanceInfo()
+					zone_name = (id_to_instance[_instance_id] or instance_name)
 				end
+				local creature_ranking_by_zone = DeathlogDataCopy.PRECOMPUTED_MOST_DEADLY_BY_ZONE or {}
 				if creature_ranking_by_zone[_zone] then
-					local source_id = npc_to_id[a]
-					local rank = creature_ranking_by_zone[_zone][source_id]
+					local raw_id = npc_to_id[a]
+					local rank = nil
+					if type(raw_id) == "table" then
+						for _, id in ipairs(raw_id) do
+							rank = creature_ranking_by_zone[_zone][id]
+							if rank then break end
+						end
+					elseif raw_id then
+						rank = creature_ranking_by_zone[_zone][raw_id]
+					end
 					if rank then
 						GameTooltip:AddLine(
 							"#" .. rank .. " deadliest in " .. zone_name .. ".",
@@ -97,27 +104,28 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
-local options = nil
+local options = {}
 local optionsframe = nil
 function Deathlog_CRTWidget_applySettings()
 	applyDefaults(defaults)
 
+	if not DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS or not DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS then return end
+
 	creature_ranking = {}
-	creature_ranking_by_zone = precomputed_most_deadly_by_zone
 	if deathlog_settings[widget_name]["enable_crt"] then
 		if deathlog_settings[widget_name]["crt_metric"] == "Total Kills" then
-			local most_deadly_units = deathlogGetOrdered(precomputed_general_stats, { "all", "all", "all", nil })
+			local most_deadly_units = DeathlogGetOrdered(DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS, { "all", "all", "all", nil })
 			for k, v in ipairs(most_deadly_units) do
 				if id_to_npc[v[1]] then
 					creature_ranking[id_to_npc[v[1]]] = k
 				end
 			end
 		elseif deathlog_settings[widget_name]["crt_metric"] == "Normalized Score" then
-			local most_deadly_units_normalized = deathlogGetOrderedNormalized(
-				precomputed_general_stats,
+			local most_deadly_units_normalized = DeathlogGetOrderedNormalized(
+				DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS,
 				{ "all", "all", "all", nil },
-				precomputed_log_normal_params["all"][1][1],
-				precomputed_log_normal_params["all"][1][2]
+				DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS["all"][1][1],
+				DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS["all"][1][2]
 			)
 
 			for k, v in ipairs(most_deadly_units_normalized) do
@@ -128,7 +136,7 @@ function Deathlog_CRTWidget_applySettings()
 		end
 	end
 
-	for k, v in pairs(precomputed_general_stats["all"]["all"]["all"]) do
+	for k, v in pairs(DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS["all"]["all"]["all"]) do
 		if id_to_npc[k] then
 			creature_avg_lvl[id_to_npc[k]] = v["avg_lvl"]
 		end

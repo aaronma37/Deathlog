@@ -98,7 +98,7 @@ for category_idx, category_name in ipairs(category_order) do
 end
 table.sort(sorted_instance_entries, function(a, b) return a[4] < b[4] end)
 
-table.insert(sorted_instance_entries, 1, { deathlog_ALL_INSTANCES_ID, "RANDOMDUNGEON", "Instances", -1, -1 })
+table.insert(sorted_instance_entries, 1, { Deathlog_ALL_INSTANCES_ID, "RANDOMDUNGEON", "Instances", -1, -1 })
 
 -- Expansion filter state: which expansion indices are visible
 -- By default all expansions are shown
@@ -133,6 +133,7 @@ local HORIZ_SPACING = 30
 local VERT_SPACING = 15
 local FILTER_BAR_HEIGHT = 24
 
+---@type MenuElementContainer
 local instance_container = CreateFrame("Frame")
 instance_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 instance_container:SetSize(1000, 1000)
@@ -231,7 +232,7 @@ local function createInstanceButton(parent, path_postfix, title_text)
 	frame.instance_texture:SetTexture("Interface\\LFGFRAME\\UI-LFG-BACKGROUND-" .. path_postfix)
 	frame.instance_texture:SetWidth(BUTTON_WIDTH)
 	frame.instance_texture:SetHeight(BUTTON_HEIGHT)
-	frame.instance_texture:SetDesaturated(1)
+	frame.instance_texture:SetDesaturated(true)
 	frame.instance_texture:Hide()
 
 	frame.instance_str = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -310,6 +311,7 @@ function instance_container.updateMenuElement(scroll_frame, current_instance_id,
 	local containerWidth = scroll_frame.frame:GetWidth() * 0.6
 	local containerHeight = scroll_frame.frame:GetWidth() * 0.6 * 3 / 4
 
+	instance_container:ClearAllPoints()
 	instance_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -55)
 	instance_container:SetWidth(containerWidth)
 	instance_container:SetHeight(containerHeight)

@@ -1,5 +1,21 @@
 # Changelog
 
+## V9 — 2026-03-06
+
+### Bug Fixes
+- Fixed HardcoreDeaths channel displacing General/Trade/LocalDefense to higher slot numbers — the channel is now joined with a delay and only if not already a member, so system channels keep their default positions
+- Death alert messages now fall back to locale defaults when the user hasn't customized them, preventing nil errors
+- Death alert frame initialization guards prevent errors when the frame hasn't been created yet
+- Fixed protocol escape/unescape to properly handle nil and return correct types
+- Fixed `safeSendChannel` to use `C_ChatInfo.SendChatMessage` instead of the deprecated `SendChatMessage` global
+
+### Improvements
+- NPC ID lookup now handles multi-ID entries via `resolveId()` (for NPCs with multiple IDs across expansions)
+- Watchlist icon is now provided by host addon via `watchlistIconProvider` callback in `AttachAddon`, instead of accessing host globals directly
+- `AttachAddon` accepts a new `watchlistIconProvider` callback field
+- Death alert options parent category is now configurable via the `death_alert_options_parent` setting
+- Faster channel join on login (0.5s delay, down from 5.0s)
+
 ## V8 — 2026-02-27
 
 ### New Module: Guild Filter (`~GuildFilter.lua`)

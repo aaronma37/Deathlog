@@ -42,7 +42,7 @@ they cannot re-enter the database via sync.
 Usage:  Runs automatically.  `/deathlog cleanup` prints status.
 --]]
 
-local DEBUG = true
+local DEBUG = false
 
 local HUNTER_CLASS_ID = 3
 
@@ -683,7 +683,7 @@ end
 -- Auto-start (called from deathlog.lua on PLAYER_ENTERING_WORLD)
 ---------------------------------------------------------------------------
 
-function deathlog_startHunterCleanup()
+function Deathlog_startHunterCleanup()
 	-- Hard cutoff: no purge activity after the expiry date
 	if GetServerTime() > PURGE_EXPIRY then
 		if DEBUG then
@@ -708,9 +708,9 @@ function deathlog_startHunterCleanup()
 
 	-- Precomputed purges: remove known-bad entries shipped with the addon
 	-- (don't add to deathlog_purged — they're always available from the data file)
-	if precomputed_purges[realmName] then
+	if  DeathlogDataCopy.PRECOMPUTED_PURGES[realmName] then
 		local precomp_purged = 0
-		for cs, _ in pairs(precomputed_purges[realmName]) do
+		for cs, _ in pairs(DeathlogDataCopy.PRECOMPUTED_PURGES[realmName]) do
 			if cs ~= "_phase1_complete" and db[cs] then
 				local name = db[cs]["name"]
 				db[cs] = nil

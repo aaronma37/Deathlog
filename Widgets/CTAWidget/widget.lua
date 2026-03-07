@@ -117,20 +117,21 @@ local function createCopyBox(parent, anchor_point, anchor_to, anchor_rel, x_off,
 end
 
 ---------------------------------------------------------------------------
--- Discord + Email contact rows
+-- Contact rows: Discord Server, Discord DM, Email
 ---------------------------------------------------------------------------
 
-local discord_label, discord_box = createCopyBox(
-	cta_frame, "TOPLEFT", path_text, "BOTTOMLEFT", 0, -14, 180,
-	"|TInterface\\AddOns\\Deathlog\\Media\\discord_icon:14:14|t Discord:",
-	"deathwing1337"
+local discord_server_label, discord_server_box = createCopyBox(
+	cta_frame, "TOPLEFT", path_text, "BOTTOMLEFT", 0, -14, 250,
+	"Discord Server:", "discord.com/invite/NphuAv75vy"
 )
 
--- Use a simple icon texture fallback for Discord
-discord_label:SetText("Discord:")
+local discord_dm_label, discord_dm_box = createCopyBox(
+	cta_frame, "TOPLEFT", discord_server_label, "BOTTOMLEFT", 0, -10, 180,
+	"Discord DM:", "deathwing1337"
+)
 
 local email_label, email_box = createCopyBox(
-	cta_frame, "TOPLEFT", discord_label, "BOTTOMLEFT", 0, -10, 250,
+	cta_frame, "TOPLEFT", discord_dm_label, "BOTTOMLEFT", 0, -10, 250,
 	"Email:", "deathwing4528@googlemail.com"
 )
 

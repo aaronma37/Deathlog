@@ -1,17 +1,17 @@
 local localeMap = {
-    ["koKR"] = deathlog_strings_ko,
-    ["enGB"] = deathlog_strings_en,
-    ["enUS"] = deathlog_strings_en,
-    ["deDE"] = deathlog_strings_de,
-    ["frFR"] = deathlog_strings_fr,
-    ["itIT"] = deathlog_strings_it,
-    ["zhCN"] = deathlog_strings_cn,
-    ["zhTW"] = deathlog_strings_cn,
-    ["ruRU"] = deathlog_strings_ru,
-    ["esES"] = deathlog_strings_es,
-    ["esMX"] = deathlog_strings_es,
-    ["ptBR"] = deathlog_strings_pt,
-    ["default"] = deathlog_strings_en -- Default string to English
+    ["koKR"] = DEATHLOG_STRINGS_KO,
+    ["enGB"] = DEATHLOG_STRINGS_EN,
+    ["enUS"] = DEATHLOG_STRINGS_EN,
+    ["deDE"] = DEATHLOG_STRINGS_DE,
+    ["frFR"] = DEATHLOG_STRINGS_FR,
+    ["itIT"] = DEATHLOG_STRINGS_IT,
+    ["zhCN"] = DEATHLOG_STRINGS_CN,
+    ["zhTW"] = DEATHLOG_STRINGS_CN,
+    ["ruRU"] = DEATHLOG_STRINGS_RU,
+    ["esES"] = DEATHLOG_STRINGS_ES,
+    ["esMX"] = DEATHLOG_STRINGS_ES,
+    ["ptBR"] = DEATHLOG_STRINGS_PT,
+    ["default"] = DEATHLOG_STRINGS_EN -- Default string to English
 }
 
 local function loadLocaleData(localeCode)

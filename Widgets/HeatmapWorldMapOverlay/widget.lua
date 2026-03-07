@@ -76,7 +76,7 @@ local function updateWMOHeatmap(map_id)
 		end
 	end
 
-	local should_hide = deathlog_should_hide_heatmap and deathlog_should_hide_heatmap(map_id)
+	local should_hide = Deathlog_should_hide_heatmap and Deathlog_should_hide_heatmap(map_id)
 	if should_hide or map_id == nil or precomputed_heatmap_intensity[map_id] == nil then
 		return
 	end
@@ -143,7 +143,7 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
-local options = nil
+local options = {}
 local optionsframe = nil
 function Deathlog_HWMWidget_applySettings()
 	applyDefaults(defaults)

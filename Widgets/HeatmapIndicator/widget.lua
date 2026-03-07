@@ -39,6 +39,9 @@ local function startUpdate()
 					return
 				end
 				position = C_Map.GetPlayerMapPosition(map, "player")
+				if not position then
+					return
+				end
 				local x = ceil(position.x * 100)
 				local y = ceil(position.y * 100)
 				if precomputed_heatmap_intensity[map][x] == nil then
@@ -128,7 +131,7 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
-local options = nil
+local options = {}
 local optionsframe = nil
 function Deathlog_HIWidget_applySettings()
 	applyDefaults(defaults)

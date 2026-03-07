@@ -1,15 +1,23 @@
 ## Interface: 20505, 11508
 ## Title: Deathlog
 ## Notes: Only for Hardcore on classic era or Burning Crusade Anniversary servers.
+## IconTexture: Interface\AddOns\Deathlog\Media\logo.png
 ## Author: Yazpad & Deathwing
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.4.5
-
+## Version: 0.5.0
+# DEATHLOG_UNCOMMENT_NEXT_LINE
+# ## Dependencies: DeathNotificationLib
+# DEATHLOG_UNCOMMENT_NEXT_LINE
+# ## OptionalDeps: DeathlogData
 
 ## DefaultState: enabled
-## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, deathlog_watchlist_entries, deathlog_record_econ_stats, deathlog_entry_counts, deathlog_purged
+## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, deathlog_watchlist_entries, deathlog_record_econ_stats, deathlog_entry_counts, deathlog_purged, deathlog_precomputed
 ## SavedVariablesPerCharacter: deathlog_char_data
+# DEATHLOG_REMOVE_NEXT_LINE
+Libs/DeathNotificationLib/DeathNotificationLib.xml
+# DEATHLOG_REMOVE_NEXT_LINE
+Data/DeathlogData.xml
 
 Localization/strings_cn.lua
 Localization/strings_de.lua
@@ -23,12 +31,6 @@ Localization/strings_ru.lua
 Localization/localization.lua
 
 embeds.xml
-
-Libs/DeathNotificationLib/DeathNotificationLib.xml
-
-Data/precomputed_stats_vanilla.lua [AllowLoadGameType vanilla]
-Data/precomputed_stats_tbc.lua [AllowLoadGameType tbc]
-Data/precomputed_purges.lua
 
 utils.lua
 purge.lua
@@ -61,5 +63,7 @@ Widgets/CTAWidget/widget.lua
 
 menu.lua
 changelog.lua
+# DEATHLOG_REMOVE_NEXT_LINE
+Testing/update_nudge.lua
 
 deathlog.lua

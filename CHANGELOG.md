@@ -2,6 +2,43 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.5.0] - 2026-03-06
+
+### New Features
+- **Resizable & scalable menu** — drag the bottom-right corner to resize and scale the Deathlog window; position and scale are saved between sessions
+- **Precomputed purge data** — purged players are now filtered using precomputed checksums, split by expansion (Classic Era / TBC)
+- **Guild filter** in search log — filter the death log by guild name
+- **DeathlogData** is now a separate addon, installed automatically as a dependency
+- **Instance minimum level enforcement** — deaths from players too low-level for a dungeon or raid are now filtered out (e.g. a level 1 death in AQ20 is no longer counted)
+- **Deathlog Discord** — join the community on Discord for support, feedback, and discussion: `discord.com/invite/NphuAv75vy` (invite link also available in the changelog status bar)
+
+### Improvements
+- `wow_project_id` is now recorded in saved variables, improving expansion-aware data collection
+- Faster addon channel join on login (0.5s delay, down from 5.0s)
+- Dropdown menus refactored away from legacy `UIDropDownMenu` API
+- Global functions renamed from `deathlog_*` to `Deathlog_*` to follow proper naming conventions
+- Global constants renamed from `precomputed_*` to `PRECOMPUTED_*`
+- Proper `ADDON_LOADED` event handling for SavedVariables initialization
+- Updated NPC data, heatmaps, and precomputed statistics with latest death data
+- Type annotations added throughout for IDE support
+- Instance min-level filtering works across both Classic Era and TBC
+- Watchlist interaction zones now match visible UI columns more precisely (Name/Note/Icon)
+- Watchlist remove action now triggers only when clicking directly on the visible `X` icon
+- Watchlist icon dropdown now displays the currently selected icon in the control itself
+- Watchlist refresh cooldown text now updates live each second instead of staying static
+- Watchlist `Last Checked` now updates reliably when refresh queries run
+
+### Bug Fixes
+- Fixed HardcoreDeaths channel pushing General, Trade, and LocalDefense to wrong positions in the channel list
+- Fixed death alert crash when settings hadn't been customized (messages now fall back to defaults)
+- Fixed death alert frame initialization nil errors
+- Fixed empty/broken graphs when only 1 death exists for a class — log-normal std dev is now clamped to a minimum of 0.01 to prevent division by zero
+- Fixed "Mouseover for metric details" tooltip being positioned off-screen in the deadliest creature panel
+- Removed 9 redundant `> 0` guards across UI files
+
+### DeathNotificationLib V9
+- See DeathNotificationLib CHANGELOG for full details
+
 ## [0.4.5] - 2026-02-28
 
 ### Performance

@@ -21,8 +21,8 @@ along with the DeathNotificationLib. If not, see <http://www.gnu.org/licenses/>.
 -- This file is NO LONGER loaded by the TOC and exists only for reference.
 -- All code has been dissolved into the ~tilde module files:
 --
---   ~Init.lua           Bootstrap, debug flag, injected-dep slots
---   ~Localization.lua    Locale strings and translations
+--   ~Init.lua            Bootstrap, debug flag, injected-dep slots
+--   ~Tables.lua          Data tables, both locale-aware and static
 --   ~Protocol.lua        PlayerData type, protocol constants, environment_damage, encode/decode
 --   ~PvP.lua             PvP source tracking, duel-to-death detection
 --   ~BlizzardParser.lua  Universal death-broadcast parser (HARDCORE_CAUSEOFDEATH_* globals)
@@ -40,7 +40,6 @@ along with the DeathNotificationLib. If not, see <http://www.gnu.org/licenses/>.
 --   ~DeathAlert.lua      Built-in death alert popup (BossBanner UI, sounds, AceConfig panel)
 --   ~HardcoreTBC.lua     Bridge for HardcoreTBC addon death events
 --   ~UltraHardcore.lua   Bridge for UltraHardcore addon death events
---   ~Testing.lua         CreateFakeEntry (public), debug test utilities
 --   ~Finalizer.lua       Cleanup
 --
 -- If you previously loaded this file via your own TOC or XML, replace the

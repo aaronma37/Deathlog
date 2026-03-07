@@ -74,7 +74,7 @@ function _dnl.deathlogJoinChannel()
 	LeaveChannelByName(_dnl.death_alerts_channel)
 
 	C_Timer.After(3.0, function()
-		JoinChannelByName(_dnl.death_alerts_channel, DEATH_ALERTS_CHANNEL_PW)
+		JoinChannelByName(_dnl.death_alerts_channel, DEATH_ALERTS_CHANNEL_PW, nil, false)
 	end)
 
 	_dnl.hideChannelFromChatFrames(_dnl.death_alerts_channel)
@@ -95,7 +95,7 @@ function _dnl.deathlogJoinChannel()
 		if _dnl.DEBUG then
 			print("Couldn't join main deathlog channel; joining backup")
 		end
-		JoinChannelByName(_dnl.death_alerts_channel, DEATH_ALERTS_CHANNEL_PW)
+		JoinChannelByName(_dnl.death_alerts_channel, DEATH_ALERTS_CHANNEL_PW, nil, false)
 	end)
 end
 

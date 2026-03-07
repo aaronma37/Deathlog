@@ -1,0 +1,10 @@
+## Interface: 20505, 11508
+## Title: DeathNotificationLib
+## Notes: Death notification and tracking library for Hardcore WoW.
+## IconTexture: Interface\AddOns\DeathNotificationLib\Media\logo.png
+## Author: Deathwing
+## X-License: GNU GPL3
+## X-Category: Library
+## Version: 9
+
+DeathNotificationLib.xml

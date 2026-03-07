@@ -1,3 +1,4 @@
+---@diagnostic disable: invisible
 local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
 local deathlog_class_colors = DeathNotificationLib.CLASS_ID_TO_COLOR
 
@@ -133,13 +134,14 @@ death_tomb_frame_tex_glow:SetDrawLayer("OVERLAY", 3)
 death_tomb_frame_tex_glow:SetHeight(55)
 death_tomb_frame_tex_glow:SetWidth(55)
 death_tomb_frame_tex_glow:Hide()
-local death_log_frame = AceGUI:Create("Deathlog_MiniLog")
+local minilog_type ="Deathlog_MiniLog" ---@type AceGUIWidgetType|AceGUIContainerType 
+local death_log_frame = AceGUI:Create(minilog_type) ---@type DeathlogMiniLog
 death_log_frame.frame:SetMovable(false)
 death_log_frame.frame:EnableMouse(false)
 death_log_frame:SetTitle("Deathlog")
-death_log_frame.titletext:SetFont(Deathlog_L.mini_log_font, 19, "THICK")
+death_log_frame.titletext:SetFont(Deathlog_L.mini_log_font, 19, "THICKOUTLINE")
 
-deathlog_createInfoButton(death_log_frame, true, 28, -2)
+Deathlog_createInfoButton(death_log_frame, true, 28, -2)
 
 local subtitle_metadata = {
 	["ColoredName"] = {
@@ -187,7 +189,7 @@ local subtitle_metadata = {
 			if _entry.player_data["source_id"] == nil then
 				return ""
 			end
-			return deathlogGetCachedSource(_entry.player_data)
+			return DeathlogGetCachedSource(_entry.player_data)
 		end,
 	},
 	["Class"] = {
@@ -346,7 +348,7 @@ death_log_frame:SetLayout("Fill")
 death_log_frame.frame:SetSize(255, 125)
 death_log_frame:Show()
 
-local scroll_frame = AceGUI:Create("ScrollFrame")
+local scroll_frame = AceGUI:Create("ScrollFrame") ---@type AceGUIScrollFrame
 scroll_frame:SetLayout("List")
 death_log_frame:AddChild(scroll_frame)
 
@@ -543,7 +545,7 @@ local function setupRowEntries()
 				return
 			end
 			GameTooltip_SetDefaultAnchor(GameTooltip, WorldFrame)
-			deathlog_setTooltipFromEntry(_entry.player_data)
+			Deathlog_setTooltipFromEntry(_entry.player_data)
 			GameTooltip:Show()
 		end)
 
@@ -564,7 +566,7 @@ local function shiftEntry(_entry_from, _entry_to)
 	setEntry(_entry_from.player_data, _entry_to)
 end
 
-function deathlog_widget_minilog_createEntry(player_data)
+function Deathlog_widget_minilog_createEntry(player_data)
 	if entry_cache[player_data["name"]] then
 		return
 	end
@@ -733,7 +735,7 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
-local options = nil
+local options = {}
 local optionsframe = nil
 local function applyFont()
 	local success = true
@@ -743,7 +745,7 @@ local function applyFont()
 	death_log_frame.titletext:SetFont(
 		title_font_path,
 		ws["title_font_size"] or 19,
-		"THICK"
+		"THICKOUTLINE"
 	)
 
 	if title_font_path ~= death_log_frame.titletext:GetFont() then
@@ -868,7 +870,7 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
 		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
 		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, deathlog_settings[widget_name]["border_alpha"])
-	elseif deathlog_class_tbl[deathlog_settings[widget_name]["theme"]] then
+	elseif Deathlog_class_tbl[deathlog_settings[widget_name]["theme"]] then
 		local PaneBackdrop = {
 			bgFile = "Interface\\Artifacts\\ArtifactUI" .. deathlog_settings[widget_name]["theme"],
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
@@ -1096,7 +1098,6 @@ options = {
 				deathlog_settings[widget_name]["title_font_size"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		borderalpha = {
 			type = "range",
@@ -1112,7 +1113,6 @@ options = {
 				deathlog_settings[widget_name]["border_alpha"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		entryfontsize = {
 			type = "range",
@@ -1128,7 +1128,6 @@ options = {
 				deathlog_settings[widget_name]["entry_font_size"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		titlexoffset = {
 			type = "range",
@@ -1144,7 +1143,6 @@ options = {
 				deathlog_settings[widget_name]["title_x_offset"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		titleyoffset = {
 			type = "range",
@@ -1160,7 +1158,6 @@ options = {
 				deathlog_settings[widget_name]["title_y_offset"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		entryxoffset = {
 			type = "range",
@@ -1178,12 +1175,11 @@ options = {
 				if ace_refresh_timer_handle then
 					ace_refresh_timer_handle:Cancel()
 				end
-				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function()
+				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function(cb)
 					Deathlog_minilog_applySettings(true)
-					ace_refresh_timer_handle:Cancel()
+					cb:Cancel()
 				end)
 			end,
-			disabled = hidenametextoptions,
 		},
 		entryyoffset = {
 			type = "range",
@@ -1200,12 +1196,11 @@ options = {
 				if ace_refresh_timer_handle then
 					ace_refresh_timer_handle:Cancel()
 				end
-				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function()
+				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function(cb)
 					Deathlog_minilog_applySettings(true)
-					ace_refresh_timer_handle:Cancel()
+					cb:Cancel()
 				end)
 			end,
-			disabled = hidenametextoptions,
 		},
 		reset_size_and_pos = {
 			type = "execute",
@@ -1336,7 +1331,7 @@ options = {
 			name = "Add fake entry",
 			desc = "Add fake entry",
 			func = function()
-				deathlog_widget_minilog_createEntry(DeathNotificationLib.CreateFakeEntry())
+				Deathlog_widget_minilog_createEntry(DeathNotificationLib.CreateFakeEntry())
 			end,
 		},
 

@@ -1122,7 +1122,7 @@ function _dnl.joinSyncChannel()
 	LeaveChannelByName(channel_name)
 
 	C_Timer.After(3.0, function()
-		JoinChannelByName(channel_name, SYNC_CHANNEL_PW)
+		JoinChannelByName(channel_name, SYNC_CHANNEL_PW, nil, false)
 	end)
 
 	_dnl.hideChannelFromChatFrames(channel_name)
@@ -1142,7 +1142,7 @@ function _dnl.joinSyncChannel()
 		end
 		remaining = remaining - 1
 		channel_name = channel_name .. "b"
-		JoinChannelByName(channel_name, SYNC_CHANNEL_PW)
+		JoinChannelByName(channel_name, SYNC_CHANNEL_PW, nil, false)
 	end)
 end
 

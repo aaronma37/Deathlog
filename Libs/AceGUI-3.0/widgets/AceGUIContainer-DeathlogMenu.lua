@@ -1,7 +1,7 @@
 --[[-----------------------------------------------------------------------------
 Frame Container
 -------------------------------------------------------------------------------]]
-local Type, Version = "DeathlogMenu", 28
+local Type, Version = "DeathlogMenu", 29
 local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
 if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then
 	return
@@ -51,25 +51,12 @@ local function MoverSizer_OnMouseUp(mover)
 	frame:StopMovingOrSizing()
 	local self = frame.obj
 	local status = self.status or self.localstatus
+	local scale = frame:GetScale()
 	status.width = frame:GetWidth()
 	status.height = frame:GetHeight()
-	status.top = frame:GetTop()
-	status.left = frame:GetLeft()
-end
-
-local function SizerSE_OnMouseDown(frame)
-	frame:GetParent():StartSizing("BOTTOMRIGHT")
-	AceGUI:ClearFocus()
-end
-
-local function SizerS_OnMouseDown(frame)
-	frame:GetParent():StartSizing("BOTTOM")
-	AceGUI:ClearFocus()
-end
-
-local function SizerE_OnMouseDown(frame)
-	frame:GetParent():StartSizing("RIGHT")
-	AceGUI:ClearFocus()
+	-- Store screen coordinates (offset * scale) for consistent restore
+	status.top = frame:GetTop() * scale
+	status.left = frame:GetLeft() * scale
 end
 
 local function StatusBar_OnEnter(frame)
@@ -92,7 +79,7 @@ local methods = {
 		self:SetStatusText()
 		self:ApplyStatus()
 		self:Show()
-		self:EnableResize(false)
+		self.sizer_se:Show()
 	end,
 
 	["OnRelease"] = function(self)
@@ -146,8 +133,6 @@ local methods = {
 	["EnableResize"] = function(self, state)
 		local func = state and "Show" or "Hide"
 		self.sizer_se[func](self.sizer_se)
-		self.sizer_s[func](self.sizer_s)
-		self.sizer_e[func](self.sizer_e)
 	end,
 
 	-- called to set an external table to store status in
@@ -160,12 +145,15 @@ local methods = {
 	["ApplyStatus"] = function(self)
 		local status = self.status or self.localstatus
 		local frame = self.frame
-		self:SetWidth(status.width or 700)
-		self:SetHeight(status.height or 500)
+		self:SetWidth(status.width or 1100)
+		self:SetHeight(status.height or 600)
+		local scale = status.scale or 1.0
+		frame:SetScale(scale)
 		frame:ClearAllPoints()
 		if status.top and status.left then
-			frame:SetPoint("TOP", UIParent, "BOTTOM", 0, status.top)
-			frame:SetPoint("LEFT", UIParent, "LEFT", status.left, 0)
+			-- status.left/top are screen coords from GetLeft/GetTop;
+			-- SetPoint offsets get multiplied by scale, so divide to compensate
+			frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", status.left / scale, status.top / scale)
 		else
 			frame:SetPoint("CENTER")
 		end
@@ -197,8 +185,8 @@ local function Constructor()
 	local frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	frame:Hide()
 
-	frame:EnableMouse(false)
-	frame:SetMovable(false)
+	frame:EnableMouse(true)
+	frame:SetMovable(true)
 	frame:SetResizable(false)
 	frame:SetFrameStrata("FULLSCREEN_DIALOG")
 	frame:SetFrameLevel(100) -- Lots of room to draw under it
@@ -253,9 +241,7 @@ local function Constructor()
 	titlebg:SetHeight(60)
 
 	local title = CreateFrame("Frame", nil, frame)
-	title:EnableMouse(true)
-	title:SetScript("OnMouseDown", Title_OnMouseDown)
-	title:SetScript("OnMouseUp", MoverSizer_OnMouseUp)
+	title:EnableMouse(false)
 	title:SetAllPoints(titlebg)
 
 	local titletext = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -267,6 +253,33 @@ local function Constructor()
 	versiontext:SetFont(Deathlog_L.menu_font, 16)
 	versiontext:SetTextColor(1, 1, 1, 1)
 	versiontext:SetPoint("BOTTOMLEFT", titletext, "BOTTOMRIGHT", 5, 0)
+
+	-- Skull drag handle at top-left corner (matches minilog icon style, scaled up)
+	local drag_handle = CreateFrame("Frame", nil, frame)
+	drag_handle:SetPoint("TOPLEFT", frame, "TOPLEFT", -8, 8)
+	drag_handle:SetSize(56, 56)
+	drag_handle:EnableMouse(true)
+	drag_handle:SetFrameLevel(frame:GetFrameLevel() + 10)
+	drag_handle:SetScript("OnMouseDown", Title_OnMouseDown)
+	drag_handle:SetScript("OnMouseUp", MoverSizer_OnMouseUp)
+
+	local drag_handle_bg = drag_handle:CreateTexture(nil, "OVERLAY")
+	drag_handle_bg:SetPoint("CENTER", drag_handle, "CENTER", -7, 6)
+	drag_handle_bg:SetSize(56, 56)
+	drag_handle_bg:SetTexture("Interface\\PVPFrame\\PVP-Separation-Circle-Cooldown-overlay")
+	drag_handle_bg:SetDrawLayer("OVERLAY", 2)
+
+	local drag_handle_skull = drag_handle:CreateTexture(nil, "OVERLAY")
+	drag_handle_skull:SetPoint("CENTER", drag_handle, "CENTER", -6, 6)
+	drag_handle_skull:SetSize(35, 35)
+	drag_handle_skull:SetTexture("Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull")
+	drag_handle_skull:SetDrawLayer("OVERLAY", 3)
+
+	local drag_handle_ring = drag_handle:CreateTexture(nil, "OVERLAY")
+	drag_handle_ring:SetPoint("CENTER", drag_handle, "CENTER", 0, 0)
+	drag_handle_ring:SetSize(70, 70)
+	drag_handle_ring:SetTexture("Interface\\COMMON\\BlueMenuRing")
+	drag_handle_ring:SetDrawLayer("OVERLAY", 4)
 
 	local titlebg_l = frame:CreateTexture(nil, "OVERLAY")
 	titlebg_l:SetTexture(131080) -- Interface\\DialogFrame\\UI-DialogBox-Header
@@ -288,9 +301,7 @@ local function Constructor()
 	sizer_se:SetPoint("BOTTOMRIGHT")
 	sizer_se:SetWidth(25)
 	sizer_se:SetHeight(25)
-	sizer_se:EnableMouse()
-	sizer_se:SetScript("OnMouseDown", SizerSE_OnMouseDown)
-	sizer_se:SetScript("OnMouseUp", MoverSizer_OnMouseUp)
+	sizer_se:EnableMouse(true)
 
 	local line1 = sizer_se:CreateTexture(nil, "BACKGROUND")
 	line1:SetWidth(14)
@@ -308,21 +319,44 @@ local function Constructor()
 	local x = 0.1 * 8 / 17
 	line2:SetTexCoord(0.05 - x, 0.5, 0.05, 0.5 + x, 0.05, 0.5 - x, 0.5 + x, 0.5)
 
-	local sizer_s = CreateFrame("Frame", nil, frame)
-	sizer_s:SetPoint("BOTTOMRIGHT", -25, 0)
-	sizer_s:SetPoint("BOTTOMLEFT")
-	sizer_s:SetHeight(25)
-	sizer_s:EnableMouse(true)
-	sizer_s:SetScript("OnMouseDown", SizerS_OnMouseDown)
-	sizer_s:SetScript("OnMouseUp", MoverSizer_OnMouseUp)
-
-	local sizer_e = CreateFrame("Frame", nil, frame)
-	sizer_e:SetPoint("BOTTOMRIGHT", 0, 25)
-	sizer_e:SetPoint("TOPRIGHT")
-	sizer_e:SetWidth(25)
-	sizer_e:EnableMouse(true)
-	sizer_e:SetScript("OnMouseDown", SizerE_OnMouseDown)
-	sizer_e:SetScript("OnMouseUp", MoverSizer_OnMouseUp)
+	-- Drag to scale: drag down-right = bigger, up-left = smaller
+	-- Pinned at the top-left corner so the window doesn't drift while scaling
+	sizer_se:SetScript("OnMouseDown", function(self)
+		local parent = self:GetParent()
+		local startScale = parent:GetScale()
+		local startX, startY = GetCursorPosition()
+		-- GetLeft()/GetTop() return offsets in parent space;
+		-- multiply by scale to get actual screen position (captured ONCE)
+		local screenLeft = parent:GetLeft() * startScale
+		local screenTop = parent:GetTop() * startScale
+		self:SetScript("OnUpdate", function()
+			local curX, curY = GetCursorPosition()
+			-- Diagonal delta: rightward + downward = scale up
+			local delta = ((curX - startX) + (startY - curY)) * 0.5
+			local newScale = startScale + delta / 1000
+			if newScale < 0.5 then newScale = 0.5 end
+			if newScale > 1.0 then newScale = 1.0 end
+			parent:SetScale(newScale)
+			-- offset = screenCoord / scale so that
+			-- actual screen pos = offset * scale = screenCoord (constant)
+			parent:ClearAllPoints()
+			parent:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", screenLeft / newScale, screenTop / newScale)
+		end)
+		-- Set OnMouseUp inside OnMouseDown so it shares the screenLeft/screenTop upvalues
+		self:SetScript("OnMouseUp", function(self)
+			self:SetScript("OnUpdate", nil)
+			local parent = self:GetParent()
+			local widget = parent.obj
+			if widget then
+				local status = widget.status or widget.localstatus
+				status.scale = parent:GetScale()
+				-- Store screen coordinates (same ones we pinned to)
+				status.left = screenLeft
+				status.top = screenTop
+			end
+		end)
+		AceGUI:ClearFocus()
+	end)
 
 	--Container Support
 	local content = CreateFrame("Frame", nil, frame)
@@ -337,8 +371,6 @@ local function Constructor()
 		background_texture = background_texture,
 		titlebg = titlebg,
 		sizer_se = sizer_se,
-		sizer_s = sizer_s,
-		sizer_e = sizer_e,
 		content = content,
 		frame = frame,
 		type = Type,

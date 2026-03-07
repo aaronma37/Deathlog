@@ -20,6 +20,7 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 local id_to_quote = DeathNotificationLib.ID_TO_QUOTE
 local id_to_display_id = DeathNotificationLib.ID_TO_DISPLAY_ID
 
+---@type MenuElementContainer
 local creature_model_container = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
 creature_model_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 creature_model_container:SetSize(500, 500)
@@ -73,6 +74,7 @@ function creature_model_container.updateMenuElement(scroll_frame, creature_id, s
 		creature_model_container:Show()
 		creature_model_container.modelFrame:Show()
 		creature_model_container.envIcon:Hide()
+		creature_model_container:ClearAllPoints()
 		creature_model_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 620, -45)
 		creature_model_container.modelFrame:SetPoint("TOPLEFT", creature_model_container, "TOPLEFT", 0, 0)
 		creature_model_container:SetWidth(180)
@@ -92,6 +94,7 @@ function creature_model_container.updateMenuElement(scroll_frame, creature_id, s
 		creature_model_container.modelFrame:Hide()
 		creature_model_container.envIcon:SetTexture(environment_damage_icons[creature_id])
 		creature_model_container.envIcon:Show()
+		creature_model_container:ClearAllPoints()
 		creature_model_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 620, -45)
 		creature_model_container:SetWidth(180)
 		creature_model_container:SetHeight(180)

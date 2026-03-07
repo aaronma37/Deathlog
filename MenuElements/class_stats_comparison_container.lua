@@ -19,13 +19,14 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --
 local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 local deathlog_class_colors = DeathNotificationLib.CLASS_COLORS
+---@type MenuElementContainer
 local average_class_container = CreateFrame("Frame")
 average_class_container:SetSize(100, 100)
 average_class_container:Show()
 
 local class_font = Deathlog_L.class_font
 
-local class_tbl = deathlog_class_tbl
+local class_tbl = Deathlog_class_tbl
 
 local green_shade = "ff50c878"
 
@@ -93,11 +94,16 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 		view = "Survival"
 	end
 
-	local kaplan_meier = precomputed_kaplan_meier
-	local class_log_normal_params = precomputed_log_normal_params["all"]
+	if not DeathlogDataCopy.PRECOMPUTED_KAPLAN_MEIER or not DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS then
+		average_class_container:Hide()
+		return
+	end
+
+	local kaplan_meier = DeathlogDataCopy.PRECOMPUTED_KAPLAN_MEIER
+	local class_log_normal_params = DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS["all"]
 	average_class_container:Show()
 	local entry_data = {}
-	local map_id = deathlog_normalize_map_id_for_stats(deathlog_ROOT_MAP_ID)
+	local map_id = Deathlog_normalize_map_id_for_stats(Deathlog_ROOT_MAP_ID)
 	local _stats = stats_tbl["stats"]
 	local _log_normal_params = stats_tbl["log_normal_params"]
 	if average_class_container.configure_for == "map" and _stats["all"][map_id] == nil then
@@ -105,6 +111,7 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 	end
 
 	average_class_container:SetParent(scroll_frame.frame)
+	average_class_container:ClearAllPoints()
 	average_class_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -305)
 	average_class_container:SetWidth(600)
 	average_class_container:SetHeight(200)
@@ -201,8 +208,16 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 		end
 	end
 
+	if viewFunction == nil then
+		viewFunction = function()
+			return 0
+		end
+	end
+
 	if model == "LogNormal" then
-		cdf = Deathlog_CalculateCDF2(class_log_normal_params[inc_class_id][1], class_log_normal_params[inc_class_id][2])
+		if class_log_normal_params[inc_class_id] then
+			cdf = Deathlog_CalculateCDF2(class_log_normal_params[inc_class_id][1], class_log_normal_params[inc_class_id][2])
+		end
 	elseif model == "Kaplan-Meier" then
 		cdf = kaplan_meier[inc_class_id]
 	end
@@ -262,18 +277,22 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 					for i = 1, MAX_PLAYER_LEVEL do
 						cdf[i] = 0
 					end
-					for k, v in pairs(deathlog_class_tbl) do
-						local l_cdf =
-							Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
-						for i = 1, MAX_PLAYER_LEVEL do
-							cdf[i] = cdf[i] + l_cdf[i] / 9
+					for k, v in pairs(Deathlog_class_tbl) do
+						if class_log_normal_params[v] then
+							local l_cdf =
+								Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
+							for i = 1, MAX_PLAYER_LEVEL do
+								cdf[i] = cdf[i] + l_cdf[i] / 9
+								end
 						end
 					end
 				else
-					cdf = Deathlog_CalculateCDF2(
-						class_log_normal_params[class_id][1],
-						class_log_normal_params[class_id][2]
-					)
+					if class_log_normal_params[class_id] then
+						cdf = Deathlog_CalculateCDF2(
+							class_log_normal_params[class_id][1],
+							class_log_normal_params[class_id][2]
+						)
+					end
 				end
 				cdf_values = function(x)
 					return 1 - cdf[x]
@@ -283,12 +302,14 @@ function average_class_container.updateMenuElement(scroll_frame, inc_class_id, s
 					for i = 1, MAX_PLAYER_LEVEL do
 						cdf[i] = 0
 					end
-					for k, v in pairs(deathlog_class_tbl) do
+					for k, v in pairs(Deathlog_class_tbl) do
 						local l_cdf = kaplan_meier[v]
-						for i = 1, MAX_PLAYER_LEVEL do
-							-- Fallback to level 60 value for TBC levels beyond precomputed data
-							local val = l_cdf[i] or l_cdf[60] or 0
-							cdf[i] = cdf[i] + val / 9
+						if l_cdf then
+							for i = 1, MAX_PLAYER_LEVEL do
+								-- Fallback to level 60 value for TBC levels beyond precomputed data
+								local val = l_cdf[i] or l_cdf[60] or 0
+								cdf[i] = cdf[i] + val / 9
+							end
 						end
 					end
 				else

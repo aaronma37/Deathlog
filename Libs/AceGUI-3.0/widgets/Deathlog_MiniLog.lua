@@ -87,6 +87,8 @@ local function StatusBar_OnLeave(frame)
 	frame.obj:Fire("OnLeaveStatusBar")
 end
 
+local is_minimized = false
+
 --[[-----------------------------------------------------------------------------
 Methods
 -------------------------------------------------------------------------------]]

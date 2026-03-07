@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+---@type MenuElementContainer
 local wrapped_map_container = CreateFrame("Frame")
 wrapped_map_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 wrapped_map_container:SetSize(500, 500)
@@ -30,7 +31,7 @@ function wrapped_map_container.updateMenuElement(scroll_frame, creature_id, stat
 	wrapped_map_container.map_container.overlay_highlight:Hide()
 	
 	local _stats = stats_tbl["stats"]
-	local best_map = deathlog_ROOT_MAP_ID
+	local best_map = Deathlog_ROOT_MAP_ID
 	local best_subzone_count = 0  -- Track best count among subzones only
 	
 	-- For global death sources (Falling, Drowning, etc. with negative IDs),
@@ -39,10 +40,10 @@ function wrapped_map_container.updateMenuElement(scroll_frame, creature_id, stat
 	
 	-- Helper to check if a map is a valid descendant of ROOT_MAP_ID
 	local function is_valid_map(map_id)
-		if map_id == deathlog_ROOT_MAP_ID then return true end
-		local ancestors = deathlog_get_zone_ancestors and deathlog_get_zone_ancestors(map_id) or {}
+		if map_id == Deathlog_ROOT_MAP_ID then return true end
+		local ancestors = Deathlog_get_zone_ancestors and Deathlog_get_zone_ancestors(map_id) or {}
 		for _, ancestor in ipairs(ancestors) do
-			if ancestor == deathlog_ROOT_MAP_ID then return true end
+			if ancestor == Deathlog_ROOT_MAP_ID then return true end
 		end
 		return false
 	end
@@ -55,9 +56,9 @@ function wrapped_map_container.updateMenuElement(scroll_frame, creature_id, stat
 			and _stats["all"][map_id]["all"][creature_id]["num_entries"] > 0
 		then
 			local count = _stats["all"][map_id]["all"][creature_id]["num_entries"]
-			local is_container = deathlog_is_container_zone and deathlog_is_container_zone(map_id)
+			local is_container = Deathlog_is_container_zone and Deathlog_is_container_zone(map_id)
 			
-			if is_global_source and not deathlog_should_hide_heatmap(map_id) then
+			if is_global_source and not Deathlog_should_hide_heatmap(map_id) then
 				-- For global sources, just pick the zone with the most kills
 				if count > best_subzone_count then
 					best_subzone_count = count
@@ -77,6 +78,7 @@ function wrapped_map_container.updateMenuElement(scroll_frame, creature_id, stat
 	
 	wrapped_map_container:SetParent(scroll_frame.frame)
 	wrapped_map_container:Show()
+	wrapped_map_container:ClearAllPoints()
 	wrapped_map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 575, -160)
 	wrapped_map_container:SetWidth(700)
 	wrapped_map_container:SetHeight(700)

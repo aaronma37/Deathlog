@@ -70,9 +70,34 @@ local death_alert_styles = {
 }
 
 -- ── helper: settings accessor ────────────────────────────────────────
+---@return DNL_DeathAlertSettings|nil
 local function S()
 	local settings = _dnl.getDeathAlertOwnerSettings()
 	return settings and settings[widget_name]
+end
+
+local function resolveWatchlistIcon(playerName)
+	if type(playerName) ~= "string" or playerName == "" then
+		return ""
+	end
+
+	local _, owner_name = _dnl.getDeathAlertOwnerSettings()
+	if not owner_name then
+		return ""
+	end
+
+	local addon = _dnl.addons and _dnl.addons[owner_name]
+	local provider = addon and addon.watchlistIconProvider
+	if type(provider) ~= "function" then
+		return ""
+	end
+
+	local ok, icon = pcall(provider, playerName)
+	if not ok or type(icon) ~= "string" or icon == "" then
+		return ""
+	end
+
+	return icon .. " "
 end
 
 -- ── formatPlaytime (exposed as public API) ───────────────────────────
@@ -99,7 +124,7 @@ end
 
 -- ── locale helpers ───────────────────────────────────────────────────
 --- Reads a death-alert locale string from _dnl.D.STRINGS
---- (populated by ~Localization.lua from the client locale).
+--- (populated by ~Tables.lua from the client locale).
 local function getLocaleString(key)
 	return _dnl.D.STRINGS[key] or _dnl.L.en.STRINGS[key] or ""
 end
@@ -214,7 +239,8 @@ end
 -- (These are self-contained; they only reference `death_alert_frame` and `S()`)
 
 local function initializeLFBanner(icon_type, icon_size)
-	local s = S()
+	if not death_alert_frame then return end
+
 	if death_alert_frame.textures == nil then death_alert_frame.textures = {} end
 
 	if death_alert_frame.textures.top == nil then
@@ -290,8 +316,11 @@ local function initializeLFBanner(icon_type, icon_size)
 end
 
 local function initializeBossBanner(icon_type, icon_size)
+	if not death_alert_frame then return end
+
 	local s = S()
 	if not s then return end
+
 	if death_alert_frame.textures == nil then death_alert_frame.textures = {} end
 
 	if death_alert_frame.textures.top == nil then
@@ -492,7 +521,7 @@ function _dnl.playDeathAlert(entry)
 	end
 
 	-- Pick message template
-	local msg = s["message"]
+	local msg = s["message"] or defaults["message"]
 	local source_name = ""
 	if entry["source_id"] then
 		if id_to_npc[entry["source_id"]] then
@@ -500,25 +529,20 @@ function _dnl.playDeathAlert(entry)
 		end
 	end
 
-	if entry["source_id"] == -2 then msg = s["drown_message"] end
-	if entry["source_id"] == -3 then msg = s["fall_message"] end
-	if entry["source_id"] == -4 then msg = s["fatigue_message"] end
-	if entry["source_id"] == -5 then msg = s["fire_message"] end
-	if entry["source_id"] == -6 then msg = s["lava_message"] end
-	if entry["source_id"] == -7 then msg = s["slime_message"] end
+	if entry["source_id"] == -2 then msg = s["drown_message"] or defaults["drown_message"] end
+	if entry["source_id"] == -3 then msg = s["fall_message"] or defaults["fall_message"] end
+	if entry["source_id"] == -4 then msg = s["fatigue_message"] or defaults["fatigue_message"] end
+	if entry["source_id"] == -5 then msg = s["fire_message"] or defaults["fire_message"] end
+	if entry["source_id"] == -6 then msg = s["lava_message"] or defaults["lava_message"] end
+	if entry["source_id"] == -7 then msg = s["slime_message"] or defaults["slime_message"] end
 
 	-- PvP source
 	local pvp_source_name = entry["extra_data"] and entry["extra_data"]["pvp_source_name"]
 	local source_name_pvp = _dnl.decodePvpSource(entry["source_id"], pvp_source_name) or ""
 	if source_name_pvp ~= "" then source_name = source_name_pvp end
 
-	-- Watchlist icon (optional — depends on host providing deathlog_watchlist_entries)
-	local watchlist_icon = ""
-	if type(deathlog_watchlist_entries) == "table"
-		and deathlog_watchlist_entries[entry["name"]]
-		and deathlog_watchlist_entries[entry["name"]]["Icon"] then
-		watchlist_icon = deathlog_watchlist_entries[entry["name"]]["Icon"] .. " "
-	end
+	-- Optional host-provided watchlist icon (via AttachAddon callback).
+	local watchlist_icon = resolveWatchlistIcon(entry["name"])
 
 	-- Substitutions
 	local subs = {
@@ -633,7 +657,7 @@ function _dnl.playDeathAlert(entry)
 		portrait.modelLayer.useParentLevel = true
 		portrait.modelLayer:Hide()
 		portrait.modelLayer.parentTexture = texture
-		portrait.modelLayer:SetModelDrawLayer("OVERLAY", 6)
+		portrait.modelLayer:SetModelDrawLayer("OVERLAY")
 
 		if death_alert_frame.textures.maskLayer == nil then
 			death_alert_frame.textures.maskLayer = death_alert_frame:CreateTexture(nil, drawLayer, nil, 1)
@@ -703,10 +727,12 @@ function _dnl.applyDeathAlertSettings()
 	local settings = _dnl.getDeathAlertOwnerSettings()
 	if not settings then return end
 	applyDefaults(false)
+
 	local s = S()
 	if not s then return end
 
 	createDeathAlertFrame()
+	if not death_alert_frame then return end
 
 	death_alert_frame:ClearAllPoints()
 	death_alert_frame:SetPoint("CENTER", UIParent, "CENTER", s["pos_x"], s["pos_y"])
@@ -891,10 +917,108 @@ function _dnl.applyDeathAlertSettings()
 			},
 		}
 		-- Register under parent category if one exists, otherwise standalone
-		local parent = settings._death_alert_options_parent or "Deathlog"
+		local parent = s["death_alert_options_parent"] or "Deathlog"
 		AceConfig:RegisterOptionsTable(widget_name, da_options)
 		AceConfigDialog:AddToBlizOptions(widget_name, widget_name, parent)
 	end
+end
+
+--- Generate a random fake death entry for testing widgets.
+--- Picks random name/guild from attached_db if available, random source from
+--- _dnl.D.ID_TO_NPC, random map or instance, and includes PVP source randomization.
+---@return PlayerData
+function _dnl.createFakeEntry()
+	local idx = math.random(1, 100)
+	local some_name = UnitName("player")
+	local some_guild = ""
+
+	local found_random_name = false
+	for _, addon in pairs(_dnl.addons) do
+		if addon.db then
+			for _, entry in pairs(addon.db) do
+				some_name = entry["name"]
+				some_guild = entry["guild"]
+				idx = idx - 1
+				if idx < 1 then
+					found_random_name = true
+					break
+				end
+			end
+			if found_random_name then break end
+		end
+	end
+
+	if not found_random_name then
+		some_name = some_name .. math.random(1, 1000)
+	end
+
+	idx = math.random(1, 100)
+	local some_source_id = -2
+	for k, _ in pairs(_dnl.D.ID_TO_NPC) do
+		idx = idx - 1
+		some_source_id = k
+		if idx < 1 then break end
+	end
+
+	idx = math.random(1, 2)
+	local map_id = nil
+	local instance_id = nil
+	if idx == 1 then
+		idx = math.random(1, 10)
+		for k, _ in pairs(_dnl.D.ID_TO_INSTANCE) do
+			idx = idx - 1
+			instance_id = k
+			if idx < 1 then break end
+		end
+	else
+		idx = math.random(1, 10)
+		for _, zones in pairs(_dnl.D.ZONE_TO_ID) do
+			for _, v in pairs(zones) do
+				idx = idx - 1
+				map_id = v
+				if idx < 1 then break end
+			end
+			if idx < 1 then break end
+		end
+	end
+
+	local valid_class_ids = {1, 2, 3, 4, 5, 7, 8, 9, 11}
+	local fake_entry = {
+		["name"] = some_name,
+		["level"] = math.random(1, 60),
+		["class_id"] = valid_class_ids[math.random(1, #valid_class_ids)],
+		["race_id"] = math.random(1, 8),
+		["source_id"] = some_source_id,
+		["map_id"] = map_id,
+		["instance_id"] = instance_id,
+		["guild"] = some_guild,
+		["played"] = math.random(3600, 864000),
+		["last_words"] = "Sample last words, help!",
+	}
+
+	local pvp_r = math.random(0, 3)
+	local pvp_source_name = nil
+	if pvp_r == 1 or pvp_r == 2 then
+		local pvp_ok, src_id, src_name = _dnl.encodePvpSource(UnitName("target"), UnitGUID("target"))
+		if pvp_ok and src_id then
+			fake_entry["source_id"] = src_id
+			pvp_source_name = src_name
+		end
+	elseif pvp_r == 3 and UnitIsPlayer("target") then
+		_dnl.pvp_state.duel_to_death_player = UnitName("target")
+		local _, src_id, src_name = _dnl.encodePvpSource(UnitName("target"), UnitGUID("target"))
+		fake_entry["source_id"] = src_id
+		pvp_source_name = src_name
+		_dnl.pvp_state.duel_to_death_player = nil
+	end
+
+	if pvp_source_name and math.random(0, 100) < 50 then
+		fake_entry["extra_data"] = {
+			["pvp_source_name"] = pvp_source_name,
+		}
+	end
+
+	return fake_entry
 end
 
 --#region API
@@ -906,5 +1030,7 @@ DeathNotificationLib.PlayDeathAlert = _dnl.playDeathAlert
 DeathNotificationLib.TestDeathAlert = _dnl.testDeathAlert
 
 DeathNotificationLib.UpdateDeathAlert = _dnl.applyDeathAlertSettings
+
+DeathNotificationLib.CreateFakeEntry = _dnl.createFakeEntry
 
 --#endregion

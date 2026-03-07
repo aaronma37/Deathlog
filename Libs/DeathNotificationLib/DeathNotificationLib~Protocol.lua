@@ -110,8 +110,9 @@ local COMMAND_PREFIX_LEN = 2
 --- % (escape character itself) appearing in user content.
 ---@param s string
 ---@return string
+---@return integer
 local function escapeField(s)
-	if s == nil or s == "" then return "" end
+	if s == nil or s == "" then return "", 0 end
 	return s:gsub("%%", "%%%%")
 	        :gsub("\\", "%%b")
 	        :gsub("~", "%%t")
@@ -121,9 +122,10 @@ end
 
 --- Reverse escapeField.
 ---@param s string
----@return string
+---@return string|nil
+---@return integer
 local function unescapeField(s)
-	if s == nil or s == "" then return "" end
+	if s == nil or s == "" then return s, 0 end
 	return s:gsub("%%%%", "\1")
 	        :gsub("%%s", ";")
 	        :gsub("%%b", "\\")
@@ -580,6 +582,7 @@ function _dnl.decodeMessage(msg)
 	end
 
 	local name = unescapeField(values[1])
+	if name == nil then name = "" end
 	local guild = unescapeField(values[2])
 	if guild == "" then guild = nil end
 	local source_id = tonumber(values[3])
@@ -636,8 +639,9 @@ end
 ---@param text string         Full chat message text
 ---@param channel_num number  Channel index from GetChannelName()
 ---@return boolean sent
+---@diagnostic disable-next-line: duplicate-set-field
 function _dnl.safeSendChannel(text, channel_num)
-	local CTL = _G.ChatThrottleLib
+	local CTL = _G.ChatThrottleLib ---@type ChatThrottleLib?
 	if CTL then
 		local cost = #text + (CTL.MSG_OVERHEAD or 40)
 		local avail = CTL:UpdateAvail()
@@ -645,7 +649,7 @@ function _dnl.safeSendChannel(text, channel_num)
 			return false
 		end
 	end
-	local ok, err = pcall(_G.SendChatMessage, text, "CHANNEL", nil, channel_num)
+	local ok, err = pcall(C_ChatInfo.SendChatMessage, text, "CHANNEL", nil, channel_num)
 	if not ok and _dnl.DEBUG then
 		print("[DNL] safeSendChannel failed: " .. tostring(err))
 	end

@@ -18,7 +18,7 @@ local function checkForEntryAndSetTooltip()
 				local realmName = GetRealmName()
 				if deathlog_data[realmName] and deathlog_data_map[realmName] and deathlog_data_map[realmName][_name] then
 					local _entry = deathlog_data[realmName][deathlog_data_map[realmName][_name]]
-					deathlog_setTooltipFromEntry(_entry)
+					Deathlog_setTooltipFromEntry(_entry)
 					GameTooltip:Show()
 				end
 			end
@@ -61,7 +61,7 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
-local options = nil
+local options = {}
 local optionsframe = nil
 function Deathlog_CTTWidget_applySettings()
 	applyDefaults(defaults)

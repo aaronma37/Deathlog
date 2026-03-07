@@ -194,16 +194,8 @@ end
 
 -- ── Public API ───────────────────────────────────────────────────────
 
---- Check if an entry passes the guild filter based on the filter mode.
---- @param entry table PlayerData entry with guild and name fields
---- @param filter_mode string "all", "guild_only", "guild_confederation", or "none"
---- @return boolean True if entry passes the guild filter
 DeathNotificationLib.PassesGuildFilterMode = _dnl.passesGuildFilterMode
 
---- Get filter mode options for settings UI dropdown.
---- @return table<string, string> map of value → display string
 DeathNotificationLib.GetGuildFilterModeOptions = _dnl.getGuildFilterModeOptions
 
---- Get a human-readable GreenWall status string for display.
---- @return string Status message
 DeathNotificationLib.GetGreenWallStatus = _dnl.getGreenWallStatus

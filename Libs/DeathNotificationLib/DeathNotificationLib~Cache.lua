@@ -219,6 +219,7 @@ end
 ---@field checksum string|nil
 ---@field timestamp number|nil
 ---@field committed boolean|nil
+---@field level number|nil
 
 ---@type table<string, LRUCacheEntry>
 local death_ping_lru_cache_tbl = {}
@@ -317,17 +318,18 @@ local function tryCommitEntry(checksum)
 	if death_ping_lru_cache_tbl[checksum] == nil then
 		return
 	end
-	if death_ping_lru_cache_tbl[checksum]["player_data"] == nil then
+
+	local pdata = death_ping_lru_cache_tbl[checksum]["player_data"]
+	if pdata == nil then
 		return
 	end
-	if _dnl.isValidEntry(death_ping_lru_cache_tbl[checksum]["player_data"]) == false then
+	if _dnl.isValidEntry(pdata) == false then
 		return
 	end
 	if death_ping_lru_cache_tbl[checksum]["committed"] then
 		return
 	end
 
-	local pdata = death_ping_lru_cache_tbl[checksum]["player_data"]
 	local pdata_name = pdata["name"]
 	if pdata_name and _dnl.isNameAlreadyCommitted(pdata_name, pdata["level"]) then
 		death_ping_lru_cache_tbl[checksum]["committed"] = 1

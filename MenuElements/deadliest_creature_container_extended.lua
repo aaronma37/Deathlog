@@ -26,6 +26,7 @@ local max_lvl = MAX_PLAYER_LEVEL
 local AceGUI = LibStub("AceGUI-3.0")
 local max_row_num = 25
 local page_number = 1
+---@type MenuElementContainer
 local deadliest_creatures_container = CreateFrame("Frame")
 deadliest_creatures_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 local function createDeadliestCreaturesEntry()
@@ -196,7 +197,7 @@ function deadliest_creatures_container.updateMenuElement(
 	if metric == nil then
 		metric = "Normalized Score"
 	end
-	local current_map_id = deathlog_ROOT_MAP_ID
+	local current_map_id = Deathlog_ROOT_MAP_ID
 	deadliest_creatures_container.page_str:SetText("Page " .. page_number)
 	deadliest_creatures_container.heading:Show()
 	deadliest_creatures_container.left:Show()
@@ -213,7 +214,7 @@ function deadliest_creatures_container.updateMenuElement(
 	for i = 1, max_row_num do
 		deadliest_creatures_textures[i]:Hide()
 	end
-	local map_id = deathlog_normalize_map_id_for_stats(current_map_id)
+	local map_id = Deathlog_normalize_map_id_for_stats(current_map_id)
 
 	if deadliest_creatures_container.sort_by_text == nil then
 		deadliest_creatures_container.sort_by_text =
@@ -279,17 +280,16 @@ function deadliest_creatures_container.updateMenuElement(
 		return false
 	end
 	local function dropdownFunctions(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-		info.text, info.checked, info.func =
-			"Normalized Score", metric == "Normalized Score", function()
-				deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, "Normalized Score", class_id)
+		local metrics = { "Normalized Score", "Total Kills" }
+		for _, m in ipairs(metrics) do
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = m
+			info.checked = metric == m
+			info.func = function()
+				deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, m, class_id)
 			end
-		UIDropDownMenu_AddButton(info)
-		info.text, info.checked, info.func =
-			"Total Kills", metric == "Total Kills", function()
-				deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, "Total Kills", class_id)
-			end
-		UIDropDownMenu_AddButton(info)
+			UIDropDownMenu_AddButton(info)
+		end
 	end
 	deadliest_creatures_container.metric_dd:SetPoint(
 		"TOPLEFT",
@@ -304,19 +304,17 @@ function deadliest_creatures_container.updateMenuElement(
 	UIDropDownMenu_JustifyText(deadliest_creatures_container.metric_dd, "LEFT")
 
 	local function classDropdownFunctions(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-
-		info.text, info.checked, info.func =
-			"All", class_id == "all", function()
-				deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, "all")
+		local entries = { { name = "All", value = "all" } }
+		for k, v in pairs(Deathlog_class_tbl) do
+			entries[#entries + 1] = { name = k, value = v }
+		end
+		for _, entry in ipairs(entries) do
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = entry.name
+			info.checked = class_id == entry.value
+			info.func = function()
+				deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, entry.value)
 			end
-
-		UIDropDownMenu_AddButton(info)
-		for k, v in pairs(deathlog_class_tbl) do
-			info.text, info.checked, info.func =
-				k, class_id == v, function()
-					deadliest_creatures_container.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, v)
-				end
 			UIDropDownMenu_AddButton(info)
 		end
 	end
@@ -469,8 +467,8 @@ function deadliest_creatures_container.updateMenuElement(
 			tileSize = 16,
 			edgeSize = 16,
 			insets = { left = 3, right = 3, top = 5, bottom = 3 },
-			deadliest_creatures_container.normalized_metric_frame:SetBackdrop(PaneBackdrop),
 		}
+		deadliest_creatures_container.normalized_metric_frame:SetBackdrop(PaneBackdrop)
 		if deadliest_creatures_container.normalized_metric_desc == nil then
 			deadliest_creatures_container.normalized_metric_desc =
 				deadliest_creatures_container.normalized_metric_frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -478,15 +476,15 @@ function deadliest_creatures_container.updateMenuElement(
 	end
 
 	deadliest_creatures_container.normalized_metric_frame:SetPoint(
-		"TOPRIGHT",
+		"BOTTOMRIGHT",
 		deadliest_creatures_container,
 		"TOPRIGHT",
 		0,
-		20
+		-15
 	)
 	deadliest_creatures_container.normalized_metric_frame:SetBackdropColor(0, 0, 0, 0.6)
 	deadliest_creatures_container.normalized_metric_frame:SetBackdropBorderColor(1, 1, 1, 1)
-	deadliest_creatures_container.normalized_metric_frame:SetSize(100, 100)
+	deadliest_creatures_container.normalized_metric_frame:SetSize(120, 45)
 	deadliest_creatures_container.normalized_metric_frame:Show()
 
 	deadliest_creatures_container.normalized_metric_frame:SetScript("OnEnter", function()
@@ -494,7 +492,6 @@ function deadliest_creatures_container.updateMenuElement(
 		GameTooltip:SetMinimumWidth(450)
 		GameTooltip:AddLine(
 			"Normalized Score: #Kills/(1-CumulativeDensityFunction(x))\nWhere the cumulative density function represents the ratio of characters whom have died by `x` lvl.  This metric normalizes the creatures kill count by the fraction of population that is alive around that creature's level.  We can extract the cumulative density function from the probability density function using a log normal distribution.  Most Hardcore characters don't make it to 60, so we assume that the remaining population at `x` level is roughly 1 - CDF(lvl) \n \nTotal Kills: This just uses the number of kills to sort the creatures.  Note that there are more Hardcore players at lower levels, so lower level creatures have a higher kill count in general.",
-			1,
 			1,
 			1,
 			1,
@@ -510,19 +507,19 @@ function deadliest_creatures_container.updateMenuElement(
 	deadliest_creatures_container.normalized_metric_desc:SetTextColor(0.8, 0.8, 0.8)
 	deadliest_creatures_container.normalized_metric_desc:SetText("Mouseover for\nmetric details")
 	deadliest_creatures_container.normalized_metric_desc:SetPoint(
-		"TOP",
+		"CENTER",
 		deadliest_creatures_container.normalized_metric_frame,
-		"TOP",
+		"CENTER",
 		0,
-		0
+		2
 	)
 	deadliest_creatures_container.normalized_metric_desc:Show()
 
 	local most_deadly_units = nil
 	if metric == "Total Kills" then
-		most_deadly_units = deathlogGetOrdered(_stats, { "all", map_id, class_id, nil })
+		most_deadly_units = DeathlogGetOrdered(_stats, { "all", map_id, class_id, nil })
 	elseif metric == "Normalized Score" then
-		most_deadly_units = deathlogGetOrderedNormalized(
+		most_deadly_units = DeathlogGetOrderedNormalized(
 			_stats,
 			{ "all", "all", class_id, nil },
 			_log_normal_params["all"][1][1],
@@ -564,6 +561,7 @@ function deadliest_creatures_container.updateMenuElement(
 		end
 
 		deadliest_creatures_container:SetParent(scroll_frame.frame)
+		deadliest_creatures_container:ClearAllPoints()
 		deadliest_creatures_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -70)
 		deadliest_creatures_container:Show()
 		deadliest_creatures_container:SetWidth(scroll_frame.frame:GetWidth() * 0.5)

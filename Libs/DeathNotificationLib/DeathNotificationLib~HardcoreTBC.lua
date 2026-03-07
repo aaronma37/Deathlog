@@ -94,8 +94,6 @@ local function deliverToMissingAddons(pd)
 	return delivered
 end
 
---- Try to enrich a player name with guild roster data (class, race, guild)
----@param name string
 local enrichFromRoster = _dnl.enrichFromRoster
 local raceClassFromGUID = _dnl.raceClassFromGUID
 
