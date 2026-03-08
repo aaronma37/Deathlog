@@ -21,6 +21,16 @@ local CURRENT_VERSION = GetAddOnMetadata("Deathlog", "Version") or "0.0.0"
 local CHANGELOG_CONTENT = [[
 |cFFFFD700Deathlog Changelog|r
 
+|cFF00FF00[0.5.1] - 2026-03-08|r
+
+|cFFFFFFFFNew Features|r
+- All ArtifactUI class backgrounds now selectable as minilog themes (DK Frost, Demon Hunter, Druid, Hunter, Mage Arcane, Monk, Paladin, Priest, Priest Shadow, Rogue, Shadow, Shaman, Warlock, Warrior)
+
+|cFFFFFFFFBug Fixes|r
+- Fixed Death Alert settings panel not appearing in Interface Options
+- Fixed minilog artifact themes rendering the full sprite sheet instead of the background panel region
+- Fixed Deathlog menu background texture using imprecise atlas UV coordinates
+
 |cFF00FF00[0.5.0] - 2026-03-06|r
 
 |cFFFFFFFFNew Features|r

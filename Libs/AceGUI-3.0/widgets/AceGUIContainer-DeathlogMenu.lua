@@ -1,7 +1,7 @@
 --[[-----------------------------------------------------------------------------
 Frame Container
 -------------------------------------------------------------------------------]]
-local Type, Version = "DeathlogMenu", 29
+local Type, Version = "DeathlogMenu", 30
 local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
 if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then
 	return
@@ -207,7 +207,7 @@ local function Constructor()
 
 	local background_texture = frame:CreateTexture(nil, "BACKGROUND")
 	background_texture:SetTexture("Interface\\Artifacts/ArtifactUIRogue.PNG")
-	background_texture:SetTexCoord(0, 0.8, 0, 0.5)
+	background_texture:SetTexCoord(0.000976562, 0.875977, 0.000976562, 0.601562)
 	background_texture:SetVertexColor(1, 1, 1, 1)
 	background_texture:SetPoint("TOPLEFT", frame, "TOPLEFT", background_inset, -background_inset)
 	background_texture:SetWidth(frame:GetWidth())

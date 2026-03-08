@@ -2,6 +2,16 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.5.1] - 2026-03-08
+
+### New Features
+- **Minilog artifact themes** — all ArtifactUI class backgrounds are now selectable as minilog themes (Death Knight Frost, Demon Hunter, Druid, Hunter, Mage Arcane, Monk, Paladin, Priest, Priest Shadow, Rogue, Shadow, Shaman, Warlock, Warrior)
+
+### Bug Fixes
+- Fixed Death Alert settings panel not appearing in Interface Options
+- Fixed minilog artifact themes rendering the full sprite sheet instead of the background panel region (now uses correct atlas UV crop via `SetTexCoord`)
+- Fixed Deathlog menu background texture using imprecise UV coordinates — now uses the correct atlas crop for the Rogue BG region
+
 ## [0.5.0] - 2026-03-06
 
 ### New Features

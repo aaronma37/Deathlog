@@ -379,6 +379,9 @@ local function handleEvent(self, event, ...)
 		-- Write project id into settings
 		deathlog_settings["wow_project_id"] = WOW_PROJECT_ID
 
+		deathlog_settings["DeathAlert"] = deathlog_settings["DeathAlert"] or {}
+		deathlog_settings["DeathAlert"]["death_alert_options_parent"] = "Deathlog"
+
 		-- Ensure realm sub-tables exist so AttachAddon receives valid table
 		-- references (not nil) that remain in sync with newEntry.
 		local realmName = GetRealmName()

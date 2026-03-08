@@ -6,6 +6,7 @@ local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 local ace_refresh_timer_handle = nil
 local entry_cache = {}
 local font_handle = nil
+local class_bg_tex = nil
 
 local main_font = Deathlog_L.main_font
 
@@ -64,13 +65,28 @@ fonts["GothamNarrowUltra"] = font_base_path .. "GothamNarrowUltra.ttf"
 local themes = {
 	["None"] = "None",
 	["Parchment"] = "Parchment",
-	["Warlock"] = "Warlock",
+	["DeathKnightFrost"] = "Death Knight (Frost)",
+	["DemonHunter"] = "Demon Hunter",
 	["Druid"] = "Druid",
-	["Paladin"] = "Paladin",
-	["Warrior"] = "Warrior",
 	["Hunter"] = "Hunter",
+	["MageArcane"] = "Mage (Arcane)",
+	["Monk"] = "Monk",
+	["Paladin"] = "Paladin",
 	["Priest"] = "Priest",
+	["PriestShadow"] = "Priest (Shadow)",
+	["Rogue"] = "Rogue",
+	["Shaman"] = "Shaman",
+	["Shadow"] = "Shadow",
+	["Warlock"] = "Warlock",
+	["Warrior"] = "Warrior",
 }
+
+local artifact_themes = {}
+for k in pairs(themes) do
+	if k ~= "None" and k ~= "Parchment" then
+		artifact_themes[k] = true
+	end
+end
 
 local AceGUI = LibStub("AceGUI-3.0")
 local death_log_icon_frame = CreateFrame("frame")
@@ -858,6 +874,7 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 	end
 
 	if deathlog_settings[widget_name]["theme"] == "Parchment" then
+		if class_bg_tex then class_bg_tex:Hide() end
 		local PaneBackdrop = {
 			bgFile = "Interface\\ACHIEVEMENTFRAME\\UI-Achievement-Parchment-Horizontal",
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
@@ -870,20 +887,29 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
 		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
 		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, deathlog_settings[widget_name]["border_alpha"])
-	elseif Deathlog_class_tbl[deathlog_settings[widget_name]["theme"]] then
+	elseif artifact_themes[deathlog_settings[widget_name]["theme"]] then
+		-- Use border-only backdrop; the BG is a manually cropped atlas texture
 		local PaneBackdrop = {
-			bgFile = "Interface\\Artifacts\\ArtifactUI" .. deathlog_settings[widget_name]["theme"],
+			bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
 			tile = true,
-			tileSize = 170,
+			tileSize = 16,
 			edgeSize = 24,
 			insets = { left = 3, right = 3, top = 3, bottom = 3 },
 		}
-
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
-		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
+		death_log_frame.frame:SetBackdropColor(0, 0, 0, 0)
 		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, deathlog_settings[widget_name]["border_alpha"])
+		if class_bg_tex == nil then
+			class_bg_tex = death_log_frame.frame:CreateTexture(nil, "BACKGROUND", nil, 0)
+			class_bg_tex:SetAllPoints(death_log_frame.frame)
+			-- UV crops to the Artifacts-<Class>-BG region (same coords for all class sheets)
+			class_bg_tex:SetTexCoord(0.000976562, 0.875977, 0.000976562, 0.601562)
+		end
+		class_bg_tex:SetTexture("Interface\\Artifacts\\ArtifactUI" .. deathlog_settings[widget_name]["theme"])
+		class_bg_tex:Show()
 	else
+		if class_bg_tex then class_bg_tex:Hide() end
 		local PaneBackdrop = {
 			bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",

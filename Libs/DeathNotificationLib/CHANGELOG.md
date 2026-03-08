@@ -1,5 +1,11 @@
 # Changelog
 
+## V10 — 2026-03-08
+
+### Bug Fixes
+- Fixed Death Alert settings panel not appearing in Interface Options — the parent Blizzard category is now guaranteed to exist before registering the child panel (`pcall`-guarded stub creation)
+- `death_alert_options_parent` will fall back to "DeathNotificationLib" if the configured parent is missing
+
 ## V9 — 2026-03-06
 
 ### Bug Fixes
