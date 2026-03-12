@@ -1,5 +1,11 @@
 # Changelog
 
+## V12 — 2026-03-12
+
+### Bug Fixes
+- Fixed Deathlog settings panel rendering blank (affected Classic Era and TBC) — DNL no longer calls `RegisterOptionsTable` for the parent category if it already has a registration; the DeathAlert child panel is attempted under the existing parent first, and a stub parent is only created if the parent has no Bliz Options entry yet
+- LSM30 (LibSharedMedia-3.0) is now lazily re-looked-up inside `applyDeathAlertSettings`, matching the existing AceConfig/AceConfigDialog pattern; sounds and fonts tables are hydrated from LSM30 on first successful lookup so custom media registered by other addons appears in the dropdowns
+
 ## V11 — 2026-03-11
 
 ### Changes

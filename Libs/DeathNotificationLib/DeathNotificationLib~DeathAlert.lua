@@ -935,15 +935,25 @@ function _dnl.applyDeathAlertSettings()
 					},
 				},
 			}
-			-- Ensure the parent category exists (no-op if the host addon already registered it).
-			pcall(AceConfig.RegisterOptionsTable, AceConfig, parent, { name = parent, type = "group", args = {} })
-			pcall(AceConfigDialog.AddToBlizOptions, AceConfigDialog, parent, parent)
-
+			-- Register the child options table unconditionally.
 			AceConfig:RegisterOptionsTable(app_name, da_options)
-			AceConfigDialog:AddToBlizOptions(app_name, widget_name, parent)
 
-			-- Once a real (non-DNL) parent registers, replace the DNL stub panel with a
-			-- redirect message so it doesn't show a stale duplicate settings panel.
+			-- Try to add the child panel under the parent.  If the parent category doesn't
+			-- exist in Bliz options yet (host addon not loaded/registered first) this call
+			-- will error — in that case we create a lightweight stub parent so the child
+			-- has somewhere to live.  We deliberately do NOT call RegisterOptionsTable for
+			-- the parent when it already has a real registration (e.g. Deathlog's own panel)
+			-- to avoid overwriting it with an empty table.
+			local childOk = pcall(AceConfigDialog.AddToBlizOptions, AceConfigDialog, app_name, widget_name, parent)
+			if not childOk then
+				-- Parent panel not in Bliz options yet — create a stub, then add child.
+				pcall(AceConfig.RegisterOptionsTable, AceConfig, parent, { name = parent, type = "group", args = {} })
+				pcall(AceConfigDialog.AddToBlizOptions, AceConfigDialog, parent, parent)
+				pcall(AceConfigDialog.AddToBlizOptions, AceConfigDialog, app_name, widget_name, parent)
+			end
+
+			-- If a DNL-fallback stub was previously registered under "DeathNotificationLib",
+			-- replace its content with a redirect so it doesn't show a stale panel.
 			if parent ~= "DeathNotificationLib" and _da_registered_parents["DeathNotificationLib"] then
 				local stub_app = _da_registered_parents["DeathNotificationLib"]
 				pcall(AceConfig.RegisterOptionsTable, AceConfig, stub_app, {
