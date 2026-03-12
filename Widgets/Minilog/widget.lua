@@ -202,9 +202,6 @@ local subtitle_metadata = {
 		"Source",
 		120,
 		function(_entry)
-			if _entry.player_data["source_id"] == nil then
-				return ""
-			end
 			return DeathlogGetCachedSource(_entry.player_data)
 		end,
 	},
@@ -545,7 +542,7 @@ local function setupRowEntries()
 				end
 			elseif click_type == "RightButton" then
 				death_tomb_frame.map_id = _entry["player_data"]["map_id"]
-				death_tomb_frame.coordinates = _entry["player_data"]["map_pos"] and strsplit(",", _entry["player_data"]["map_pos"], 2) or nil
+				death_tomb_frame.coordinates = Deathlog_parseMapPos(_entry["player_data"]["map_pos"])
 				death_tomb_frame.clicked_name = _entry["player_data"]["name"]
 				
 				if not _G["WPDemoContextMenu"] then

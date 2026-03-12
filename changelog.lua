@@ -21,6 +21,16 @@ local CURRENT_VERSION = GetAddOnMetadata("Deathlog", "Version") or "0.0.0"
 local CHANGELOG_CONTENT = [[
 |cFFFFD700Deathlog Changelog|r
 
+|cFF00FF00[0.5.2] - 2026-03-11|r
+
+|cFFFFFFFFImprovements|r
+- Heatmap data is now optional — shipped separately via the DeathNotificationLibData addon (auto-downloaded via CurseForge)
+
+|cFFFFFFFFBug Fixes|r
+- Fixed minilog Source column not showing predicted sources when source_id is nil
+- Fixed death source search filter only matching NPC names — now also matches environment damage, PvP, and predictions
+- Added tonumber() guards on all source_id usage to handle string-typed values without errors
+
 |cFF00FF00[0.5.1] - 2026-03-08|r
 
 |cFFFFFFFFNew Features|r

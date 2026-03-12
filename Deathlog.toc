@@ -5,7 +5,7 @@
 ## Author: Yazpad & Deathwing
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.5.1
+## Version: 0.5.2
 # DEATHLOG_UNCOMMENT_NEXT_LINE
 # ## Dependencies: DeathNotificationLib
 # DEATHLOG_UNCOMMENT_NEXT_LINE
@@ -14,6 +14,8 @@
 ## DefaultState: enabled
 ## SavedVariables: deathlog_settings, deathlog_data, deathlog_data_map, deathlog_watchlist_entries, deathlog_record_econ_stats, deathlog_entry_counts, deathlog_purged, deathlog_precomputed
 ## SavedVariablesPerCharacter: deathlog_char_data
+# DEATHLOG_REMOVE_NEXT_LINE
+Libs/DeathNotificationLib/Data/DeathNotificationLibData.xml
 # DEATHLOG_REMOVE_NEXT_LINE
 Libs/DeathNotificationLib/DeathNotificationLib.xml
 # DEATHLOG_REMOVE_NEXT_LINE

@@ -939,9 +939,6 @@ if GetExpansionLevel and GetExpansionLevel() >= 1 then
 end
 
 
-local precomputed_heatmap_intensity = DeathNotificationLib.HEATMAP_INTENSITY
-local precomputed_heatmap_creature_subset = DeathNotificationLib.HEATMAP_CREATURE_SUBSET
-
 local world_map_overlay = {}
 ---@type MenuElementContainer
 local map_container = CreateFrame("Frame")
@@ -1139,6 +1136,7 @@ end
 
 function Deathlog_MapContainer_showSkullSet(source_id)
 	Deathlog_MapContainer_resetSkullSet()
+	local precomputed_heatmap_creature_subset = DeathNotificationLibDataCopy.HEATMAP_CREATURE_SUBSET
 	if precomputed_heatmap_creature_subset == nil then
 		return
 	end
@@ -1390,7 +1388,8 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	end
 
 	local should_hide = Deathlog_should_hide_heatmap and Deathlog_should_hide_heatmap(current_map_id)
-	if not should_hide and precomputed_heatmap_intensity[current_map_id] ~= nil then
+	local precomputed_heatmap_intensity = DeathNotificationLibDataCopy.HEATMAP_INTENSITY
+	if not should_hide and precomputed_heatmap_intensity and precomputed_heatmap_intensity[current_map_id] ~= nil then
 		local checked = map_container.heatmap_checkbox and map_container.heatmap_checkbox:GetChecked()
 		-- Bucket the data into the current granularity
 		local bucketed = {}

@@ -1,0 +1,10 @@
+## Interface: 20505, 11508
+## Title: DeathNotificationLib Data
+## Notes: Precomputed heatmap data for DeathNotificationLib.
+## IconTexture: Interface\AddOns\DeathNotificationLibData\Media\logo.png
+## Author: Deathwing
+## X-License: GNU GPL3
+## X-Category: Library
+## Version: 1773183600
+
+DeathNotificationLibData.xml

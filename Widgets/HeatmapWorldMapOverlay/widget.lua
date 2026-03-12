@@ -1,5 +1,3 @@
-local precomputed_heatmap_intensity = DeathNotificationLib.HEATMAP_INTENSITY
-
 local AceGUI = LibStub("AceGUI-3.0")
 local widget_name = "Heatmap WorldMap Overlay"
 local WorldMapButton = WorldMapFrame:GetCanvas()
@@ -76,8 +74,9 @@ local function updateWMOHeatmap(map_id)
 		end
 	end
 
+	local precomputed_heatmap_intensity = DeathNotificationLibDataCopy.HEATMAP_INTENSITY
 	local should_hide = Deathlog_should_hide_heatmap and Deathlog_should_hide_heatmap(map_id)
-	if should_hide or map_id == nil or precomputed_heatmap_intensity[map_id] == nil then
+	if should_hide or map_id == nil or precomputed_heatmap_intensity == nil or precomputed_heatmap_intensity[map_id] == nil then
 		return
 	end
 

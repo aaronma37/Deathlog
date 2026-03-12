@@ -2,6 +2,16 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.5.2] - 2026-03-11
+
+### Improvements
+- Heatmap data is now optional — shipped separately via the DeathNotificationLibData addon (auto-downloaded via CurseForge)
+
+### Bug Fixes
+- Fixed minilog Source column not showing predicted sources when `source_id` is nil
+- Fixed death source search filter only matching NPC names — now also matches environment damage, PvP sources, and predicted sources
+- Added `tonumber()` guards on all `source_id` usage to handle string-typed values in saved data without errors
+
 ## [0.5.1] - 2026-03-08
 
 ### New Features

@@ -1460,10 +1460,8 @@ local function drawLogTab(container)
 		local text = font_container.death_source_box:GetText()
 		if #text > 0 then
 			death_source_filter = function(_, _entry)
-				if
-					id_to_npc[_entry["source_id"]] ~= nil
-					and string.find(string.lower(id_to_npc[_entry["source_id"]]), string.lower(text))
-				then
+				local source = DeathlogGetCachedSource(_entry)
+				if source ~= "" and string.find(string.lower(source), string.lower(text)) then
 					return true
 				else
 					return false

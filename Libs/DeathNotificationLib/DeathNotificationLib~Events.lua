@@ -275,6 +275,8 @@ local function onPlayerDead(arg)
 
 	local death_source, extra_data = _dnl.resolveDeathSource(userState.last_attack_source_name, userState.last_attack_source_guid)
 	local instance_id, map, position = _dnl.guessLocationForUnit("player")
+	local pos_str = position and string.format("%.4f,%.4f", position.x, position.y) or nil
+
 	local _, _, race_id = UnitRace("player")
 	local _, _, class_id = UnitClass("player")
 	local guildName = GetGuildInfo("player")
@@ -288,7 +290,7 @@ local function onPlayerDead(arg)
 		UnitLevel("player"),
 		instance_id,
 		map,
-		position,
+		pos_str,
 		GetServerTime(),
 		getPlaytime(),
 		userState.recent_msg,

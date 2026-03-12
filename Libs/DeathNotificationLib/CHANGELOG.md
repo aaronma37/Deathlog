@@ -1,5 +1,10 @@
 # Changelog
 
+## V11 — 2026-03-11
+
+### Changes
+- Added DeathNotificationLibData as an optional dependency for precomputed heatmap
+
 ## V10 — 2026-03-08
 
 ### Bug Fixes

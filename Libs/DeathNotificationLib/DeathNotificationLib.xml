@@ -14,10 +14,6 @@
   <Script file="Areas\area_to_id_pt.lua"/>
   <Script file="Areas\area_to_id_ru.lua"/>
 
-  <!-- Data: Heatmaps -->
-  <Script file="Heatmaps\heatmap_vanilla.lua"/>
-  <Script file="Heatmaps\heatmap_tbc.lua"/>
-
   <!-- Data: Instances -->
   <Script file="Instances\instance_categories.lua"/>
   <Script file="Instances\instance_to_id_cn.lua"/>

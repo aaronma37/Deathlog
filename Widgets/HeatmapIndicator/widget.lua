@@ -1,5 +1,3 @@
-local precomputed_heatmap_intensity = DeathNotificationLib.HEATMAP_INTENSITY
-
 local AceGUI = LibStub("AceGUI-3.0")
 local widget_name = "Heatmap Indicator"
 local heatmap_indicator_frame = CreateFrame("frame")
@@ -31,11 +29,12 @@ heatmap_indicator_frame.numeric_text:Show()
 local function startUpdate()
 	if heatmap_indicator_frame.ticker == nil then
 		heatmap_indicator_frame.ticker = C_Timer.NewTicker(1, function()
+			local precomputed_heatmap_intensity = DeathNotificationLibDataCopy.HEATMAP_INTENSITY
 			local map = C_Map.GetBestMapForUnit("player")
 			local instance_id = nil
 			local position = nil
 			if map then
-				if precomputed_heatmap_intensity[map] == nil then
+				if precomputed_heatmap_intensity == nil or precomputed_heatmap_intensity[map] == nil then
 					return
 				end
 				position = C_Map.GetPlayerMapPosition(map, "player")

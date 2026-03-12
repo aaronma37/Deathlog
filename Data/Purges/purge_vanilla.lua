@@ -1,5 +1,5 @@
 -- Auto-generated data file. Do not edit manually.
--- Version: a5cac739
+-- Version: 4ce808ac
 if WOW_PROJECT_ID ~= WOW_PROJECT_CLASSIC then return end
 
 local _dd = DeathlogData.Internal ---@class _dd
@@ -265,5 +265,33 @@ _dd.PRECOMPUTED_PURGES = {
 		["Dragomir-43511"] = true,
 		["Alaryien-61713"] = true,
 		["Baldara-20736"] = true,
+		["Ragninskic-18419"] = true,
+		["Exolutia-17020"] = true,
+	},
+	Doomhowl = {
+		["Tabcat-13628"] = true,
+		["Eclipto-29303"] = true,
+		["Gokù-26040"] = true,
+		["Ultramobile-33908"] = true,
+		["Lorkaia-19844"] = true,
+		["Higu-27868"] = true,
+		["Buckshawt-41439"] = true,
+		["Yunna-39089"] = true,
+		["Hantidefive-6960"] = true,
+		["Larryfine-36603"] = true,
+		["Terriesnipps-10526"] = true,
+		["Mckhunt-27971"] = true,
+		["Sadbarry-40181"] = true,
+		["Lastsleth-37917"] = true,
+		["Buckshawt-48406"] = true,
+		["Shorttime-11847"] = true,
+		["Blunderbúss-3782"] = true,
+		["Barrygirl-42760"] = true,
+		["Aleriaxs-738"] = true,
+		["Demyurge-14135"] = true,
+		["Arqueiro-43563"] = true,
+		["Yalltrippin-21059"] = true,
+		["Katnïss-3607"] = true,
+		["Blunderbúss-4604"] = true,
 	},
 }

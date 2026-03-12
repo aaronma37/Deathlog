@@ -29,6 +29,12 @@ if DeathlogData then
 	DeathlogDataCopy.PRECOMPUTED_PURGES = DeathlogData.PRECOMPUTED_PURGES
 end
 
+DeathNotificationLibDataCopy = {}
+if DeathNotificationLibData then
+	DeathNotificationLibDataCopy.HEATMAP_INTENSITY = DeathNotificationLibData.HEATMAP_INTENSITY
+	DeathNotificationLibDataCopy.HEATMAP_CREATURE_SUBSET = DeathNotificationLibData.HEATMAP_CREATURE_SUBSET
+end
+
 local id_to_npc = DeathNotificationLib.ID_TO_NPC
 local instance_to_id = DeathNotificationLib.INSTANCE_TO_ID
 local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
@@ -388,9 +394,10 @@ function DeathlogGetCachedSource(entry)
 	if entry.cached_source then entry.cached_source = nil end
 
 	local _pvp_source_name = entry["extra_data"] and entry["extra_data"]["pvp_source_name"]
-	local _source = entry["source_id"] and (id_to_npc[entry["source_id"]]
-		or deathlog_environment_damage[entry["source_id"]]
-		or DeathNotificationLib.DecodePvPSource(entry["source_id"], _pvp_source_name)
+	local _sid = tonumber(entry["source_id"])
+	local _source = _sid and (id_to_npc[_sid]
+		or deathlog_environment_damage[_sid]
+		or DeathNotificationLib.DecodePvPSource(_sid, _pvp_source_name)
 		or "") or ""
 
 	if _source == "" then
@@ -441,6 +448,16 @@ function DeathlogConvertStringDateUnix(s)
 ---@diagnostic disable-next-line: param-type-mismatch
 	local offset = time() - time(date("!*t"))
 	return time({ day = day, month = month, year = year, hour = hour, minute = minute, sec = sec }) + offset
+end
+
+--- Parse a map_pos value that may be a string "x,y" or a table {x=, y=}.
+--- Returns x, y as numbers, or nil if invalid.
+function Deathlog_parseMapPos(mp)
+	if not mp then return nil end
+	if type(mp) == "table" then
+		return mp.x, mp.y
+	end
+	return strsplit(",", mp, 2)
 end
 
 function Deathlog_fletcher16(name, guild, level, source)
@@ -689,6 +706,7 @@ end
 
 local function updateStats(stats, server_name, entry)
 	local entry_map_id = entry["map_id"] or entry["instance_id"] or "all"
+	local source_id = tonumber(entry["source_id"]) or "all"
 	
 	-- Get all zones this entry should contribute to (zone + all ancestors)
 	local zones_to_update = Deathlog_get_zone_ancestors(entry_map_id)
@@ -697,8 +715,8 @@ local function updateStats(stats, server_name, entry)
 	updateEntry(stats["all"]["all"]["all"]["all"], entry)
 	updateEntry(stats[server_name]["all"]["all"]["all"], entry)
 	updateEntry(stats["all"]["all"][entry["class_id"]]["all"], entry)
-	updateEntry(stats["all"]["all"]["all"][entry["source_id"]], entry)
-	updateEntry(stats["all"]["all"][entry["class_id"]][entry["source_id"]], entry)
+	updateEntry(stats["all"]["all"]["all"][source_id], entry)
+	updateEntry(stats["all"]["all"][entry["class_id"]][source_id], entry)
 	
 	-- Update stats for each zone in the hierarchy
 	for _, zone_id in ipairs(zones_to_update) do
@@ -706,9 +724,9 @@ local function updateStats(stats, server_name, entry)
 			updateEntry(stats["all"][zone_id]["all"]["all"], entry)
 			updateEntry(stats[server_name][zone_id]["all"]["all"], entry)
 			updateEntry(stats["all"][zone_id][entry["class_id"]]["all"], entry)
-			updateEntry(stats["all"][zone_id][entry["class_id"]][entry["source_id"]], entry)
-			updateEntry(stats["all"][zone_id]["all"][entry["source_id"]], entry)
-			updateEntry(stats[server_name][zone_id][entry["class_id"]][entry["source_id"]], entry)
+			updateEntry(stats["all"][zone_id][entry["class_id"]][source_id], entry)
+			updateEntry(stats["all"][zone_id]["all"][source_id], entry)
+			updateEntry(stats[server_name][zone_id][entry["class_id"]][source_id], entry)
 		end
 	end
 
@@ -718,15 +736,15 @@ local function updateStats(stats, server_name, entry)
 		local aid = Deathlog_ALL_INSTANCES_ID
 		updateEntry(stats["all"][aid]["all"]["all"], entry)
 		updateEntry(stats["all"][aid][entry["class_id"]]["all"], entry)
-		updateEntry(stats["all"][aid][entry["class_id"]][entry["source_id"]], entry)
-		updateEntry(stats["all"][aid]["all"][entry["source_id"]], entry)
+		updateEntry(stats["all"][aid][entry["class_id"]][source_id], entry)
+		updateEntry(stats["all"][aid]["all"][source_id], entry)
 	end
 end
 
 local function instantiateIfMissing(_stats, server_name, entry, _metadata_list)
 	local entry_map_id = entry["map_id"] or entry["instance_id"] or "all"
 	local class_id = entry["class_id"] or "all"
-	local source_id = entry["source_id"] or "all"
+	local source_id = tonumber(entry["source_id"]) or "all"
 	
 	-- Get all zones this entry should contribute to
 	local zones_to_update = Deathlog_get_zone_ancestors(entry_map_id)
@@ -1009,7 +1027,7 @@ function Deathlog_calculateMostDeadlyByZone(_deathlog_data)
 
 	for _, entry_tbl in pairs(_deathlog_data) do
 		for _, v in pairs(entry_tbl) do
-			local source_id = v["source_id"]
+			local source_id = tonumber(v["source_id"])
 			if source_id then
 				-- Count for "all" zones
 				creature_deaths_by_zone["all"][source_id] = (creature_deaths_by_zone["all"][source_id] or 0) + 1
@@ -1065,20 +1083,177 @@ function Deathlog_calculatePurges(_deathlog_data)
 	return deathlog_purged or {}
 end
 
+-- Cache: map bounds (rect on parent) and parent chain per map_id.
+-- Computed once per session from C_Map API, reused across all deaths.
+local map_bounds_cache = {} -- [child_map_id] = {parent, x1, y1, x2, y2} or false
+local parent_chain_cache = {} -- [map_id] = {parent1, parent2, ...} (excludes Cosmos 946)
+
+local function getMapBounds(child_map_id)
+	local cached = map_bounds_cache[child_map_id]
+	if cached ~= nil then return cached end -- false means "no valid parent"
+	local mapInfo = C_Map.GetMapInfo(child_map_id)
+	if not mapInfo or not mapInfo.parentMapID or mapInfo.parentMapID <= 0 then
+		map_bounds_cache[child_map_id] = false
+		return false
+	end
+	local parentId = mapInfo.parentMapID
+	local cid, wp1 = C_Map.GetWorldPosFromMapPos(child_map_id, CreateVector2D(0, 0))
+	local _, wp2 = C_Map.GetWorldPosFromMapPos(child_map_id, CreateVector2D(1, 1))
+	if not wp1 or not wp2 then
+		map_bounds_cache[child_map_id] = false
+		return false
+	end
+	local _, pp1 = C_Map.GetMapPosFromWorldPos(cid, wp1, parentId)
+	local _, pp2 = C_Map.GetMapPosFromWorldPos(cid, wp2, parentId)
+	if not pp1 or not pp2 then
+		map_bounds_cache[child_map_id] = false
+		return false
+	end
+	local x1, y1 = pp1:GetXY()
+	local x2, y2 = pp2:GetXY()
+	local bounds = { parent = parentId, x1 = x1, y1 = y1, x2 = x2, y2 = y2 }
+	map_bounds_cache[child_map_id] = bounds
+	return bounds
+end
+
+local function getParentChain(map_id)
+	local cached = parent_chain_cache[map_id]
+	if cached then return cached end
+	local chain = {}
+	local current = map_id
+	while true do
+		local bounds = getMapBounds(current)
+		if not bounds then break end
+		local pid = bounds.parent
+		if pid == 946 then break end -- Cosmos
+		chain[#chain + 1] = current -- store child so we can look up its bounds
+		current = pid
+	end
+	parent_chain_cache[map_id] = chain
+	return chain
+end
+
+-- Transform a single point through the cached bounds: child (0-1000) → parent (0-1000)
+local function transformPoint(bounds, sx, sy)
+	local cx = sx / 1000 -- normalise to 0-1
+	local cy = sy / 1000
+	local px = bounds.x1 + cx * (bounds.x2 - bounds.x1)
+	local py = bounds.y1 + cy * (bounds.y2 - bounds.y1)
+	px = math.max(0, math.min(1, px)) * 1000
+	py = math.max(0, math.min(1, py)) * 1000
+	return px, py
+end
+
+-- Build skull_locs from death database and aggregate to parent zones via cached map bounds.
 function Deathlog_calculateSkullLocs(_deathlog_data)
 	local skull_locs = {}
-	for servername, entry_tbl in pairs(_deathlog_data) do
+	for _, entry_tbl in pairs(_deathlog_data) do
 		for _, v in pairs(entry_tbl) do
 			if v["map_id"] and v["map_pos"] then
-				if skull_locs[v["map_id"]] == nil then
-					skull_locs[v["map_id"]] = {}
+				local mid = v["map_id"]
+				if not skull_locs[mid] then skull_locs[mid] = {} end
+				local x, y = Deathlog_parseMapPos(v["map_pos"])
+				if x and y then
+					skull_locs[mid][#skull_locs[mid] + 1] = { x * 1000, y * 1000, tonumber(v["source_id"]) }
 				end
-				local x, y = strsplit(",", v["map_pos"], 2)
-				skull_locs[v["map_id"]][#skull_locs[v["map_id"]] + 1] = { x * 1000, y * 1000, v["source_id"] }
+			end
+		end
+	end
+	-- Aggregate death points to parent zones using cached bounds
+	for mapid in pairs(skull_locs) do
+		local chain = getParentChain(mapid)
+		if #chain > 0 then
+			local current_deaths = skull_locs[mapid]
+			for ci = 1, #chain do
+				local child_id = chain[ci]
+				local bounds = map_bounds_cache[child_id] -- already populated by getParentChain
+				if not bounds then break end
+				local parent_id = bounds.parent
+				local transformed = {}
+				for di = 1, #current_deaths do
+					local d = current_deaths[di]
+					local px, py = transformPoint(bounds, d[1], d[2])
+					transformed[#transformed + 1] = { px, py, d[3] }
+				end
+				if #transformed == 0 then break end
+				if not skull_locs[parent_id] then skull_locs[parent_id] = {} end
+				local parent_tbl = skull_locs[parent_id]
+				for ti = 1, #transformed do
+					parent_tbl[#parent_tbl + 1] = transformed[ti]
+				end
+				current_deaths = transformed
 			end
 		end
 	end
 	return skull_locs
+end
+
+function Deathlog_calculateHeatmapIntensity(skull_locs)
+	local ceil = math.ceil
+	local iv = {
+		[0] = { [0] = 0.025, [1] = 0.045, [2] = 0.025 },
+		[1] = { [0] = 0.045, [1] = 0.1,   [2] = 0.045 },
+		[2] = { [0] = 0.025, [1] = 0.045, [2] = 0.025 },
+	}
+	local heatmap = {}
+	for mapid, d in pairs(skull_locs) do
+		heatmap[mapid] = {}
+		local max_intensity = 0
+		for _, t in ipairs(d) do
+			local _x = ceil(t[1] / 10)
+			local _y = ceil(t[2] / 10)
+			for xi = 0, 2 do
+				for yj = 0, 2 do
+					local x_in_map = _x - 1 + xi
+					local y_in_map = _y - 1 + yj
+					if x_in_map >= 1 and x_in_map <= 100 and y_in_map >= 1 and y_in_map <= 100 then
+						if not heatmap[mapid][x_in_map] then heatmap[mapid][x_in_map] = {} end
+						heatmap[mapid][x_in_map][y_in_map] = (heatmap[mapid][x_in_map][y_in_map] or 0) + iv[xi][yj]
+						if heatmap[mapid][x_in_map][y_in_map] > max_intensity then
+							max_intensity = heatmap[mapid][x_in_map][y_in_map]
+						end
+					end
+				end
+			end
+		end
+		if max_intensity > 0 then
+			for x, ys in pairs(heatmap[mapid]) do
+				for y, val in pairs(ys) do
+					heatmap[mapid][x][y] = val / max_intensity
+					if heatmap[mapid][x][y] < 0.02 then
+						heatmap[mapid][x][y] = nil
+					end
+				end
+				if not next(heatmap[mapid][x]) then
+					heatmap[mapid][x] = nil
+				end
+			end
+		end
+	end
+	return heatmap
+end
+
+function Deathlog_calculateHeatmapCreatureSubset(skull_locs)
+	local ceil = math.ceil
+	local creature_subset = {}
+	for mapid, deaths in pairs(skull_locs) do
+		creature_subset[mapid] = {}
+		for _, death in ipairs(deaths) do
+			local x = ceil(death[1] / 10)
+			local y = ceil(death[2] / 10)
+			local source_id = death[3]
+			if source_id then
+				if not creature_subset[mapid][source_id] then
+					creature_subset[mapid][source_id] = {}
+				end
+				if not creature_subset[mapid][source_id][x] then
+					creature_subset[mapid][source_id][x] = {}
+				end
+				creature_subset[mapid][source_id][x][y] = true
+			end
+		end
+	end
+	return creature_subset
 end
 
 function Deathlog_setTooltipFromEntry(_entry)

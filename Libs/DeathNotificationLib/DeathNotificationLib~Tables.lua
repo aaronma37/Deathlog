@@ -160,8 +160,4 @@ DeathNotificationLib.ID_TO_DISPLAY_ID = _dnl.D.ID_TO_DISPLAY_ID
 
 DeathNotificationLib.ZONE_CATEGORIES = _dnl.D.ZONE_CATEGORIES
 
-DeathNotificationLib.HEATMAP_INTENSITY = _dnl.D.HEATMAP_INTENSITY
-
-DeathNotificationLib.HEATMAP_CREATURE_SUBSET = _dnl.D.HEATMAP_CREATURE_SUBSET
-
 --#endregion

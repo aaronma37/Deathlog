@@ -212,13 +212,13 @@ end
 ---instance_id, map_id, map_pos, date, played, last_words, extra_data.
 ---@param name string
 ---@param guild string|nil
----@param source_id number|string
+---@param source_id number|nil
 ---@param race_id number|nil
 ---@param class_id number|nil
 ---@param level number|nil
 ---@param instance_id number|nil
 ---@param map_id number|nil
----@param map_pos string|table|nil
+---@param map_pos string|nil
 ---@param date number|nil
 ---@param played number|nil
 ---@param last_words string|nil
