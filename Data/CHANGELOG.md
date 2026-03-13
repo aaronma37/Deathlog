@@ -1,9 +1,9 @@
 # Changelog
 
-## 1773183600
+## 1773356400
 
 ### vanilla
-- Newest data as of March 11, 2026
+- Newest data as of March 13, 2026
 
 ### tbc
-- Newest data as of March 11, 2026
+- Newest data as of March 13, 2026
