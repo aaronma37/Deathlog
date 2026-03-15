@@ -50,6 +50,10 @@ local race_tbl = Deathlog_race_tbl
 local cached_sorted_results = nil
 local cached_filter_version = 0  -- Incremented when filters change
 
+local _auto_refresh_ticker = nil
+local _get_filters_active = nil  -- Set by drawLogTab; returns true if any filter is active
+local _get_active_filter = nil   -- Set by drawLogTab; returns the current filter function
+
 local deathlog_menu ---@type AceGUIDeathlogMenu
 
 local WorldMapButton = WorldMapFrame:GetCanvas()
@@ -544,6 +548,15 @@ local function drawLogTab(container)
 		end
 		return true
 	end
+
+	-- Expose a function that checks if any filter is currently active (used by auto-refresh)
+	_get_filters_active = function()
+		return server_filter ~= nil or name_filter ~= nil or class_filter ~= nil
+			or race_filter ~= nil or zone_filter ~= nil or guild_filter ~= nil
+			or min_level_filter ~= nil or max_level_filter ~= nil
+			or death_source_filter ~= nil or last_words_filter ~= nil
+	end
+	_get_active_filter = function() return filter end
 
 	local class_search_box = AceGUI:Create("Icon") ---@type AceGUIIcon
 	class_search_box:SetWidth(50)
@@ -1702,6 +1715,35 @@ local function drawLogTab(container)
 		end
 	end)
 
+	if font_container.refresh_button == nil then
+		font_container.refresh_button = CreateFrame("Button", nil, font_container)
+		font_container.refresh_button:SetWidth(25)
+		font_container.refresh_button:SetHeight(25)
+		font_container.refresh_button:SetNormalTexture("Interface/Buttons/UI-SquareButton-Up")
+		font_container.refresh_button:SetPushedTexture("Interface/Buttons/UI-SquareButton-Down")
+		font_container.refresh_button:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square")
+		local icon = font_container.refresh_button:CreateTexture(nil, "ARTWORK")
+		icon:SetTexture("Interface/Buttons/UI-RefreshButton")
+		icon:SetSize(16, 16)
+		icon:SetPoint("CENTER", font_container.refresh_button, "CENTER", -1, 0)
+	end
+
+	font_container.refresh_button:ClearAllPoints()
+	font_container.refresh_button:SetPoint("RIGHT", font_container.next_button, "RIGHT", 440, 0)
+	font_container.refresh_button:SetScript("OnClick", function()
+		clearDeathlogMenuLogData(true)
+		setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
+	end)
+	font_container.refresh_button:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:AddLine("Refresh", 1, 1, 1)
+		GameTooltip:AddLine("Reload the death list with the latest data.", 0.8, 0.8, 0.8, true)
+		GameTooltip:Show()
+	end)
+	font_container.refresh_button:SetScript("OnLeave", function()
+		GameTooltip:Hide()
+	end)
+
 	deathlog_group.frame:HookScript("OnHide", function()
 		font_container:Hide()
 	end)
@@ -2212,9 +2254,27 @@ function DeathlogShowMenu(deathlog_data, stats, log_normal_params)
 	_stats = stats
 	_log_normal_params = log_normal_params
 	setDeathlogMenuLogData(_deathlog_data)
+
+	if _auto_refresh_ticker then _auto_refresh_ticker:Cancel() end
+	_auto_refresh_ticker = C_Timer.NewTicker(10, function()
+		if not deathlog_settings["auto_refresh_search"] then return end
+		if not deathlog_menu or not deathlog_menu.frame:IsShown() then return end
+		if page_number ~= 1 then return end
+		clearDeathlogMenuLogData(true)
+		local active_filter = _get_active_filter and _get_active_filter()
+		if active_filter and (_get_filters_active and _get_filters_active()) then
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, active_filter))
+		else
+			setDeathlogMenuLogData(_deathlog_data)
+		end
+	end)
 end
 
 function DeathlogHideMenu()
+	if _auto_refresh_ticker then
+		_auto_refresh_ticker:Cancel()
+		_auto_refresh_ticker = nil
+	end
 	if deathlog_menu then
 		deathlog_menu:Hide()
 	end

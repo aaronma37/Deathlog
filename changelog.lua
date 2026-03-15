@@ -21,6 +21,12 @@ local CURRENT_VERSION = GetAddOnMetadata("Deathlog", "Version") or "0.0.0"
 local CHANGELOG_CONTENT = [[
 |cFFFFD700Deathlog Changelog|r
 
+|cFF00FF00[0.5.3] - 2026-03-15|r
+
+|cFFFFFFFFNew Features|r
+- Refresh button in the search log — reload the death list while keeping active filters
+- Auto-refresh the death list every 10 seconds (disabled by default, enable in options); preserves active filters
+
 |cFF00FF00[0.5.2] - 2026-03-11|r
 
 |cFFFFFFFFImprovements|r

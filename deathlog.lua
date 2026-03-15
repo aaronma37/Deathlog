@@ -656,6 +656,22 @@ local options = {
 				deathlog_settings["colored_tooltips"] = not deathlog_settings["colored_tooltips"]
 			end,
 		},
+		auto_refresh_search = {
+			type = "toggle",
+			name = "Auto-refresh search results",
+			desc = "When enabled, the Log tab automatically refreshes every 10 seconds so new deaths appear without reopening the UI. Only fires when on page 1 with no active filters.",
+			width = 1.3,
+			order = 55,
+			get = function()
+				if deathlog_settings["auto_refresh_search"] == nil then
+					deathlog_settings["auto_refresh_search"] = false
+				end
+				return deathlog_settings["auto_refresh_search"]
+			end,
+			set = function()
+				deathlog_settings["auto_refresh_search"] = not deathlog_settings["auto_refresh_search"]
+			end,
+		},
 		prediction_radius = {
 			type = "range",
 			name = "Source prediction radius",

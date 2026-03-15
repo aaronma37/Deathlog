@@ -2,6 +2,12 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.5.3] - 2026-03-15
+
+### New Features
+- **Refresh button** in the search log — manually reload the death list while preserving all active filters
+- **Auto-refresh** — optionally auto-refresh the death list every 10 seconds; disabled by default, enable it in the options. Active filters are preserved when refreshing
+
 ## [0.5.2] - 2026-03-11
 
 ### Improvements
