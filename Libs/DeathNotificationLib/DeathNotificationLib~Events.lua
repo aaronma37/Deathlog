@@ -96,7 +96,7 @@ end
 --- Re-check CVars, HardcoreDeaths channel membership, and keep our
 --- addon channels hidden on every zone change so nothing drifts.
 local function updateChannels()
-	if _dnl.anyAddonAllows("auto_blizzard_deaths") then
+	if _dnl.anyAddonEnables("auto_blizzard_deaths") then
 		if GetChannelName("HardcoreDeaths") == 0 then
 			C_Timer.After(2.5, function()
 				if GetChannelName("HardcoreDeaths") == 0 then
@@ -151,7 +151,7 @@ local function onChatMsgChannel(arg)
 		else
 --#region Backwards compatible API
 
-			if _dnl.anyAddonAllows("legacy_messages") then
+			if _dnl.anyAddonEnables("legacy_messages") then
 				_dnl.handleV2DeathBroadcast(player_name_short, msg)
 			end
 
@@ -229,7 +229,7 @@ local function onChatMsgChannel(arg)
 
 --#region Backwards compatible API
 
-	if _dnl.backwards_dispatch[command] and _dnl.anyAddonAllows("legacy_messages") then
+	if _dnl.backwards_dispatch[command] and _dnl.anyAddonEnables("legacy_messages") then
 		local player_name_short, _ = string.split("-", arg[2])
 		if _dnl.throttleCheck(player_name_short) then return end
 
@@ -333,14 +333,19 @@ local function onChatMsg(arg)
 	end
 end
 
+local _pew_fired = false
 local _pew_initialized = false
----@param arg table
-local function onPlayerEnteringWorld(arg)
-	if _pew_initialized then
-		updateChannels()
-		return
-	end
+
+--- Run first-time initialization only once both conditions are met:
+---   1. PLAYER_ENTERING_WORLD has fired
+---   2. At least one addon has called AttachAddon
+local function initializeOnFirstReady()
+	if _pew_initialized then return end
+	if not _pew_fired then return end
+	if not next(_dnl.addons) then return end
+
 	_pew_initialized = true
+	_dnl.refreshGuildMembers()
 	requestTimePlayed()
 	C_Timer.After(0.5, function()
 		_dnl.deathlogJoinChannel()
@@ -349,6 +354,16 @@ local function onPlayerEnteringWorld(arg)
 	C_Timer.NewTicker(60, requestTimePlayed)
 	updateChannels()
 	_dnl.versionCheckOnSocialJoin()
+end
+
+---@param arg table
+local function onPlayerEnteringWorld(arg)
+	if _pew_initialized then
+		updateChannels()
+		return
+	end
+	_pew_fired = true
+	initializeOnFirstReady()
 end
 
 ---@param arg table
@@ -689,6 +704,8 @@ function _dnl.attachAddon(options)
 
 	_dnl.addons[options.name] = addon
 	_dnl.tag_to_addon[options.tag] = options.name
+
+	initializeOnFirstReady()
 
 	if _dnl.DEBUG then
 		print(string.format("[DNL] Addon registered: %s (tag=%s, db=%s, settings=%s)",

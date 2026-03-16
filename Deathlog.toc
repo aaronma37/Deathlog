@@ -5,7 +5,7 @@
 ## Author: Yazpad & Deathwing
 ## X-License: GNU GPL3
 ## X-Category: Leveling,Guild
-## Version: 0.5.3
+## Version: 0.5.4
 # DEATHLOG_UNCOMMENT_NEXT_LINE
 # ## Dependencies: DeathNotificationLib
 # DEATHLOG_UNCOMMENT_NEXT_LINE

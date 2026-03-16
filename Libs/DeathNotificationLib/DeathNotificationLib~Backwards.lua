@@ -319,7 +319,7 @@ local function handleV2TarnishedSoul(sender, data)
 	local is_self = (v2_quality == V2_QUALITY.SELF)
 
 	-- Respect peer_reporting setting for non-self reports
-	if not is_self and not _dnl.anyAddonAllows("peer_reporting") then
+	if not is_self and not _dnl.anyAddonEnables("peer_reporting") then
 		if _dnl.DEBUG then
 			print("|cff888888[Backwards]|r Peer-reported tarnished soul ignored (all addons disabled peer_reporting):", name)
 		end

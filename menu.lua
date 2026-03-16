@@ -481,7 +481,7 @@ local function drawLogTab(container)
 	scroll_container:SetLayout("Fill")
 	deathlog_tabcontainer:AddChild(scroll_container)
 
-	local scroll_frame = AceGUI:Create("ScrollFrame") ---@type AceGUIScrollFrame
+	local scroll_frame = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_frame:SetLayout("Flow")
 	scroll_container:AddChild(scroll_frame)
 
@@ -495,6 +495,10 @@ local function drawLogTab(container)
 	local max_level_filter = nil
 	local death_source_filter = nil
 	local last_words_filter = nil
+	local death_filter_mode = deathlog_settings["search_log_filter_mode"] or "all"
+	if not DeathNotificationLib.GetGuildFilterModeOptions(true)[death_filter_mode] then
+		death_filter_mode = "all"
+	end
 	local filter = function(server_name, _entry)
 		if server_filter ~= nil then
 			if server_filter(server_name, _entry) == false then
@@ -546,6 +550,11 @@ local function drawLogTab(container)
 				return false
 			end
 		end
+		if death_filter_mode ~= "all" then
+			if not DeathNotificationLib.PassesGuildFilterMode(_entry, death_filter_mode) then
+				return false
+			end
+		end
 		return true
 	end
 
@@ -555,6 +564,7 @@ local function drawLogTab(container)
 			or race_filter ~= nil or zone_filter ~= nil or guild_filter ~= nil
 			or min_level_filter ~= nil or max_level_filter ~= nil
 			or death_source_filter ~= nil or last_words_filter ~= nil
+			or death_filter_mode ~= "all"
 	end
 	_get_active_filter = function() return filter end
 
@@ -1495,6 +1505,49 @@ local function drawLogTab(container)
 	font_container.death_source_box.text:SetText("Death Source")
 	font_container.death_source_box.text:Show()
 
+	--- Death filter dropdown
+	if font_container.death_filter_dd == nil then
+		font_container.death_filter_dd = CreateFrame("Frame", nil, font_container, "UIDropDownMenuTemplate")
+	end
+
+	local filter_mode_labels = DeathNotificationLib.GetGuildFilterModeOptions(true)
+	local filter_mode_keys = {}
+	for k in pairs(filter_mode_labels) do
+		table.insert(filter_mode_keys, k)
+	end
+	table.sort(filter_mode_keys)
+	local function deathFilterDD(frame, level, menuList)
+		for _, value in ipairs(filter_mode_keys) do
+			local label = filter_mode_labels[value]
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = label
+			info.checked = death_filter_mode == value
+			info.func = function()
+				death_filter_mode = value
+				deathlog_settings["search_log_filter_mode"] = value
+				UIDropDownMenu_SetText(font_container.death_filter_dd, label)
+				clearDeathlogMenuLogData()
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
+			end
+			UIDropDownMenu_AddButton(info)
+		end
+	end
+
+	font_container.death_filter_dd:SetPoint("TOPLEFT", font_container.death_source_box, "TOPRIGHT", -15, 0)
+	UIDropDownMenu_SetText(font_container.death_filter_dd, filter_mode_labels[death_filter_mode] or "All Deaths")
+	UIDropDownMenu_SetWidth(font_container.death_filter_dd, 100)
+	UIDropDownMenu_Initialize(font_container.death_filter_dd, deathFilterDD)
+	UIDropDownMenu_JustifyText(font_container.death_filter_dd, "LEFT")
+
+	if font_container.death_filter_dd.text == nil then
+		font_container.death_filter_dd.text = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+	font_container.death_filter_dd.text:SetPoint("LEFT", font_container.death_filter_dd, "LEFT", 20, 20)
+	font_container.death_filter_dd.text:SetFont(Deathlog_L.menu_font, 12, "")
+	font_container.death_filter_dd.text:SetTextColor(255 / 255, 215 / 255, 0)
+	font_container.death_filter_dd.text:SetText("Death Filter")
+	font_container.death_filter_dd.text:Show()
+
 	if font_container.last_words_check_box == nil then
 		font_container.last_words_check_box =
 			CreateFrame("CheckButton", "deathlog_last_words_check_box", font_container, "ChatConfigCheckButtonTemplate")
@@ -1503,7 +1556,7 @@ local function drawLogTab(container)
 		font_container.last_words_check_box.text = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	end
 
-	font_container.last_words_check_box:SetPoint("TOPLEFT", font_container.death_source_box, "TOPLEFT", 98, -5)
+	font_container.last_words_check_box:SetPoint("TOPLEFT", font_container.death_filter_dd, "BOTTOMLEFT", 16, 5)
 	font_container.last_words_check_box:SetChecked(false)
 	font_container.last_words_check_box:SetScript("OnClick", function()
 		if font_container.last_words_check_box:GetChecked() == true then
@@ -1655,7 +1708,6 @@ local function drawLogTab(container)
 		deathlog_group.scrollbar:Hide()
 		deathlog_group:AddChild(_entry)
 	end
-	scroll_frame.scrollbar:Hide()
 
 	if font_container.page_str == nil then
 		font_container.page_str = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -1729,7 +1781,7 @@ local function drawLogTab(container)
 	end
 
 	font_container.refresh_button:ClearAllPoints()
-	font_container.refresh_button:SetPoint("RIGHT", font_container.next_button, "RIGHT", 440, 0)
+	font_container.refresh_button:SetPoint("RIGHT", font_container.next_button, "RIGHT", 464, 0)
 	font_container.refresh_button:SetScript("OnClick", function()
 		clearDeathlogMenuLogData(true)
 		setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
@@ -2253,7 +2305,12 @@ function DeathlogShowMenu(deathlog_data, stats, log_normal_params)
 	_deathlog_data = deathlog_data
 	_stats = stats
 	_log_normal_params = log_normal_params
-	setDeathlogMenuLogData(_deathlog_data)
+	local active_filter = _get_active_filter and _get_active_filter()
+	if active_filter and (_get_filters_active and _get_filters_active()) then
+		setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, active_filter))
+	else
+		setDeathlogMenuLogData(_deathlog_data)
+	end
 
 	if _auto_refresh_ticker then _auto_refresh_ticker:Cancel() end
 	_auto_refresh_ticker = C_Timer.NewTicker(10, function()

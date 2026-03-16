@@ -27,6 +27,7 @@ along with the DeathNotificationLib. If not, see <http://www.gnu.org/licenses/>.
 --   ~PvP.lua             PvP source tracking, duel-to-death detection
 --   ~BlizzardParser.lua  Universal death-broadcast parser (HARDCORE_CAUSEOFDEATH_* globals)
 --   ~UnitState.lua       Per-unit state tracking, realm classification, constants
+--   ~GuildFilter.lua     Guild membership filtering with GreenWall multi-guild support
 --   ~Query.lua           Query functions, single-flight /who system
 --   ~PredictSource.lua   Heatmap-based death source prediction
 --   ~Cache.lua           Hook system, createEntry, LRU dedup cache, public hook API
@@ -36,7 +37,6 @@ along with the DeathNotificationLib. If not, see <http://www.gnu.org/licenses/>.
 --   ~Events.lua          Event handlers, AttachAddon API
 --   ~Backwards.lua       Backwards compatibility shims for old API functions
 --   ~Transport.lua       Send queues
---   ~GuildFilter.lua     Guild membership filtering with GreenWall multi-guild support
 --   ~DeathAlert.lua      Built-in death alert popup (BossBanner UI, sounds, AceConfig panel)
 --   ~HardcoreTBC.lua     Bridge for HardcoreTBC addon death events
 --   ~UltraHardcore.lua   Bridge for UltraHardcore addon death events

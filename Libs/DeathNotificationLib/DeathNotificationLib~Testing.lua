@@ -3615,7 +3615,7 @@ end
 
 --- Comprehensive test suite for the AttachAddon multi-addon registry.
 --- Exercises input validation (7 assert paths), multi-addon coexistence,
---- settings aggregation (anyAddonAllows/anyAddonEnables/getDeathAlertOwnerSettings),
+--- settings aggregation (anyAddonEnables/getDeathAlertOwnerSettings),
 --- shouldBroadcastDeath OR-semantics, per-addon hook dispatch (normal + secure +
 --- addonless + targeted + share_playtime isolation), per-addon DB isolation via
 --- sync entry routing, HookOnNewAddonEntry edge cases, and deepCopy/getDeathRecord
@@ -3831,36 +3831,7 @@ function _dnl.testAttachAddon()
 	-- Restore
 	alpha_tracks = true; beta_tracks = true
 
-	-- 2b: anyAddonAllows (opt-out semantics, default=true)
-	-- Both allow peer_reporting → true
-	record("anyAddonAllows: both allow → true",
-		_dnl.anyAddonAllows("peer_reporting") == true)
-
-	-- Alpha disallows, Beta still allows → true
-	_dnl.addons["__TestAlpha__"].settings.peer_reporting = false
-	record("anyAddonAllows: one disallows → true (other still allows)",
-		_dnl.anyAddonAllows("peer_reporting") == true)
-
-	-- Both disallow → false
-	_dnl.addons["__TestBeta__"].settings.peer_reporting = false
-	record("anyAddonAllows: both disallow → false",
-		_dnl.anyAddonAllows("peer_reporting") == false)
-
-	-- Restore
-	_dnl.addons["__TestAlpha__"].settings.peer_reporting = true
-	_dnl.addons["__TestBeta__"].settings.peer_reporting = true
-
-	-- 2c: anyAddonAllows with no settings on either → defaults to true
-	local saved_alpha_s = _dnl.addons["__TestAlpha__"].settings
-	local saved_beta_s  = _dnl.addons["__TestBeta__"].settings
-	_dnl.addons["__TestAlpha__"].settings = nil
-	_dnl.addons["__TestBeta__"].settings  = nil
-	record("anyAddonAllows: no settings on any addon → true (default)",
-		_dnl.anyAddonAllows("peer_reporting") == true)
-	_dnl.addons["__TestAlpha__"].settings = saved_alpha_s
-	_dnl.addons["__TestBeta__"].settings  = saved_beta_s
-
-	-- 2d: anyAddonEnables (opt-in semantics, default=false)
+	-- 2b: anyAddonEnables (opt-in semantics, default=false)
 	record("anyAddonEnables: both false → false",
 		_dnl.anyAddonEnables("addonless_logging") == false)
 

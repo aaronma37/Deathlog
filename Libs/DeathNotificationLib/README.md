@@ -69,6 +69,7 @@ The library is split into focused modules, all loaded via `DeathNotificationLib.
 | `~PvP.lua` | PvP source tracking, duel-to-death detection |
 | `~BlizzardParser.lua` | Universal death-broadcast parser built from Blizzard's `HARDCORE_CAUSEOFDEATH_*` globals |
 | `~UnitState.lua` | Per-unit state tracking, realm classification, constants |
+| `~GuildFilter.lua` | Guild membership filtering with GreenWall multi-guild support |
 | `~Query.lua` | Query functions, single-flight /who system |
 | `~PredictSource.lua` | Heatmap-based death source prediction |
 | `~Cache.lua` | Hook system, `createEntry`, LRU dedup cache, public hook API |
@@ -78,7 +79,6 @@ The library is split into focused modules, all loaded via `DeathNotificationLib.
 | `~Events.lua` | Event handlers, `AttachAddon` API |
 | `~Backwards.lua` | Backwards compatibility shims |
 | `~Transport.lua` | Send queues |
-| `~GuildFilter.lua` | Guild membership filtering with GreenWall multi-guild support |
 | `~DeathAlert.lua` | Built-in death alert popup (BossBanner UI, sounds, AceConfig options panel) |
 | `~HardcoreTBC.lua` | Bridge for HardcoreTBC addon death events |
 | `~UltraHardcore.lua` | Bridge for UltraHardcore addon death events |

@@ -540,7 +540,7 @@ local options = {
 			type = "toggle",
 			name = "Accept legacy protocol messages",
 			desc = "When enabled, death messages from older addon versions (v0–v2 protocol) are accepted. When disabled, only current (v3) protocol messages are processed.",
-			width = 1.3,
+			width = 1.5,
 			order = 20,
 			get = function()
 				if deathlog_settings["legacy_messages"] == nil then
@@ -572,7 +572,7 @@ local options = {
 			type = "toggle",
 			name = "Auto-configure Blizzard death tracking",
 			desc = "When enabled, Deathlog automatically configures the Blizzard hardcore death CVars, joins the HardcoreDeaths channel (hidden), and periodically verifies they remain active. This lets us convert Blizzard's built-in death notifications into full Deathlog entries. If you don't want lower-quality data from these notifications, you can leave this on and disable 'Allow addonless death logging' instead.",
-			width = 1.3,
+			width = 1.5,
 			order = 35,
 			get = function()
 				if deathlog_settings["auto_blizzard_deaths"] == nil then

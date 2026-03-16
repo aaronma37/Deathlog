@@ -430,7 +430,7 @@ function _dnl.handleDeathBroadcast(sender, data)
 	local quality = is_self_report and _dnl.QUALITY.SELF or _dnl.QUALITY.PEER
 	local entry_source = is_self_report and SOURCE.SELF_DEATH or SOURCE.PEER_BROADCAST
 
-	if not is_self_report and not _dnl.anyAddonAllows("peer_reporting") then
+	if not is_self_report and not _dnl.anyAddonEnables("peer_reporting") then
 		if _dnl.DEBUG then
 			print("Peer-reported death ignored (all addons disabled peer_reporting):", decoded_player_data["name"], "reported by:", sender)
 		end

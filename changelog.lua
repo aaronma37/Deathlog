@@ -21,6 +21,18 @@ local CURRENT_VERSION = GetAddOnMetadata("Deathlog", "Version") or "0.0.0"
 local CHANGELOG_CONTENT = [[
 |cFFFFD700Deathlog Changelog|r
 
+|cFF00FF00[0.5.4] - 2026-03-16|r
+
+|cFFFFFFFFNew Features|r
+- Death Filter in the search log — filter by All Deaths, Guild Only, or Guild Confederation (requires GreenWall); saved between sessions
+- GreenWall confederation option now shows as soon as GreenWall is installed
+
+|cFFFFFFFFBug Fixes|r
+- Fixed search log clipping on the right side
+- Fixed filters not applying when first opening the search log
+- Fixed guild filters matching nothing for the first 10 seconds after login
+- Deferred library initialization until at least one addon has registered, fixing early channel joins
+
 |cFF00FF00[0.5.3] - 2026-03-15|r
 
 |cFFFFFFFFNew Features|r

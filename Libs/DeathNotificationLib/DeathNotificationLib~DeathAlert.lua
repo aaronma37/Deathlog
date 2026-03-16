@@ -800,7 +800,11 @@ function _dnl.applyDeathAlertSettings()
 						values = function()
 							return _dnl.getGuildFilterModeOptions()
 						end,
-						get = function() return S()["filter_mode"] or "all" end,
+						get = function()
+							local v = S()["filter_mode"] or "all"
+							if not _dnl.getGuildFilterModeOptions()[v] then v = "all" end
+							return v
+						end,
 						set = function(_, value) S()["filter_mode"] = value; _dnl.applyDeathAlertSettings() end,
 					},
 					greenwall_status = {

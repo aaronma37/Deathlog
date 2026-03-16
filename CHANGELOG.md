@@ -2,6 +2,22 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.5.4] - 2026-03-16
+
+### New Features
+- **Death Filter** in the search log — filter deaths by All Deaths, Guild Only, or Guild Confederation (requires GreenWall). Your selection is saved between sessions
+- **GreenWall confederation** option now appears in filter dropdowns as soon as GreenWall is installed, even before its config finishes loading
+
+### Bug Fixes
+- Fixed search log clipping on the right side — scrollbar no longer cuts off content
+- Fixed filters not applying when first opening the search log — persisted filter settings are now respected on initial load
+- Fixed guild member cache being empty for the first 10 seconds after login, causing guild filters to match nothing
+- Deferred library initialization until at least one addon has registered, fixing channel joins and timers firing before any addon was ready
+- Widened truncated settings labels ("Accept legacy protocol messages", "Auto-configure Blizzard death tracking")
+
+### Improvements
+- GreenWall status text now appears directly under the Death Filter in the settings panel
+
 ## [0.5.3] - 2026-03-15
 
 ### New Features

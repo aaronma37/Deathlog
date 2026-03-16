@@ -1,5 +1,19 @@
 # Changelog
 
+## V13 — 2026-03-16
+
+### New Features
+- **Death Filter API** — `getGuildFilterModeOptions(exclude_none)` now accepts an optional `exclude_none` parameter to omit the "None (Disabled)" option, useful for search-log dropdowns where disabling filters is handled differently
+- **GreenWall detection split** — `isGreenWallAvailable()` now only checks whether the GreenWall addon is loaded; new `isGreenWallConfigured()` checks whether the GreenWall config has been fully parsed. The confederation option now appears in filter dropdowns as soon as GreenWall is installed, even before its async config finishes loading
+- **Guild cache on init** — `refreshGuildMembers()` is now exposed on `_dnl` and called from `initializeOnFirstReady()`, so guild/confederation data is available immediately instead of waiting for the first 10-second ticker
+
+### Bug Fixes
+- Deferred library initialization (channel joins, timers, CVars) until both `PLAYER_ENTERING_WORLD` has fired and at least one addon has called `AttachAddon`, preventing the library from running setup with an empty addon registry
+- Fixed `passesGuildFilterMode` guild_only branch returning `nil` instead of `false` when no match
+
+### Changes
+- Replaced `anyAddonAllows()` (opt-out semantics) with `anyAddonEnables()` (opt-in semantics) across all call sites; removed `anyAddonAllows()` and its tests
+
 ## V12 — 2026-03-12
 
 ### Bug Fixes

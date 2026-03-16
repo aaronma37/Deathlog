@@ -1517,7 +1517,9 @@ options = {
 						return DeathNotificationLib.GetGuildFilterModeOptions()
 					end,
 					get = function()
-						return deathlog_settings[widget_name]["filter_mode"] or "all"
+						local v = deathlog_settings[widget_name]["filter_mode"] or "all"
+						if not DeathNotificationLib.GetGuildFilterModeOptions()[v] then v = "all" end
+						return v
 					end,
 					set = function(self, value)
 						deathlog_settings[widget_name]["filter_mode"] = value
@@ -1529,7 +1531,8 @@ options = {
 					name = function()
 						return "|cFF888888" .. DeathNotificationLib.GetGreenWallStatus() .. "|r"
 					end,
-					order = 4,
+					order = 3.1,
+					width = "full",
 				},
 			},
 		},

@@ -22,10 +22,16 @@ local _player_guild = nil
 local _confederation_guilds = {}  -- guild_name → true
 local _guild_members = {}  -- player_name (short) → true
 
---- Check if GreenWall addon is loaded and configured
+--- Check if GreenWall addon is loaded
 ---@return boolean
 local function isGreenWallAvailable()
-	return type(gw) == "table" and type(gw.config) == "table" and gw.config.valid == true
+	return type(gw) == "table" and type(gw.config) == "table"
+end
+
+--- Check if GreenWall config is fully initialized (peers parsed)
+---@return boolean
+local function isGreenWallConfigured()
+	return isGreenWallAvailable() and gw.config.valid == true
 end
 
 --- Get the list of confederation guilds from GreenWall
@@ -73,7 +79,8 @@ local function refreshGuildMembers()
 	_confederation_guilds = getConfederationGuilds()
 end
 
--- Refresh guild members periodically
+-- Exposed on _dnl so Events.lua can call it from initializeOnFirstReady
+_dnl.refreshGuildMembers = refreshGuildMembers
 C_Timer.NewTicker(10, refreshGuildMembers)
 
 --- Check if a guild name is in the player's guild or GreenWall confederation
@@ -130,6 +137,11 @@ function _dnl.passesGuildFilterMode(entry, filter_mode)
 		return true
 	end
 	
+	-- Fallback: confederation selected but GreenWall no longer available → guild_only
+	if filter_mode == "guild_confederation" and not isGreenWallAvailable() then
+		filter_mode = "guild_only"
+	end
+	
 	if not entry then
 		return false
 	end
@@ -144,7 +156,7 @@ function _dnl.passesGuildFilterMode(entry, filter_mode)
 			guildMatches = isGuildOrConfederation(entryGuild)
 		else
 			-- guild_only mode
-			guildMatches = (_player_guild and entryGuild == _player_guild)
+			guildMatches = (_player_guild and entryGuild == _player_guild) or false
 		end
 	end
 	
@@ -156,13 +168,16 @@ function _dnl.passesGuildFilterMode(entry, filter_mode)
 end
 
 --- Get filter mode options for settings UI
+---@param exclude_none? boolean If true, omit the "None (Disabled)" option
 ---@return table Options for filter dropdown
-function _dnl.getGuildFilterModeOptions()
+function _dnl.getGuildFilterModeOptions(exclude_none)
 	local options = {
 		["all"] = "All Deaths",
 		["guild_only"] = "Guild Only",
-		["none"] = "None (Disabled)",
 	}
+	if not exclude_none then
+		options["none"] = "None (Disabled)"
+	end
 	
 	-- Only show GreenWall option if it's available
 	if isGreenWallAvailable() then

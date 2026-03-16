@@ -2,7 +2,7 @@
 DeathNotificationLib~Init.lua
 --]]
 
-local VERSION = 12
+local VERSION = 13
 
 if DeathNotificationLib and (DeathNotificationLib.VERSION or 0) >= VERSION then return end
 
@@ -98,7 +98,7 @@ end
 ---@param channelName string  Channel name to hide
 function _dnl.hideChannelFromChatFrames(channelName)
 	if not channelName then return end
-	if not _dnl.anyAddonAllows("auto_hide_chat_channels") then return end
+	if not _dnl.anyAddonEnables("auto_hide_chat_channels") then return end
 	for i = 1, 10 do
 		if _G["ChatFrame" .. i] then
 			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], channelName)
@@ -289,25 +289,6 @@ _dnl.tag_to_addon = {}
 ---------------------------------------------------------------------------
 -- Settings helpers (per-addon)
 ---------------------------------------------------------------------------
-
---- For settings with default-true (opt-out) semantics:
---- Returns true if ANY registered addon hasn't explicitly set key to false.
---- If no addon has settings, returns true (the default).
---- Examples: peer_reporting, auto_blizzard_deaths, legacy_messages.
----@param key string
----@return boolean
-function _dnl.anyAddonAllows(key)
-	local found_any = false
-	for _, addon in pairs(_dnl.addons) do
-		if addon.settings then
-			found_any = true
-			if addon.settings[key] ~= false then
-				return true
-			end
-		end
-	end
-	return not found_any -- no addon has settings → default true
-end
 
 --- For settings with default-false (opt-in) semantics:
 --- Returns true if ANY registered addon has explicitly set key to a truthy value.
