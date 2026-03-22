@@ -1,5 +1,3 @@
-local precomputed_heatmap_intensity = DeathNotificationLib.HEATMAP_INTENSITY
-
 local AceGUI = LibStub("AceGUI-3.0")
 local widget_name = "Heatmap Indicator"
 local heatmap_indicator_frame = CreateFrame("frame")
@@ -31,14 +29,18 @@ heatmap_indicator_frame.numeric_text:Show()
 local function startUpdate()
 	if heatmap_indicator_frame.ticker == nil then
 		heatmap_indicator_frame.ticker = C_Timer.NewTicker(1, function()
+			local precomputed_heatmap_intensity = DeathNotificationLibDataCopy.HEATMAP_INTENSITY
 			local map = C_Map.GetBestMapForUnit("player")
 			local instance_id = nil
 			local position = nil
 			if map then
-				if precomputed_heatmap_intensity[map] == nil then
+				if precomputed_heatmap_intensity == nil or precomputed_heatmap_intensity[map] == nil then
 					return
 				end
 				position = C_Map.GetPlayerMapPosition(map, "player")
+				if not position then
+					return
+				end
 				local x = ceil(position.x * 100)
 				local y = ceil(position.y * 100)
 				if precomputed_heatmap_intensity[map][x] == nil then
@@ -57,7 +59,7 @@ local function startUpdate()
 					heatmap_indicator_frame.tex:SetVertexColor(1, 0, 0, 1)
 				end
 				heatmap_indicator_frame.numeric_text:SetText(string.format("%.1f", intensity * 10))
-				if deathlog_settings[widget_name]["show_value"] then
+				if deathlog_settings[widget_name] and deathlog_settings[widget_name]["show_value"] then
 					heatmap_indicator_frame.numeric_text:Show()
 				else
 					heatmap_indicator_frame.numeric_text:Hide()
@@ -88,6 +90,7 @@ heatmap_indicator_frame:SetScript("OnDragStart", function(self, button)
 end)
 heatmap_indicator_frame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing()
+	if deathlog_settings[widget_name] == nil then deathlog_settings[widget_name] = {} end
 	local x, y = self:GetCenter()
 	local px = (GetScreenWidth() * UIParent:GetEffectiveScale()) / 2
 	local py = (GetScreenHeight() * UIParent:GetEffectiveScale()) / 2
@@ -127,7 +130,7 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
-local options = nil
+local options = {}
 local optionsframe = nil
 function Deathlog_HIWidget_applySettings()
 	applyDefaults(defaults)

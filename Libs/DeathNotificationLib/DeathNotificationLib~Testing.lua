@@ -1,3 +1,4 @@
+---@diagnostic disable: inject-field, missing-fields, param-type-mismatch
 --[[
 DeathNotificationLib~Testing.lua
 
@@ -32,114 +33,6 @@ extractWorldMapData, collectMapBounds) for development use.
 
 local _dnl = DeathNotificationLib.Internal ---@class _dnl
 if not _dnl then return end
-
---- Generate a random fake death entry for testing widgets.
---- Picks random name/guild from attached_db if available, random source from
---- _dnl.D.ID_TO_NPC, random map or instance, and includes PVP source randomization.
----@return PlayerData
-local function createFakeEntry()
-	local idx = math.random(1, 100)
-	local some_name = UnitName("player")
-	local some_guild = ""
-
-	local found_random_name = false
-	for _, addon in pairs(_dnl.addons) do
-		if addon.db then
-			for _, entry in pairs(addon.db) do
-				some_name = entry["name"]
-				some_guild = entry["guild"]
-				idx = idx - 1
-				if idx < 1 then
-					found_random_name = true
-					break
-				end
-			end
-			if found_random_name then break end
-		end
-	end
-
-	if not found_random_name then
-		some_name = some_name .. math.random(1, 1000)
-	end
-
-	idx = math.random(1, 100)
-	local some_source_id = -2
-	for k, _ in pairs(_dnl.D.ID_TO_NPC) do
-		idx = idx - 1
-		some_source_id = k
-		if idx < 1 then break end
-	end
-
-	idx = math.random(1, 2)
-	local map_id = nil
-	local instance_id = nil
-	if idx == 1 then
-		idx = math.random(1, 10)
-		for k, _ in pairs(_dnl.D.ID_TO_INSTANCE) do
-			idx = idx - 1
-			instance_id = k
-			if idx < 1 then break end
-		end
-	else
-		idx = math.random(1, 10)
-		for _, zones in pairs(_dnl.D.ZONE_TO_ID) do
-			for _, v in pairs(zones) do
-				idx = idx - 1
-				map_id = v
-				if idx < 1 then break end
-			end
-			if idx < 1 then break end
-		end
-	end
-
-	local valid_class_ids = {1, 2, 3, 4, 5, 7, 8, 9, 11}
-	local fake_entry = {
-		["name"] = some_name,
-		["level"] = math.random(1, 60),
-		["class_id"] = valid_class_ids[math.random(1, #valid_class_ids)],
-		["race_id"] = math.random(1, 8),
-		["source_id"] = some_source_id,
-		["map_id"] = map_id,
-		["instance_id"] = instance_id,
-		["guild"] = some_guild,
-		["played"] = math.random(3600, 864000),
-		["last_words"] = "Sample last words, help!",
-	}
-
-	local pvp_r = math.random(0, 3)
-	local pvp_source_name = nil
-	if pvp_r == 1 or pvp_r == 2 then
-		local pvp_ok, src_id, src_name = _dnl.encodePvpSource(UnitName("target"), UnitGUID("target"))
-		if pvp_ok and src_id then
-			fake_entry["source_id"] = src_id
-			pvp_source_name = src_name
-		end
-	elseif pvp_r == 3 and UnitIsPlayer("target") then
-		_dnl.pvp_state.duel_to_death_player = UnitName("target")
-		local _, src_id, src_name = _dnl.encodePvpSource(UnitName("target"), UnitGUID("target"))
-		fake_entry["source_id"] = src_id
-		pvp_source_name = src_name
-		_dnl.pvp_state.duel_to_death_player = nil
-	end
-
-	if pvp_source_name and math.random(0, 100) < 50 then
-		fake_entry["extra_data"] = {
-			["pvp_source_name"] = pvp_source_name,
-		}
-	end
-
-	return fake_entry
-end
-
---#region API
-
---- Public API: generate a random fake death entry for widget previews
---- and smoke-testing.  This is intentionally exposed outside the DEBUG
---- guard because it is used by the Death Alert preview
---- (~DeathAlert.lua) in production.
-DeathNotificationLib.CreateFakeEntry = createFakeEntry
-
---#endregion
 
 if not _dnl.DEBUG then return end
 
@@ -1050,7 +943,7 @@ function _dnl.testIntegration()
 	-- Step 2: CreateFakeEntry
 	print(TAG .. "Phase 2: CreateFakeEntry validation")
 	local function step2_fakeEntry()
-		local fake = createFakeEntry()
+		local fake = _dnl.createFakeEntry()
 		record("createFakeEntry returns table", fake ~= nil and type(fake) == "table")
 		if fake then
 			record("fake entry has name", fake["name"] ~= nil and fake["name"] ~= "")
@@ -1909,31 +1802,31 @@ function _dnl.testIntegration()
 				-- Rejects non-table
 				v_ok, v_err = _dnl.validatePlayerData("not a table")
 				record("validatePlayerData rejects non-table",
-					v_ok == false and v_err:find("table"), tostring(v_err))
+					v_ok == false and v_err and v_err:find("table"), tostring(v_err))
 
 				-- Rejects nil source_id
 				v_ok, v_err = _dnl.validatePlayerData(
 					_dnl.playerData("Testplayer", "", nil, nil, nil, 10, nil, 1429, nil, GetServerTime(), nil, nil, nil))
 				record("validatePlayerData rejects nil source_id",
-					v_ok == false and v_err:find("source_id"), tostring(v_err))
+					v_ok == false and v_err and v_err:find("source_id"), tostring(v_err))
 
 				-- Rejects name too long
 				v_ok, v_err = _dnl.validatePlayerData(
 					{ name = "Abcdefghijklm", guild = "", source_id = -1, level = 10, map_id = 1429 })
 				record("validatePlayerData rejects name > 12",
-					v_ok == false and v_err:find("2%-12"), tostring(v_err))
+					v_ok == false and v_err and v_err:find("2%-12"), tostring(v_err))
 
 				-- Rejects bad map_pos
 				v_ok, v_err = _dnl.validatePlayerData(
 					{ name = "Testplayer", guild = "", source_id = -1, level = 10, map_id = 1429, map_pos = "5.0,3.0" })
 				record("validatePlayerData rejects map_pos out of range",
-					v_ok == false and v_err:find("map_pos"), tostring(v_err))
+					v_ok == false and v_err and v_err:find("map_pos"), tostring(v_err))
 
 				-- Rejects negative level
 				v_ok, v_err = _dnl.validatePlayerData(
 					{ name = "Testplayer", guild = "", source_id = -1, level = -1, map_id = 1429 })
 				record("validatePlayerData rejects negative level",
-					v_ok == false and v_err:find("level"), tostring(v_err))
+					v_ok == false and v_err and v_err:find("level"), tostring(v_err))
 
 				-- Accepts level 0
 				v_ok, v_err = _dnl.validatePlayerData(
@@ -1945,7 +1838,7 @@ function _dnl.testIntegration()
 				v_ok, v_err = _dnl.validatePlayerData(
 					{ name = "Testplayer", guild = "", source_id = "abc", level = 10, map_id = 1429 })
 				record("validatePlayerData rejects string source_id",
-					v_ok == false and v_err:find("source_id"), tostring(v_err))
+					v_ok == false and v_err and v_err:find("source_id"), tostring(v_err))
 
 				-- ============================================================
 				-- Phase 22: updateLRUByName behavior
@@ -2987,6 +2880,7 @@ function _dnl.testSyncEndToEnd()
 	-- safeSendChannel return false, sendNextInQueue keeps items in the
 	-- queue so we can read them later.
 	local saved_safeSendChannel = _dnl.safeSendChannel
+---@diagnostic disable-next-line: duplicate-set-field
 	_dnl.safeSendChannel = function() return false end
 
 	-- ----------------------------------------------------------------
@@ -3721,7 +3615,7 @@ end
 
 --- Comprehensive test suite for the AttachAddon multi-addon registry.
 --- Exercises input validation (7 assert paths), multi-addon coexistence,
---- settings aggregation (anyAddonAllows/anyAddonEnables/getDeathAlertOwnerSettings),
+--- settings aggregation (anyAddonEnables/getDeathAlertOwnerSettings),
 --- shouldBroadcastDeath OR-semantics, per-addon hook dispatch (normal + secure +
 --- addonless + targeted + share_playtime isolation), per-addon DB isolation via
 --- sync entry routing, HookOnNewAddonEntry edge cases, and deepCopy/getDeathRecord
@@ -3937,36 +3831,7 @@ function _dnl.testAttachAddon()
 	-- Restore
 	alpha_tracks = true; beta_tracks = true
 
-	-- 2b: anyAddonAllows (opt-out semantics, default=true)
-	-- Both allow peer_reporting → true
-	record("anyAddonAllows: both allow → true",
-		_dnl.anyAddonAllows("peer_reporting") == true)
-
-	-- Alpha disallows, Beta still allows → true
-	_dnl.addons["__TestAlpha__"].settings.peer_reporting = false
-	record("anyAddonAllows: one disallows → true (other still allows)",
-		_dnl.anyAddonAllows("peer_reporting") == true)
-
-	-- Both disallow → false
-	_dnl.addons["__TestBeta__"].settings.peer_reporting = false
-	record("anyAddonAllows: both disallow → false",
-		_dnl.anyAddonAllows("peer_reporting") == false)
-
-	-- Restore
-	_dnl.addons["__TestAlpha__"].settings.peer_reporting = true
-	_dnl.addons["__TestBeta__"].settings.peer_reporting = true
-
-	-- 2c: anyAddonAllows with no settings on either → defaults to true
-	local saved_alpha_s = _dnl.addons["__TestAlpha__"].settings
-	local saved_beta_s  = _dnl.addons["__TestBeta__"].settings
-	_dnl.addons["__TestAlpha__"].settings = nil
-	_dnl.addons["__TestBeta__"].settings  = nil
-	record("anyAddonAllows: no settings on any addon → true (default)",
-		_dnl.anyAddonAllows("peer_reporting") == true)
-	_dnl.addons["__TestAlpha__"].settings = saved_alpha_s
-	_dnl.addons["__TestBeta__"].settings  = saved_beta_s
-
-	-- 2d: anyAddonEnables (opt-in semantics, default=false)
+	-- 2b: anyAddonEnables (opt-in semantics, default=false)
 	record("anyAddonEnables: both false → false",
 		_dnl.anyAddonEnables("addonless_logging") == false)
 
@@ -5583,9 +5448,10 @@ function _dnl.testVersionCheck()
 		#whisper_log == 0)
 
 	-- ================================================================
-	-- Phase 4: Even newer version should fire again
+	-- Phase 4: Even newer version — no second warning (once per tag)
+	--          but newest_detected_version still updates silently
 	-- ================================================================
-	print(TAG .. "Phase 4: Even newer version")
+	print(TAG .. "Phase 4: Even newer version (silent update)")
 
 	wipe(hook_calls)
 
@@ -5597,8 +5463,9 @@ function _dnl.testVersionCheck()
 		"ThirdPeer",
 	})
 
-	record("even newer: hook fires for 3.0.0",
-		#hook_calls == 1)
+	record("even newer: hook NOT fired (already warned for tag)",
+		#hook_calls == 0,
+		"count=" .. tostring(#hook_calls))
 
 	record("even newer: newest_detected_version updated to 3.0.0",
 		_dnl.addons["__TestVC__"].newest_detected_version == "3.0.0")

@@ -70,9 +70,34 @@ local death_alert_styles = {
 }
 
 -- ── helper: settings accessor ────────────────────────────────────────
+---@return DNL_DeathAlertSettings|nil
 local function S()
 	local settings = _dnl.getDeathAlertOwnerSettings()
 	return settings and settings[widget_name]
+end
+
+local function resolveWatchlistIcon(playerName)
+	if type(playerName) ~= "string" or playerName == "" then
+		return ""
+	end
+
+	local _, owner_name = _dnl.getDeathAlertOwnerSettings()
+	if not owner_name then
+		return ""
+	end
+
+	local addon = _dnl.addons and _dnl.addons[owner_name]
+	local provider = addon and addon.watchlistIconProvider
+	if type(provider) ~= "function" then
+		return ""
+	end
+
+	local ok, icon = pcall(provider, playerName)
+	if not ok or type(icon) ~= "string" or icon == "" then
+		return ""
+	end
+
+	return icon .. " "
 end
 
 -- ── formatPlaytime (exposed as public API) ───────────────────────────
@@ -99,7 +124,7 @@ end
 
 -- ── locale helpers ───────────────────────────────────────────────────
 --- Reads a death-alert locale string from _dnl.D.STRINGS
---- (populated by ~Localization.lua from the client locale).
+--- (populated by ~Tables.lua from the client locale).
 local function getLocaleString(key)
 	return _dnl.D.STRINGS[key] or _dnl.L.en.STRINGS[key] or ""
 end
@@ -133,7 +158,7 @@ local defaults = {
 	["min_lvl"]             = 1,
 	["min_lvl_player"]      = false,
 	["max_lvl"]             = MAX_PLAYER_LEVEL,
-	["guild_only"]          = false,
+	["filter_mode"]         = "all",  -- "all", "guild_only", "guild_confederation", "none"
 	["accent_color_r"]      = 1,
 	["accent_color_g"]      = 1,
 	["accent_color_b"]      = 1,
@@ -195,21 +220,7 @@ C_Timer.NewTicker(30, function()
 	end
 end)
 
--- ── guild member cache (for guild_only filter) ───────────────────────
-local _guild_members = {}
-local function _refreshGuildList()
-	local numTotal = GetNumGuildMembers()
-	for i = 1, numTotal do
-		local name = GetGuildRosterInfo(i)
-		if name then
-			local _short_name = string.split("-", name)
-			if _short_name then
-				_guild_members[_short_name] = 1
-			end
-		end
-	end
-end
-C_Timer.NewTicker(10, _refreshGuildList)
+-- Guild filter now handled by DeathNotificationLib~GuildFilter.lua
 
 -- ── random sound ─────────────────────────────────────────────────────
 local function PlayRandomSound()
@@ -228,7 +239,8 @@ end
 -- (These are self-contained; they only reference `death_alert_frame` and `S()`)
 
 local function initializeLFBanner(icon_type, icon_size)
-	local s = S()
+	if not death_alert_frame then return end
+
 	if death_alert_frame.textures == nil then death_alert_frame.textures = {} end
 
 	if death_alert_frame.textures.top == nil then
@@ -304,8 +316,11 @@ local function initializeLFBanner(icon_type, icon_size)
 end
 
 local function initializeBossBanner(icon_type, icon_size)
+	if not death_alert_frame then return end
+
 	local s = S()
 	if not s then return end
+
 	if death_alert_frame.textures == nil then death_alert_frame.textures = {} end
 
 	if death_alert_frame.textures.top == nil then
@@ -459,10 +474,9 @@ function _dnl.playDeathAlert(entry)
 		if entry["map_id"] ~= my_current_map then return end
 	end
 
-	-- Guild only filter
-	if s["guild_only"] then
-		local guildName = GetGuildInfo("player")
-		if entry["guild"] ~= guildName or _guild_members[entry["name"]] == nil then return end
+	-- Guild filter (supports GreenWall confederation)
+	if not _dnl.passesGuildFilterMode(entry, s["filter_mode"]) then
+		return
 	end
 
 	-- Name dedup
@@ -507,7 +521,7 @@ function _dnl.playDeathAlert(entry)
 	end
 
 	-- Pick message template
-	local msg = s["message"]
+	local msg = s["message"] or defaults["message"]
 	local source_name = ""
 	if entry["source_id"] then
 		if id_to_npc[entry["source_id"]] then
@@ -515,25 +529,20 @@ function _dnl.playDeathAlert(entry)
 		end
 	end
 
-	if entry["source_id"] == -2 then msg = s["drown_message"] end
-	if entry["source_id"] == -3 then msg = s["fall_message"] end
-	if entry["source_id"] == -4 then msg = s["fatigue_message"] end
-	if entry["source_id"] == -5 then msg = s["fire_message"] end
-	if entry["source_id"] == -6 then msg = s["lava_message"] end
-	if entry["source_id"] == -7 then msg = s["slime_message"] end
+	if entry["source_id"] == -2 then msg = s["drown_message"] or defaults["drown_message"] end
+	if entry["source_id"] == -3 then msg = s["fall_message"] or defaults["fall_message"] end
+	if entry["source_id"] == -4 then msg = s["fatigue_message"] or defaults["fatigue_message"] end
+	if entry["source_id"] == -5 then msg = s["fire_message"] or defaults["fire_message"] end
+	if entry["source_id"] == -6 then msg = s["lava_message"] or defaults["lava_message"] end
+	if entry["source_id"] == -7 then msg = s["slime_message"] or defaults["slime_message"] end
 
 	-- PvP source
 	local pvp_source_name = entry["extra_data"] and entry["extra_data"]["pvp_source_name"]
 	local source_name_pvp = _dnl.decodePvpSource(entry["source_id"], pvp_source_name) or ""
 	if source_name_pvp ~= "" then source_name = source_name_pvp end
 
-	-- Watchlist icon (optional — depends on host providing deathlog_watchlist_entries)
-	local watchlist_icon = ""
-	if type(deathlog_watchlist_entries) == "table"
-		and deathlog_watchlist_entries[entry["name"]]
-		and deathlog_watchlist_entries[entry["name"]]["Icon"] then
-		watchlist_icon = deathlog_watchlist_entries[entry["name"]]["Icon"] .. " "
-	end
+	-- Optional host-provided watchlist icon (via AttachAddon callback).
+	local watchlist_icon = resolveWatchlistIcon(entry["name"])
 
 	-- Substitutions
 	local subs = {
@@ -648,7 +657,7 @@ function _dnl.playDeathAlert(entry)
 		portrait.modelLayer.useParentLevel = true
 		portrait.modelLayer:Hide()
 		portrait.modelLayer.parentTexture = texture
-		portrait.modelLayer:SetModelDrawLayer("OVERLAY", 6)
+		portrait.modelLayer:SetModelDrawLayer("OVERLAY")
 
 		if death_alert_frame.textures.maskLayer == nil then
 			death_alert_frame.textures.maskLayer = death_alert_frame:CreateTexture(nil, drawLayer, nil, 1)
@@ -712,16 +721,33 @@ function _dnl.testDeathAlert()
 end
 
 -- ── applyDeathAlertSettings ──────────────────────────────────────────
-local _da_options_registered = false
+-- Tracks which parent categories already have a DeathAlert panel registered.
+-- Key = parent name, value = AceConfig app name used for that panel.
+local _da_registered_parents = {}
+-- True once LSM30 HashTable entries have been merged into the local sounds/fonts tables.
+local _lsm30_tables_populated = LSM30 ~= nil
 
 function _dnl.applyDeathAlertSettings()
 	local settings = _dnl.getDeathAlertOwnerSettings()
 	if not settings then return end
 	applyDefaults(false)
+
 	local s = S()
 	if not s then return end
 
 	createDeathAlertFrame()
+	if not death_alert_frame then return end
+
+	-- Lazy re-lookup: libs may not have been in LibStub yet at file-load time
+	-- (e.g. when the host addon loads them via ADDON_LOADED after DNL loads).
+	LSM30 = LSM30 or (LibStub and LibStub("LibSharedMedia-3.0", true))
+	if LSM30 and not _lsm30_tables_populated then
+		_lsm30_tables_populated = true
+		for k, v in pairs(LSM30:HashTable("sound")) do sounds[k] = v end
+		for k, v in pairs(LSM30:HashTable("font")) do fonts[k] = v end
+	end
+	AceConfig = AceConfig or (LibStub and LibStub("AceConfig-3.0", true))
+	AceConfigDialog = AceConfigDialog or (LibStub and LibStub("AceConfigDialog-3.0", true))
 
 	death_alert_frame:ClearAllPoints()
 	death_alert_frame:SetPoint("CENTER", UIParent, "CENTER", s["pos_x"], s["pos_y"])
@@ -746,159 +772,300 @@ function _dnl.applyDeathAlertSettings()
 	death_alert_frame.text:SetFont((fonts[s["font"]] or "Fonts\\NIM_____.ttf"), s["font_size"] * (death_alert_frame.lf_font_scale or 1))
 	death_alert_frame.text:SetTextColor(s["font_color_r"], s["font_color_g"], s["font_color_b"], s["font_color_a"])
 
-	-- Register AceConfig options panel if available and not yet registered
-	if AceConfig and AceConfigDialog and not _da_options_registered then
-		_da_options_registered = true
-		local da_options = {
-			name = widget_name,
-			type = "group",
-			args = {
-				enable = {
-					type = "toggle", name = "Show Death Alert", desc = "Show Death Alert", order = 0,
-					get = function() return S()["enable"] end,
-					set = function() S()["enable"] = not S()["enable"]; _dnl.applyDeathAlertSettings() end,
-				},
-				enable_sound = {
-					type = "toggle", name = "Enable Sound", desc = "Enable alert sound.", order = 0,
-					get = function() return S()["enable_sound"] end,
-					set = function() S()["enable_sound"] = not S()["enable_sound"]; _dnl.applyDeathAlertSettings() end,
-				},
-				guild_only_toggle = {
-					type = "toggle", name = "Guild only alerts", desc = "Only show alerts for deaths within the player's guild.", order = 1,
-					get = function() return S()["guild_only"] end,
-					set = function() S()["guild_only"] = not S()["guild_only"]; _dnl.applyDeathAlertSettings() end,
-				},
-				my_zone_only_toggle = {
-					type = "toggle", name = "Current zone only alerts", desc = "Only show alerts for deaths within the player's current zone.", order = 1,
-					get = function() return S()["current_zone_filter"] end,
-					set = function() S()["current_zone_filter"] = not S()["current_zone_filter"]; _dnl.applyDeathAlertSettings() end,
-				},
-				display_time = {
-					type = "range", name = "Alert Display Time", desc = "Alert Display Time", min = 1, max = 10, step = 0.5, order = 2,
-					get = function() return S()["display_time"] end,
-					set = function(_, value) S()["display_time"] = value; _dnl.applyDeathAlertSettings() end,
-				},
-				test = {
-					type = "execute", name = "Test", desc = "Test the death alert. Clicking this button fakes a death alert.",
-					func = function() _dnl.testDeathAlert() end,
-				},
-				lvl_opts = {
-					type = "group", name = "Level Settings", inline = true, order = 5,
-					args = {
-						min_lvl = {
-							type = "range", name = "Min. Lvl. to Display", desc = "Minimum level to display", min = 1, max = MAX_PLAYER_LEVEL, step = 1, order = 1,
-							disabled = function() return S()["min_lvl_player"] end,
-							get = function() if S()["min_lvl_player"] then return UnitLevel("player") end; return S()["min_lvl"] end,
-							set = function(_, value) S()["min_lvl"] = value; _dnl.applyDeathAlertSettings() end,
-						},
-						max_lvl = {
-							type = "range", name = "Max. Lvl. to Display", desc = "Maximum level to display", min = 1, max = MAX_PLAYER_LEVEL, step = 1,
-							get = function() return S()["max_lvl"] end,
-							set = function(_, value) S()["max_lvl"] = value; _dnl.applyDeathAlertSettings() end,
-						},
-						min_lvl_player = {
-							type = "toggle", name = "Use my level as Min. Lvl.", desc = "Only show alerts for characters your level or higher",
-							get = function() return S()["min_lvl_player"] end,
-							set = function(_, value) S()["min_lvl_player"] = value; _dnl.applyDeathAlertSettings() end,
+	-- Register AceConfig options panel once per unique parent category.
+	-- Multiple addons embedding DNL each get their own panel under their own parent.
+	if AceConfig and AceConfigDialog then
+		local parent = s["death_alert_options_parent"] or "DeathNotificationLib"
+		if not _da_registered_parents[parent] then
+			local app_name = widget_name .. "_" .. parent
+			_da_registered_parents[parent] = app_name
+			local da_options = {
+				name = widget_name,
+				type = "group",
+				args = {
+					enable = {
+						type = "toggle", name = "Show Death Alert", desc = "Show Death Alert", order = 0,
+						get = function() return S()["enable"] end,
+						set = function() S()["enable"] = not S()["enable"]; _dnl.applyDeathAlertSettings() end,
+					},
+					enable_sound = {
+						type = "toggle", name = "Enable Sound", desc = "Enable alert sound.", order = 0,
+						get = function() return S()["enable_sound"] end,
+						set = function() S()["enable_sound"] = not S()["enable_sound"]; _dnl.applyDeathAlertSettings() end,
+					},
+					filter_mode = {
+						type = "select", name = "Death Filter", 
+						desc = "Filter which alerts to display. 'Guild Only' shows only deaths from your guild. 'Guild + Confederation' also includes GreenWall confederation guilds.",
+						order = 1,
+						values = function()
+							return _dnl.getGuildFilterModeOptions()
+						end,
+						get = function()
+							local v = S()["filter_mode"] or "all"
+							if not _dnl.getGuildFilterModeOptions()[v] then v = "all" end
+							return v
+						end,
+						set = function(_, value) S()["filter_mode"] = value; _dnl.applyDeathAlertSettings() end,
+					},
+					greenwall_status = {
+						type = "description", order = 1.5,
+						name = function()
+							return "|cFF888888" .. _dnl.getGreenWallStatus() .. "|r"
+						end,
+					},
+					my_zone_only_toggle = {
+						type = "toggle", name = "Current zone only alerts", desc = "Only show alerts for deaths within the player's current zone.", order = 1,
+						get = function() return S()["current_zone_filter"] end,
+						set = function() S()["current_zone_filter"] = not S()["current_zone_filter"]; _dnl.applyDeathAlertSettings() end,
+					},
+					display_time = {
+						type = "range", name = "Alert Display Time", desc = "Alert Display Time", min = 1, max = 10, step = 0.5, order = 2,
+						get = function() return S()["display_time"] end,
+						set = function(_, value) S()["display_time"] = value; _dnl.applyDeathAlertSettings() end,
+					},
+					test = {
+						type = "execute", name = "Test", desc = "Test the death alert. Clicking this button fakes a death alert.",
+						func = function() _dnl.testDeathAlert() end,
+					},
+					lvl_opts = {
+						type = "group", name = "Level Settings", inline = true, order = 5,
+						args = {
+							min_lvl = {
+								type = "range", name = "Min. Lvl. to Display", desc = "Minimum level to display", min = 1, max = MAX_PLAYER_LEVEL, step = 1, order = 1,
+								disabled = function() return S()["min_lvl_player"] end,
+								get = function() if S()["min_lvl_player"] then return UnitLevel("player") end; return S()["min_lvl"] end,
+								set = function(_, value) S()["min_lvl"] = value; _dnl.applyDeathAlertSettings() end,
+							},
+							max_lvl = {
+								type = "range", name = "Max. Lvl. to Display", desc = "Maximum level to display", min = 1, max = MAX_PLAYER_LEVEL, step = 1,
+								get = function() return S()["max_lvl"] end,
+								set = function(_, value) S()["max_lvl"] = value; _dnl.applyDeathAlertSettings() end,
+							},
+							min_lvl_player = {
+								type = "toggle", name = "Use my level as Min. Lvl.", desc = "Only show alerts for characters your level or higher",
+								get = function() return S()["min_lvl_player"] end,
+								set = function(_, value) S()["min_lvl_player"] = value; _dnl.applyDeathAlertSettings() end,
+							},
 						},
 					},
-				},
-				dl_styles = {
-					type = "select", name = "Theme", width = 1.4, desc = "Choose a Death Alert Theme",
-					dialogControl = LSM30 and "LSM30_Font" or nil,
-					values = death_alert_styles,
-					get = function() return S()["style"] end,
-					set = function(_, key) S()["style"] = key; _dnl.applyDeathAlertSettings() end,
-				},
-				font = {
-					type = "select", name = "Font", desc = "Font to use for death alerts.",
-					dialogControl = LSM30 and "LSM30_Font" or nil,
-					values = fonts,
-					get = function() return S()["font"] end,
-					set = function(_, key) S()["font"] = key; _dnl.applyDeathAlertSettings() end,
-				},
-				font_size = {
-					type = "range", name = "Font size", desc = "Font size", min = 6, max = 40, step = 1,
-					get = function() return S()["font_size"] end,
-					set = function(_, value) S()["font_size"] = value; _dnl.applyDeathAlertSettings() end,
-				},
-				font_color = {
-					type = "color", name = "Font color", desc = "Font color",
-					get = function() return S()["font_color_r"], S()["font_color_g"], S()["font_color_b"], S()["font_color_a"] end,
-					set = function(_, r, g, b, a) S()["font_color_r"]=r; S()["font_color_g"]=g; S()["font_color_b"]=b; S()["font_color_a"]=a; _dnl.applyDeathAlertSettings() end,
-				},
-				msginput = {
-					type = "input", name = "Message", width = 2.5, multiline = true,
-					desc = "Customize the death alert message.\nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<guild> = Guild name\n<source> = Killer name\n<zone> = Character zone\n<playtime> = Time played\n<last_words> = Last words\n\nGroups:\n(...) = Relaxed group, shown if at least one tag has a value\n[...] = Strict group, shown only if all tags have values",
-					get = function() return S()["message"] end,
-					set = function(_, val) S()["message"] = val; _dnl.applyDeathAlertSettings() end,
-					validate = function(_, val)
-						local valid_tags = { name=1, race=1, class=1, level=1, guild=1, source=1, zone=1, playtime=1, last_words=1 }
-						for tag in val:gmatch("<([^>]+)>") do if not valid_tags[tag] then return "Unknown tag: <"..tag..">" end end
-						local pd, bd = 0, 0
-						for i = 1, #val do
-							local c = val:sub(i,i)
-							if c=="(" then pd=pd+1; if pd>1 then return "Nested (...) groups are not supported" end
-							elseif c==")" then pd=pd-1; if pd<0 then return "Unexpected ')' without matching '('" end
-							elseif c=="[" then bd=bd+1; if bd>1 then return "Nested [...] groups are not supported" end
-							elseif c=="]" then bd=bd-1; if bd<0 then return "Unexpected ']' without matching '['" end end
-						end
-						if pd~=0 then return "Unclosed '(' — missing ')'" end
-						if bd~=0 then return "Unclosed '[' — missing ']'" end
-						local stack = {}
-						for i = 1, #val do
-							local c = val:sub(i,i)
-							if c=="(" or c=="[" then
-								table.insert(stack, c)
-							elseif c==")" then
-								if #stack==0 or stack[#stack]~="(" then return "Mismatched groups: ')' closes a '[' group" end
-								table.remove(stack)
-							elseif c=="]" then
-								if #stack==0 or stack[#stack]~="[" then return "Mismatched groups: ']' closes a '(' group" end
-								table.remove(stack)
+					dl_styles = {
+						type = "select", name = "Theme", width = 1.4, desc = "Choose a Death Alert Theme",
+						dialogControl = LSM30 and "LSM30_Font" or nil,
+						values = death_alert_styles,
+						get = function() return S()["style"] end,
+						set = function(_, key) S()["style"] = key; _dnl.applyDeathAlertSettings() end,
+					},
+					font = {
+						type = "select", name = "Font", desc = "Font to use for death alerts.",
+						dialogControl = LSM30 and "LSM30_Font" or nil,
+						values = fonts,
+						get = function() return S()["font"] end,
+						set = function(_, key) S()["font"] = key; _dnl.applyDeathAlertSettings() end,
+					},
+					font_size = {
+						type = "range", name = "Font size", desc = "Font size", min = 6, max = 40, step = 1,
+						get = function() return S()["font_size"] end,
+						set = function(_, value) S()["font_size"] = value; _dnl.applyDeathAlertSettings() end,
+					},
+					font_color = {
+						type = "color", name = "Font color", desc = "Font color",
+						get = function() return S()["font_color_r"], S()["font_color_g"], S()["font_color_b"], S()["font_color_a"] end,
+						set = function(_, r, g, b, a) S()["font_color_r"]=r; S()["font_color_g"]=g; S()["font_color_b"]=b; S()["font_color_a"]=a; _dnl.applyDeathAlertSettings() end,
+					},
+					msginput = {
+						type = "input", name = "Message", width = 2.5, multiline = true,
+						desc = "Customize the death alert message.\nSubstitutions:\n<name> = Character name\n<race> = Character race\n<class> = Character class\n<level> = Character level\n<guild> = Guild name\n<source> = Killer name\n<zone> = Character zone\n<playtime> = Time played\n<last_words> = Last words\n\nGroups:\n(...) = Relaxed group, shown if at least one tag has a value\n[...] = Strict group, shown only if all tags have values",
+						get = function() return S()["message"] end,
+						set = function(_, val) S()["message"] = val; _dnl.applyDeathAlertSettings() end,
+						validate = function(_, val)
+							local valid_tags = { name=1, race=1, class=1, level=1, guild=1, source=1, zone=1, playtime=1, last_words=1 }
+							for tag in val:gmatch("<([^>]+)>") do if not valid_tags[tag] then return "Unknown tag: <"..tag..">" end end
+							local pd, bd = 0, 0
+							for i = 1, #val do
+								local c = val:sub(i,i)
+								if c=="(" then pd=pd+1; if pd>1 then return "Nested (...) groups are not supported" end
+								elseif c==")" then pd=pd-1; if pd<0 then return "Unexpected ')' without matching '('" end
+								elseif c=="[" then bd=bd+1; if bd>1 then return "Nested [...] groups are not supported" end
+								elseif c=="]" then bd=bd-1; if bd<0 then return "Unexpected ']' without matching '['" end end
 							end
-						end
-						for group in val:gmatch("%((.-)%)") do
-							if not group:find("<[^>]+>") then return "Relaxed group (...) must contain at least one <tag>" end
-						end
-						for group in val:gmatch("%[(.-)%]") do
-							if not group:find("<[^>]+>") then return "Strict group [...] must contain at least one <tag>" end
-						end
-						return true
-					end,
-				},
-				reset_size_and_pos = {
-					type = "execute", name = "Reset to default", desc = "Reset to default",
-					func = function() applyDefaults(true); _dnl.applyDeathAlertSettings() end,
-				},
-				accent_color = {
-					type = "color", name = "Frame accent color", desc = "Frame accent color",
-					get = function() return S()["accent_color_r"], S()["accent_color_g"], S()["accent_color_b"], S()["accent_color_a"] end,
-					set = function(_, r, g, b, a) S()["accent_color_r"]=r; S()["accent_color_g"]=g; S()["accent_color_b"]=b; S()["accent_color_a"]=a; _dnl.applyDeathAlertSettings() end,
-				},
-				da_sound = {
-					type = "select", name = "Death Alert Sound", desc = "Sound to use for death alerts.",
-					dialogControl = LSM30 and "LSM30_Sound" or nil,
-					values = LSM30 and LSM30:HashTable("sound") or sounds,
-					get = function() return S()["alert_sound"] end,
-					set = function(_, key) S()["alert_sound"] = key; _dnl.applyDeathAlertSettings() end,
-				},
-				position = {
-					type = "group", name = "Position", inline = true, order = -1,
-					args = {
-						x_size = { type = "range", name = "X-Scale", desc = "X-Scale", min = 200, max = 1000, step = 1, get = function() return S()["size_x"] end, set = function(_,v) S()["size_x"]=v; _dnl.applyDeathAlertSettings() end },
-						y_size = { type = "range", name = "Y-Scale", desc = "Y-Scale", min = 50, max = 600, step = 1, get = function() return S()["size_y"] end, set = function(_,v) S()["size_y"]=v; _dnl.applyDeathAlertSettings() end },
-						pos_x = { type = "range", name = "X-Position", desc = "X-Position", min = -1000, max = 1000, step = 1, get = function() return S()["pos_x"] end, set = function(_,v) S()["pos_x"]=v; _dnl.applyDeathAlertSettings() end },
-						pos_y = { type = "range", name = "Y-Position", desc = "Y-Position", min = -1000, max = 1000, step = 1, get = function() return S()["pos_y"] end, set = function(_,v) S()["pos_y"]=v; _dnl.applyDeathAlertSettings() end },
+							if pd~=0 then return "Unclosed '(' — missing ')'" end
+							if bd~=0 then return "Unclosed '[' — missing ']'" end
+							local stack = {}
+							for i = 1, #val do
+								local c = val:sub(i,i)
+								if c=="(" or c=="[" then
+									table.insert(stack, c)
+								elseif c==")" then
+									if #stack==0 or stack[#stack]~="(" then return "Mismatched groups: ')' closes a '[' group" end
+									table.remove(stack)
+								elseif c=="]" then
+									if #stack==0 or stack[#stack]~="[" then return "Mismatched groups: ']' closes a '(' group" end
+									table.remove(stack)
+								end
+							end
+							for group in val:gmatch("%((.-)%)") do
+								if not group:find("<[^>]+>") then return "Relaxed group (...) must contain at least one <tag>" end
+							end
+							for group in val:gmatch("%[(.-)%]") do
+								if not group:find("<[^>]+>") then return "Strict group [...] must contain at least one <tag>" end
+							end
+							return true
+						end,
+					},
+					reset_size_and_pos = {
+						type = "execute", name = "Reset to default", desc = "Reset to default",
+						func = function() applyDefaults(true); _dnl.applyDeathAlertSettings() end,
+					},
+					accent_color = {
+						type = "color", name = "Frame accent color", desc = "Frame accent color",
+						get = function() return S()["accent_color_r"], S()["accent_color_g"], S()["accent_color_b"], S()["accent_color_a"] end,
+						set = function(_, r, g, b, a) S()["accent_color_r"]=r; S()["accent_color_g"]=g; S()["accent_color_b"]=b; S()["accent_color_a"]=a; _dnl.applyDeathAlertSettings() end,
+					},
+					da_sound = {
+						type = "select", name = "Death Alert Sound", desc = "Sound to use for death alerts.",
+						dialogControl = LSM30 and "LSM30_Sound" or nil,
+						values = sounds,
+						get = function() return S()["alert_sound"] end,
+						set = function(_, key) S()["alert_sound"] = key; _dnl.applyDeathAlertSettings() end,
+					},
+					position = {
+						type = "group", name = "Position", inline = true, order = -1,
+						args = {
+							x_size = { type = "range", name = "X-Scale", desc = "X-Scale", min = 200, max = 1000, step = 1, get = function() return S()["size_x"] end, set = function(_,v) S()["size_x"]=v; _dnl.applyDeathAlertSettings() end },
+							y_size = { type = "range", name = "Y-Scale", desc = "Y-Scale", min = 50, max = 600, step = 1, get = function() return S()["size_y"] end, set = function(_,v) S()["size_y"]=v; _dnl.applyDeathAlertSettings() end },
+							pos_x = { type = "range", name = "X-Position", desc = "X-Position", min = -1000, max = 1000, step = 1, get = function() return S()["pos_x"] end, set = function(_,v) S()["pos_x"]=v; _dnl.applyDeathAlertSettings() end },
+							pos_y = { type = "range", name = "Y-Position", desc = "Y-Position", min = -1000, max = 1000, step = 1, get = function() return S()["pos_y"] end, set = function(_,v) S()["pos_y"]=v; _dnl.applyDeathAlertSettings() end },
+						},
 					},
 				},
-			},
-		}
-		-- Register under parent category if one exists, otherwise standalone
-		local parent = settings._death_alert_options_parent or "Deathlog"
-		AceConfig:RegisterOptionsTable(widget_name, da_options)
-		AceConfigDialog:AddToBlizOptions(widget_name, widget_name, parent)
+			}
+			-- Register the child options table unconditionally.
+			AceConfig:RegisterOptionsTable(app_name, da_options)
+
+			-- Try to add the child panel under the parent.  If the parent category doesn't
+			-- exist in Bliz options yet (host addon not loaded/registered first) this call
+			-- will error — in that case we create a lightweight stub parent so the child
+			-- has somewhere to live.  We deliberately do NOT call RegisterOptionsTable for
+			-- the parent when it already has a real registration (e.g. Deathlog's own panel)
+			-- to avoid overwriting it with an empty table.
+			local childOk = pcall(AceConfigDialog.AddToBlizOptions, AceConfigDialog, app_name, widget_name, parent)
+			if not childOk then
+				-- Parent panel not in Bliz options yet — create a stub, then add child.
+				pcall(AceConfig.RegisterOptionsTable, AceConfig, parent, { name = parent, type = "group", args = {} })
+				pcall(AceConfigDialog.AddToBlizOptions, AceConfigDialog, parent, parent)
+				pcall(AceConfigDialog.AddToBlizOptions, AceConfigDialog, app_name, widget_name, parent)
+			end
+
+			-- If a DNL-fallback stub was previously registered under "DeathNotificationLib",
+			-- replace its content with a redirect so it doesn't show a stale panel.
+			if parent ~= "DeathNotificationLib" and _da_registered_parents["DeathNotificationLib"] then
+				local stub_app = _da_registered_parents["DeathNotificationLib"]
+				pcall(AceConfig.RegisterOptionsTable, AceConfig, stub_app, {
+					name = widget_name, type = "group",
+					args = { note = { type = "description", order = 1,
+						name = "DeathAlert settings are managed by an installed addon.\nOpen that addon's settings panel instead." } }
+				})
+			end
+		end
 	end
+end
+
+--- Generate a random fake death entry for testing widgets.
+--- Picks random name/guild from attached_db if available, random source from
+--- _dnl.D.ID_TO_NPC, random map or instance, and includes PVP source randomization.
+---@return PlayerData
+function _dnl.createFakeEntry()
+	local idx = math.random(1, 100)
+	local some_name = UnitName("player")
+	local some_guild = ""
+
+	local found_random_name = false
+	for _, addon in pairs(_dnl.addons) do
+		if addon.db then
+			for _, entry in pairs(addon.db) do
+				some_name = entry["name"]
+				some_guild = entry["guild"]
+				idx = idx - 1
+				if idx < 1 then
+					found_random_name = true
+					break
+				end
+			end
+			if found_random_name then break end
+		end
+	end
+
+	if not found_random_name then
+		some_name = some_name .. math.random(1, 1000)
+	end
+
+	idx = math.random(1, 100)
+	local some_source_id = -2
+	for k, _ in pairs(_dnl.D.ID_TO_NPC) do
+		idx = idx - 1
+		some_source_id = k
+		if idx < 1 then break end
+	end
+
+	idx = math.random(1, 2)
+	local map_id = nil
+	local instance_id = nil
+	if idx == 1 then
+		idx = math.random(1, 10)
+		for k, _ in pairs(_dnl.D.ID_TO_INSTANCE) do
+			idx = idx - 1
+			instance_id = k
+			if idx < 1 then break end
+		end
+	else
+		idx = math.random(1, 10)
+		for _, zones in pairs(_dnl.D.ZONE_TO_ID) do
+			for _, v in pairs(zones) do
+				idx = idx - 1
+				map_id = v
+				if idx < 1 then break end
+			end
+			if idx < 1 then break end
+		end
+	end
+
+	local valid_class_ids = {1, 2, 3, 4, 5, 7, 8, 9, 11}
+	local fake_entry = {
+		["name"] = some_name,
+		["level"] = math.random(1, 60),
+		["class_id"] = valid_class_ids[math.random(1, #valid_class_ids)],
+		["race_id"] = math.random(1, 8),
+		["source_id"] = some_source_id,
+		["map_id"] = map_id,
+		["instance_id"] = instance_id,
+		["guild"] = some_guild,
+		["played"] = math.random(3600, 864000),
+		["last_words"] = "Sample last words, help!",
+	}
+
+	local pvp_r = math.random(0, 3)
+	local pvp_source_name = nil
+	if pvp_r == 1 or pvp_r == 2 then
+		local pvp_ok, src_id, src_name = _dnl.encodePvpSource(UnitName("target"), UnitGUID("target"))
+		if pvp_ok and src_id then
+			fake_entry["source_id"] = src_id
+			pvp_source_name = src_name
+		end
+	elseif pvp_r == 3 and UnitIsPlayer("target") then
+		_dnl.pvp_state.duel_to_death_player = UnitName("target")
+		local _, src_id, src_name = _dnl.encodePvpSource(UnitName("target"), UnitGUID("target"))
+		fake_entry["source_id"] = src_id
+		pvp_source_name = src_name
+		_dnl.pvp_state.duel_to_death_player = nil
+	end
+
+	if pvp_source_name and math.random(0, 100) < 50 then
+		fake_entry["extra_data"] = {
+			["pvp_source_name"] = pvp_source_name,
+		}
+	end
+
+	return fake_entry
 end
 
 --#region API
@@ -910,5 +1077,7 @@ DeathNotificationLib.PlayDeathAlert = _dnl.playDeathAlert
 DeathNotificationLib.TestDeathAlert = _dnl.testDeathAlert
 
 DeathNotificationLib.UpdateDeathAlert = _dnl.applyDeathAlertSettings
+
+DeathNotificationLib.CreateFakeEntry = _dnl.createFakeEntry
 
 --#endregion

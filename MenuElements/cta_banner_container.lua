@@ -20,6 +20,7 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 -- CTA (Call-to-Action) menu banner for data-rich users.
 -- Follows the MenuElement pattern: container frame with updateMenuElement().
 
+---@type MenuElementContainer
 local cta_banner_container = CreateFrame("Frame", "DeathlogCTABanner", nil, "BackdropTemplate")
 cta_banner_container:SetHeight(40)
 cta_banner_container:SetBackdrop({
@@ -48,30 +49,58 @@ cta_banner_container.label:SetPoint("LEFT", skull, "RIGHT", 6, 0)
 cta_banner_container.label:SetTextColor(1, 0.82, 0)
 
 ---------------------------------------------------------------------------
--- Discord copy button + inline editbox
+-- Discord Server copy button + inline editbox
 ---------------------------------------------------------------------------
 
-local discord_btn = CreateFrame("Button", nil, cta_banner_container, "UIPanelButtonTemplate")
-discord_btn:SetSize(90, 18)
-discord_btn:SetPoint("RIGHT", cta_banner_container, "RIGHT", -100, 0)
-discord_btn:SetText("Discord")
-discord_btn:SetScript("OnClick", function()
-	if cta_banner_container.discord_editbox and cta_banner_container.discord_editbox:IsShown() then
-		cta_banner_container.discord_editbox:Hide()
+local discord_server_btn = CreateFrame("Button", nil, cta_banner_container, "UIPanelButtonTemplate")
+discord_server_btn:SetSize(90, 18)
+discord_server_btn:SetPoint("RIGHT", cta_banner_container, "RIGHT", -198, 0)
+discord_server_btn:SetText("Discord Server")
+discord_server_btn:SetScript("OnClick", function()
+	if cta_banner_container.discord_server_editbox and cta_banner_container.discord_server_editbox:IsShown() then
+		cta_banner_container.discord_server_editbox:Hide()
 	else
-		if not cta_banner_container.discord_editbox then
-			cta_banner_container.discord_editbox = CreateFrame("EditBox", nil, cta_banner_container, "InputBoxTemplate")
-			cta_banner_container.discord_editbox:SetSize(140, 20)
-			cta_banner_container.discord_editbox:SetPoint("BOTTOM", discord_btn, "TOP", 0, 2)
-			cta_banner_container.discord_editbox:SetAutoFocus(false)
-			cta_banner_container.discord_editbox:SetText("deathwing1337")
-			cta_banner_container.discord_editbox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-			cta_banner_container.discord_editbox:SetScript("OnEscapePressed", function(self) self:ClearFocus(); self:Hide() end)
-			cta_banner_container.discord_editbox:SetScript("OnChar", function(self) self:SetText("deathwing1337"); self:HighlightText() end)
+		if not cta_banner_container.discord_server_editbox then
+			cta_banner_container.discord_server_editbox = CreateFrame("EditBox", nil, cta_banner_container, "InputBoxTemplate")
+			cta_banner_container.discord_server_editbox:SetSize(220, 20)
+			cta_banner_container.discord_server_editbox:SetPoint("BOTTOM", discord_server_btn, "TOP", 0, 2)
+			cta_banner_container.discord_server_editbox:SetAutoFocus(false)
+			cta_banner_container.discord_server_editbox:SetText("discord.com/invite/NphuAv75vy")
+			cta_banner_container.discord_server_editbox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+			cta_banner_container.discord_server_editbox:SetScript("OnEscapePressed", function(self) self:ClearFocus(); self:Hide() end)
+			cta_banner_container.discord_server_editbox:SetScript("OnChar", function(self) self:SetText("discord.com/invite/NphuAv75vy"); self:HighlightText() end)
 		end
-		cta_banner_container.discord_editbox:Show()
-		cta_banner_container.discord_editbox:SetFocus()
-		cta_banner_container.discord_editbox:HighlightText()
+		cta_banner_container.discord_server_editbox:Show()
+		cta_banner_container.discord_server_editbox:SetFocus()
+		cta_banner_container.discord_server_editbox:HighlightText()
+	end
+end)
+
+---------------------------------------------------------------------------
+-- Discord DM copy button + inline editbox
+---------------------------------------------------------------------------
+
+local discord_dm_btn = CreateFrame("Button", nil, cta_banner_container, "UIPanelButtonTemplate")
+discord_dm_btn:SetSize(90, 18)
+discord_dm_btn:SetPoint("RIGHT", cta_banner_container, "RIGHT", -102, 0)
+discord_dm_btn:SetText("Discord DM")
+discord_dm_btn:SetScript("OnClick", function()
+	if cta_banner_container.discord_dm_editbox and cta_banner_container.discord_dm_editbox:IsShown() then
+		cta_banner_container.discord_dm_editbox:Hide()
+	else
+		if not cta_banner_container.discord_dm_editbox then
+			cta_banner_container.discord_dm_editbox = CreateFrame("EditBox", nil, cta_banner_container, "InputBoxTemplate")
+			cta_banner_container.discord_dm_editbox:SetSize(140, 20)
+			cta_banner_container.discord_dm_editbox:SetPoint("BOTTOM", discord_dm_btn, "TOP", 0, 2)
+			cta_banner_container.discord_dm_editbox:SetAutoFocus(false)
+			cta_banner_container.discord_dm_editbox:SetText("deathwing1337")
+			cta_banner_container.discord_dm_editbox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+			cta_banner_container.discord_dm_editbox:SetScript("OnEscapePressed", function(self) self:ClearFocus(); self:Hide() end)
+			cta_banner_container.discord_dm_editbox:SetScript("OnChar", function(self) self:SetText("deathwing1337"); self:HighlightText() end)
+		end
+		cta_banner_container.discord_dm_editbox:Show()
+		cta_banner_container.discord_dm_editbox:SetFocus()
+		cta_banner_container.discord_dm_editbox:HighlightText()
 	end
 end)
 

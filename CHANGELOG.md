@@ -2,6 +2,122 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.5.5] - 2026-03-22
+
+### Bug Fixes
+- Fixed HC state being incorrectly inherited when a new character is created with the same name as a previous one — `getHcState` now compares GUID in addition to name, and resets state in-place when either mismatches
+- Fixed crash in creature ranking when saved data contains creatures with an average level above the current expansion cap (e.g. TBC data loaded on a Classic Era client)
+- Filter out synced death entries with level exceeding the max player level
+
+## [0.5.4] - 2026-03-16
+
+### New Features
+- **Death Filter** in the search log — filter deaths by All Deaths, Guild Only, or Guild Confederation (requires GreenWall). Your selection is saved between sessions
+- **GreenWall confederation** option now appears in filter dropdowns as soon as GreenWall is installed, even before its config finishes loading
+
+### Bug Fixes
+- Fixed search log clipping on the right side — scrollbar no longer cuts off content
+- Fixed filters not applying when first opening the search log — persisted filter settings are now respected on initial load
+- Fixed guild member cache being empty for the first 10 seconds after login, causing guild filters to match nothing
+- Deferred library initialization until at least one addon has registered, fixing channel joins and timers firing before any addon was ready
+- Widened truncated settings labels ("Accept legacy protocol messages", "Auto-configure Blizzard death tracking")
+
+### Improvements
+- GreenWall status text now appears directly under the Death Filter in the settings panel
+
+## [0.5.3] - 2026-03-15
+
+### New Features
+- **Refresh button** in the search log — manually reload the death list while preserving all active filters
+- **Auto-refresh** — optionally auto-refresh the death list every 10 seconds; disabled by default, enable it in the options. Active filters are preserved when refreshing
+
+## [0.5.2] - 2026-03-11
+
+### Improvements
+- Heatmap data is now optional — shipped separately via the DeathNotificationLibData addon (auto-downloaded via CurseForge)
+
+### Bug Fixes
+- Fixed minilog Source column not showing predicted sources when `source_id` is nil
+- Fixed death source search filter only matching NPC names — now also matches environment damage, PvP sources, and predicted sources
+- Added `tonumber()` guards on all `source_id` usage to handle string-typed values in saved data without errors
+
+## [0.5.1] - 2026-03-08
+
+### New Features
+- **Minilog artifact themes** — all ArtifactUI class backgrounds are now selectable as minilog themes (Death Knight Frost, Demon Hunter, Druid, Hunter, Mage Arcane, Monk, Paladin, Priest, Priest Shadow, Rogue, Shadow, Shaman, Warlock, Warrior)
+
+### Bug Fixes
+- Fixed Death Alert settings panel not appearing in Interface Options
+- Fixed minilog artifact themes rendering the full sprite sheet instead of the background panel region (now uses correct atlas UV crop via `SetTexCoord`)
+- Fixed Deathlog menu background texture using imprecise UV coordinates — now uses the correct atlas crop for the Rogue BG region
+
+## [0.5.0] - 2026-03-06
+
+### New Features
+- **Resizable & scalable menu** — drag the bottom-right corner to resize and scale the Deathlog window; position and scale are saved between sessions
+- **Precomputed purge data** — purged players are now filtered using precomputed checksums, split by expansion (Classic Era / TBC)
+- **Guild filter** in search log — filter the death log by guild name
+- **DeathlogData** is now a separate addon, installed automatically as a dependency
+- **Instance minimum level enforcement** — deaths from players too low-level for a dungeon or raid are now filtered out (e.g. a level 1 death in AQ20 is no longer counted)
+- **Deathlog Discord** — join the community on Discord for support, feedback, and discussion: `discord.com/invite/NphuAv75vy` (invite link also available in the changelog status bar)
+
+### Improvements
+- `wow_project_id` is now recorded in saved variables, improving expansion-aware data collection
+- Faster addon channel join on login (0.5s delay, down from 5.0s)
+- Dropdown menus refactored away from legacy `UIDropDownMenu` API
+- Global functions renamed from `deathlog_*` to `Deathlog_*` to follow proper naming conventions
+- Global constants renamed from `precomputed_*` to `PRECOMPUTED_*`
+- Proper `ADDON_LOADED` event handling for SavedVariables initialization
+- Updated NPC data, heatmaps, and precomputed statistics with latest death data
+- Type annotations added throughout for IDE support
+- Instance min-level filtering works across both Classic Era and TBC
+- Watchlist interaction zones now match visible UI columns more precisely (Name/Note/Icon)
+- Watchlist remove action now triggers only when clicking directly on the visible `X` icon
+- Watchlist icon dropdown now displays the currently selected icon in the control itself
+- Watchlist refresh cooldown text now updates live each second instead of staying static
+- Watchlist `Last Checked` now updates reliably when refresh queries run
+
+### Bug Fixes
+- Fixed HardcoreDeaths channel pushing General, Trade, and LocalDefense to wrong positions in the channel list
+- Fixed death alert crash when settings hadn't been customized (messages now fall back to defaults)
+- Fixed death alert frame initialization nil errors
+- Fixed empty/broken graphs when only 1 death exists for a class — log-normal std dev is now clamped to a minimum of 0.01 to prevent division by zero
+- Fixed "Mouseover for metric details" tooltip being positioned off-screen in the deadliest creature panel
+- Removed 9 redundant `> 0` guards across UI files
+
+### DeathNotificationLib V9
+- See DeathNotificationLib CHANGELOG for full details
+
+## [0.4.5] - 2026-02-28
+
+### Performance
+- Fixed major FPS drop caused by heatmaps — textures are now created on-demand and hidden when empty, instead of rendering all 10,000 cells every frame (applies to both the world map overlay and the statistics map)
+- Added "Heatmap Resolution" setting (Low / Medium / High / Ultra) to reduce grid density for better performance on slower machines
+
+### Bug Fixes
+- Fixed API compatibility for older clients (pre-1.14.4) that lack `C_AddOns` namespace
+
+## [0.4.4] - 2026-02-27
+
+### New Features
+- **In-game changelog popup** — see what's new after each update! Use `/dl changelog` to open it anytime
+- **Death filter** — filter the minilog and death alerts to show only guild deaths, or disable notifications entirely
+- **GreenWall support** — if you use GreenWall, you can filter by your entire guild confederation
+
+### Bug Fixes
+- Fixed various crashes related to minilog settings and tooltips
+- Fixed "Playtime" column causing errors
+- Improved stability when widgets load before settings are ready
+
+## [0.4.3] - 2026-02-26
+
+### Bug Fixes
+- Fixed multiple "newer version available" messages appearing per session — now only one notification per addon per `/reload`, regardless of how many different newer versions are detected from peers
+
+### DeathNotificationLib V7
+- Unified version notification logic across VersionCheck and Sync modules into a single shared function (`notifyNewerVersion`)
+- Sync's watermark-based version hint now delegates to the same once-per-session notification path used by social-channel broadcasts
+
 ## [0.4.2] - 2026-02-25
 
 ### Bug Fixes

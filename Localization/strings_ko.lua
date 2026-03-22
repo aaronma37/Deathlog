@@ -1,4 +1,4 @@
-deathlog_strings_ko = {
+DEATHLOG_STRINGS_KO = {
 	-- fonts
 	main_font = "Fonts\\2002.ttf",
 	class_font = "Fonts\\2002.ttf",
@@ -7,7 +7,8 @@ deathlog_strings_ko = {
 	deadliest_creature_container_font = "Fonts\\2002.ttf",
 	creature_model_quote_font = "Fonts\\MORPHEUS.TTF",
 	-- words
-	minimap_btn_left_click = "|cFF666666좌클릭:|r 로그 열기",
+	minimap_btn_left_click = "|cFF666666좌클릭:|r 로그 전환",
+	minimap_btn_shift_click = "|cFF666666Shift-클릭:|r 위치/크기 초기화",
 	minimap_btn_right_click = "|cFF666666우클릭:|r ",
 	class_word = "직업",
 	killed_by_word = "사인",

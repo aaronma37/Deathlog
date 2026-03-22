@@ -30,9 +30,52 @@ _dnl.VERSION_CHECK_COMM_NAME = "HCDeathVer"
 local CMD_VERSION_ANNOUNCE = "V"
 local CMD_NEWER_NOTIFY     = "N"
 
---- Per-session tracking to avoid spamming the same notification.
---- { [tag .. ":" .. version] = true }
+--- Per-session tracking: once a tag has warned, it won't warn again.
+--- { [tag] = true }
 local warned_versions = {}
+
+---------------------------------------------------------------------------
+-- Shared version-upgrade notification (used by both VersionCheck and Sync)
+---------------------------------------------------------------------------
+
+---Update newest_detected_version, print a once-per-session chat warning,
+---and fire HookOnNewerVersion callbacks.  Safe to call from any module;
+---duplicate calls for the same tag are silently ignored.
+---@param tag string       3-char addon tag
+---@param remote_ver string  The newer version string
+---@return boolean  true if the warning was shown (first call for this tag)
+function _dnl.notifyNewerVersion(tag, remote_ver)
+	if not remote_ver or remote_ver == "" then return false end
+
+	local addon_name = _dnl.tag_to_addon[tag]
+	if not addon_name then return false end
+	local local_addon = _dnl.addons[addon_name]
+	if not local_addon or not local_addon.addon_version then return false end
+
+	local cmp = _dnl.compareVersions(remote_ver, local_addon.addon_version)
+	if not cmp or cmp <= 0 then return false end
+
+	-- Always track the highest version seen
+	if not local_addon.newest_detected_version
+		or _dnl.compareVersions(remote_ver, local_addon.newest_detected_version) == 1 then
+		local_addon.newest_detected_version = remote_ver
+	end
+
+	-- Only warn once per addon per session
+	if warned_versions[tag] then return false end
+	warned_versions[tag] = true
+
+	print(string.format(
+		"|cffFFFF00[%s]|r A newer version (v%s) is available — you are running v%s. Please update!",
+		local_addon.name, remote_ver, local_addon.addon_version))
+
+	if _dnl.hook_newer_version_functions then
+		for _, fn in ipairs(_dnl.hook_newer_version_functions) do
+			fn(local_addon.name, remote_ver, local_addon.addon_version)
+		end
+	end
+	return true
+end
 
 --- Cooldown per channel type to avoid spamming on rapid group changes (seconds).
 local ANNOUNCE_COOLDOWN = 120
@@ -122,27 +165,7 @@ local function handleVersionAnnounce(sender, tag, remote_ver, chatType)
 	if not cmp then return end
 
 	if cmp > 0 then
-		-- Remote is newer — we need to update
-		local warn_key = tag .. ":" .. remote_ver
-		if not warned_versions[warn_key] then
-			warned_versions[warn_key] = true
-
-			-- Update newest_detected_version
-			if not local_addon.newest_detected_version
-				or _dnl.compareVersions(remote_ver, local_addon.newest_detected_version) == 1 then
-				local_addon.newest_detected_version = remote_ver
-			end
-
-			print(string.format(
-				"|cffFFFF00[%s]|r A newer version (v%s) is available — you are running v%s. Please update!",
-				local_addon.name, remote_ver, local_addon.addon_version))
-
-			if _dnl.hook_newer_version_functions then
-				for _, fn in ipairs(_dnl.hook_newer_version_functions) do
-					fn(local_addon.name, remote_ver, local_addon.addon_version)
-				end
-			end
-		end
+		_dnl.notifyNewerVersion(tag, remote_ver)
 	elseif cmp < 0 then
 		-- Remote is older — whisper them our version so they know
 		local msg = CMD_NEWER_NOTIFY
@@ -166,27 +189,7 @@ local function handleNewerNotify(sender, tag, remote_ver)
 	local local_addon = _dnl.addons[addon_name]
 	if not local_addon or not local_addon.addon_version then return end
 
-	local cmp = _dnl.compareVersions(remote_ver, local_addon.addon_version)
-	if not cmp or cmp <= 0 then return end
-
-	local warn_key = tag .. ":" .. remote_ver
-	if warned_versions[warn_key] then return end
-	warned_versions[warn_key] = true
-
-	if not local_addon.newest_detected_version
-		or _dnl.compareVersions(remote_ver, local_addon.newest_detected_version) == 1 then
-		local_addon.newest_detected_version = remote_ver
-	end
-
-	print(string.format(
-		"|cffFFFF00[%s]|r A newer version (v%s) is available — you are running v%s. Please update!",
-		local_addon.name, remote_ver, local_addon.addon_version))
-
-	if _dnl.hook_newer_version_functions then
-		for _, fn in ipairs(_dnl.hook_newer_version_functions) do
-			fn(local_addon.name, remote_ver, local_addon.addon_version)
-		end
-	end
+	_dnl.notifyNewerVersion(tag, remote_ver)
 end
 
 ---------------------------------------------------------------------------

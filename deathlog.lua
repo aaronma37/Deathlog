@@ -18,37 +18,26 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 local addonName, addon = ...
 
+-- API compatibility: Classic Era uses GetAddOnMetadata, TBC Anniversary uses C_AddOns.GetAddOnMetadata
+local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+
 local SOURCE = DeathNotificationLib.SOURCE
 
-local save_precompute = false
-local use_precomputed = true
-local general_stats = {}
-local log_normal_params = {}
-local class_data = {}
-local most_deadly_units = {
-	["all"] = { -- server
-		["all"] = { -- map_id
-			["all"] = {}, -- class_id
-		},
-	},
-}
-
-local most_deadly_units_normalized = {
-	["all"] = { -- server
-		["all"] = { -- map_id
-			["all"] = {}, -- class_id
-		},
-	},
-}
-
-deathlog_data = deathlog_data or {}
-deathlog_data_map = deathlog_data_map or {}
-deathlog_settings = deathlog_settings or {}
-deathlog_char_data = deathlog_char_data or {}
-deathlog_dev_data = deathlog_dev_data or {}
-deathlog_entry_counts = deathlog_entry_counts or {}
-deathlog_purged = deathlog_purged or {}
-precomputed_purges = precomputed_purges or {}
+local function initVariables()
+	---@diagnostic disable: lowercase-global
+	deathlog_settings = deathlog_settings or {}
+	deathlog_data = deathlog_data or {}
+	deathlog_data_map = deathlog_data_map or {}
+	deathlog_watchlist_entries = deathlog_watchlist_entries or {}
+	deathlog_record_econ_stats = deathlog_record_econ_stats or {}
+	deathlog_entry_counts = deathlog_entry_counts or {}
+	deathlog_purged = deathlog_purged or {}
+	deathlog_precomputed = deathlog_precomputed or {}
+	deathlog_dev_data = deathlog_dev_data or {}
+	deathlog_char_data = deathlog_char_data or {}
+	---@diagnostic enable: lowercase-global
+end
+initVariables()
 
 local sync_options -- forward declaration; populated after options table
 local deathlog_sync_options_registered = false
@@ -59,7 +48,11 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject(addon
 	icon = "Interface\\TARGETINGFRAME\\UI-TargetingFrame-Skull",
 	OnClick = function(self, btn)
 		if btn == "LeftButton" then
-			deathlogShowMenu(deathlog_data, general_stats, log_normal_params)
+			if IsShiftKeyDown() then
+				DeathlogResetMenuPosition()
+			else
+				DeathlogToggleMenu(deathlog_data, DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS, DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS)
+			end
 		else
 			Settings.OpenToCategory(addonName)
 		end
@@ -67,6 +60,7 @@ local deathlog_minimap_button = LibStub("LibDataBroker-1.1"):NewDataObject(addon
 	OnTooltipShow = function(tooltip)
 		tooltip:AddLine(addonName)
 		tooltip:AddLine(Deathlog_L.minimap_btn_left_click)
+		tooltip:AddLine(Deathlog_L.minimap_btn_shift_click)
 		tooltip:AddLine(Deathlog_L.minimap_btn_right_click .. GAMEOPTIONS_MENU)
 	end,
 })
@@ -100,10 +94,6 @@ end
 ---   - Has both class_id and race_id → "self_death" (older clients only had addon-reported deaths with full data)
 ---   - Missing class_id or race_id → "blizzard" (Blizzard's HARDCORE_DEATHS channel reports lack these fields)
 local function initEntryCounters()
-	if deathlog_entry_counts == nil then
-		deathlog_entry_counts = {}
-	end
-
 	if deathlog_entry_counts["initialized"] then
 		return
 	end
@@ -138,11 +128,11 @@ function Deathlog_LoadFromHardcore()
 		if deathlog_data == nil or deathlog_data["legacy"] == nil then
 			deathlog_data["legacy"] = {}
 		end
-		local local_deathlog_fletcher16 = deathlog_fletcher16
+		local local_deathlog_fletcher16 = Deathlog_fletcher16
 		for _, v in ipairs(Hardcore_Settings["death_log_entries"]) do
 			c = c + 1
 			local checksum = local_deathlog_fletcher16(v["name"], v["guild"], v["level"], v["source_id"])
-			local converted_date = deathlogConvertStringDateUnix(v["date"])
+			local converted_date = DeathlogConvertStringDateUnix(v["date"])
 			if converted_date then
 				if deathlog_data["legacy"][checksum] == nil then
 					new_entries = new_entries + 1
@@ -192,13 +182,6 @@ end
 
 local function newEntry(_player_data, _checksum, num_peer_checks, in_guild, source)
 	local realmName = GetRealmName()
-	if deathlog_data == nil then
-		deathlog_data = {}
-	end
-
-	if deathlog_data_map == nil then
-		deathlog_data_map = {}
-	end
 
 	if deathlog_data[realmName] == nil then
 		deathlog_data[realmName] = {}
@@ -220,7 +203,7 @@ local function newEntry(_player_data, _checksum, num_peer_checks, in_guild, sour
 		return
 	end
 
-	if precomputed_purges[realmName] and precomputed_purges[realmName][modified_cs] then
+	if DeathlogDataCopy.PRECOMPUTED_PURGES[realmName] and DeathlogDataCopy.PRECOMPUTED_PURGES[realmName][modified_cs] then
 		return
 	end
 
@@ -276,7 +259,7 @@ local function newEntry(_player_data, _checksum, num_peer_checks, in_guild, sour
 	-- Only create widgets for self-reported deaths, peer broadcasts, and Blizzard notifications.
 	-- Death alert is now handled internally by DNL (~DeathAlert.lua) via createEntry().
 	if source == SOURCE.SELF_DEATH or source == SOURCE.PEER_BROADCAST or source == SOURCE.BLIZZARD then
-		deathlog_widget_minilog_createEntry(_player_data)
+		Deathlog_widget_minilog_createEntry(_player_data)
 	end
 
 	deathlog_data_map[realmName][player_name] = modified_checksum
@@ -371,11 +354,33 @@ local function deathlog_runDedupCleanup()
 end
 
 local deathlog_initialized = false
+
+local function deathlog_watchlistIconProvider(playerName)
+	if type(playerName) ~= "string" then return nil end
+	if type(deathlog_watchlist_entries) ~= "table" then return nil end
+	local watch = deathlog_watchlist_entries[playerName]
+	if type(watch) ~= "table" then return nil end
+	if type(watch.Icon) ~= "string" or watch.Icon == "" then return nil end
+	return watch.Icon
+end
+
 local function handleEvent(self, event, ...)
-	if event == "PLAYER_ENTERING_WORLD" then
+	if event == "ADDON_LOADED" then
+		local loaded_addon = ...
+		if loaded_addon == addonName then
+			initVariables()
+			self:UnregisterEvent("ADDON_LOADED")
+		end
+	elseif event == "PLAYER_ENTERING_WORLD" then
 		if deathlog_initialized then return end
 		deathlog_initialized = true
 		initMinimapButton()
+
+		-- Write project id into settings
+		deathlog_settings["wow_project_id"] = WOW_PROJECT_ID
+
+		deathlog_settings["DeathAlert"] = deathlog_settings["DeathAlert"] or {}
+		deathlog_settings["DeathAlert"]["death_alert_options_parent"] = "Deathlog"
 
 		-- Ensure realm sub-tables exist so AttachAddon receives valid table
 		-- references (not nil) that remain in sync with newEntry.
@@ -393,44 +398,66 @@ local function handleEvent(self, event, ...)
 		-- One-time dedup cleanup of existing data (runs before stats/widgets)
 		deathlog_runDedupCleanup()
 
+		local version = GetAddOnMetadata("Deathlog", "Version")
 		DeathNotificationLib.AttachAddon({
 			name             = "Deathlog",
 			tag              = "DLG",
-			isUnitTracked    = deathlog_isUnitTracked,
+			isUnitTracked    = Deathlog_isUnitTracked,
+			watchlistIconProvider = deathlog_watchlistIconProvider,
 			settings         = deathlog_settings,
 			db               = deathlog_data[realmName],
 			db_map           = deathlog_data_map[realmName],
 			dev_data         = deathlog_dev_data,
-			addon_version    = C_AddOns.GetAddOnMetadata("Deathlog", "Version"),
+			addon_version    = version,
 		})
 		DeathNotificationLib.HookOnNewAddonEntry("Deathlog", newEntry)
-		if use_precomputed then
-			general_stats = precomputed_general_stats
-			log_normal_params = precomputed_log_normal_params
-			deathlog_dev_data.precomputed_general_stats = nil
-			deathlog_dev_data.precomputed_log_normal_params = nil
-			deathlog_dev_data.class_data = nil
+		if DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS and DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS and DeathlogDataCopy.PRECOMPUTED_KAPLAN_MEIER and DeathlogDataCopy.PRECOMPUTED_MOST_DEADLY_BY_ZONE and DeathlogDataCopy.PRECOMPUTED_PURGES then
+			deathlog_precomputed.PRECOMPUTED_GENERAL_STATS = nil
+			deathlog_precomputed.PRECOMPUTED_LOG_NORMAL_PARAMS = nil
+			deathlog_precomputed.PRECOMPUTED_KAPLAN_MEIER = nil
+			deathlog_precomputed.PRECOMPUTED_MOST_DEADLY_BY_ZONE = nil
+			deathlog_precomputed.PRECOMPUTED_PURGES = nil
 		else
-			Deathlog_LoadFromHardcore()
-			general_stats = deathlog_calculate_statistics(deathlog_data, nil)
-			log_normal_params = deathlog_calculateLogNormalParameters(deathlog_data)
-			class_data = deathlog_calculateClassData(deathlog_data)
-			if save_precompute then
-				deathlog_dev_data.precomputed_general_stats = general_stats
-				deathlog_dev_data.precomputed_log_normal_params = log_normal_params
-				deathlog_dev_data.class_data = class_data
-			else
-				deathlog_dev_data.precomputed_general_stats = nil
-				deathlog_dev_data.precomputed_log_normal_params = nil
+			if not (version == deathlog_precomputed.DD_VERSION and deathlog_precomputed.PRECOMPUTED_GENERAL_STATS and deathlog_precomputed.PRECOMPUTED_LOG_NORMAL_PARAMS and deathlog_precomputed.PRECOMPUTED_KAPLAN_MEIER and deathlog_precomputed.PRECOMPUTED_MOST_DEADLY_BY_ZONE and deathlog_precomputed.PRECOMPUTED_PURGES) then
+				deathlog_precomputed.DD_VERSION = version
+				deathlog_precomputed.PRECOMPUTED_GENERAL_STATS = Deathlog_calculate_statistics(deathlog_data)
+				deathlog_precomputed.PRECOMPUTED_LOG_NORMAL_PARAMS = Deathlog_calculateLogNormalParameters(deathlog_data)
+				deathlog_precomputed.PRECOMPUTED_KAPLAN_MEIER = Deathlog_calculateKaplanMeier(deathlog_data)
+				deathlog_precomputed.PRECOMPUTED_MOST_DEADLY_BY_ZONE = Deathlog_calculateMostDeadlyByZone(deathlog_data)
+				deathlog_precomputed.PRECOMPUTED_PURGES = Deathlog_calculatePurges(deathlog_data)
 			end
+
+			DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS = deathlog_precomputed.PRECOMPUTED_GENERAL_STATS
+			DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS = deathlog_precomputed.PRECOMPUTED_LOG_NORMAL_PARAMS
+			DeathlogDataCopy.PRECOMPUTED_KAPLAN_MEIER = deathlog_precomputed.PRECOMPUTED_KAPLAN_MEIER
+			DeathlogDataCopy.PRECOMPUTED_MOST_DEADLY_BY_ZONE = deathlog_precomputed.PRECOMPUTED_MOST_DEADLY_BY_ZONE
+			DeathlogDataCopy.PRECOMPUTED_PURGES = deathlog_precomputed.PRECOMPUTED_PURGES
 		end
-		most_deadly_units["all"]["all"]["all"] = deathlogGetOrdered(general_stats, { "all", "all", "all", nil })
+		if DeathNotificationLibDataCopy.HEATMAP_INTENSITY and DeathNotificationLibDataCopy.HEATMAP_CREATURE_SUBSET then
+			deathlog_precomputed.HEATMAP_INTENSITY = nil
+			deathlog_precomputed.HEATMAP_CREATURE_SUBSET = nil
+		else
+			if not (version == deathlog_precomputed.DNLD_VERSION and deathlog_precomputed.HEATMAP_INTENSITY and deathlog_precomputed.HEATMAP_CREATURE_SUBSET) then
+				local skull_locs = Deathlog_calculateSkullLocs(deathlog_data)
+				deathlog_precomputed.DNLD_VERSION = version
+				deathlog_precomputed.HEATMAP_INTENSITY = Deathlog_calculateHeatmapIntensity(skull_locs)
+				deathlog_precomputed.HEATMAP_CREATURE_SUBSET = Deathlog_calculateHeatmapCreatureSubset(skull_locs)
+			end
+
+			DeathNotificationLibDataCopy.HEATMAP_INTENSITY = deathlog_precomputed.HEATMAP_INTENSITY
+			DeathNotificationLibDataCopy.HEATMAP_CREATURE_SUBSET = deathlog_precomputed.HEATMAP_CREATURE_SUBSET
+		end
 		loadWidgets()
+
+		-- Check if we should show changelog popup (version upgrade)
+		if Deathlog_CheckShowChangelog then
+			Deathlog_CheckShowChangelog()
+		end
 
 		initEntryCounters()
 		C_Timer.After(2.5, function()
 			Deathlog_CheckCTA()
-			deathlog_startHunterCleanup()
+			Deathlog_startHunterCleanup()
 		end)
 
 		if not deathlog_sync_options_registered then
@@ -448,8 +475,12 @@ local function SlashHandler(msg, editbox)
 		DeathNotificationLib.TestDeathAlert()
 	elseif msg == "sync" then
 		DeathNotificationLib.SyncStatus()
+	elseif msg == "changelog" then
+		if Deathlog_ShowChangelog then
+			Deathlog_ShowChangelog()
+		end
 	else
-		deathlogShowMenu(deathlog_data, general_stats, log_normal_params)
+		DeathlogShowMenu(deathlog_data, DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS, DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS)
 	end
 end
 
@@ -457,6 +488,7 @@ SLASH_DEATHLOG1, SLASH_DEATHLOG2 = "/deathlog", "/dl"
 SlashCmdList["DEATHLOG"] = SlashHandler
 
 local deathlog_event_handler = CreateFrame("Frame", "deathlog", nil, "BackdropTemplate")
+deathlog_event_handler:RegisterEvent("ADDON_LOADED")
 deathlog_event_handler:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 deathlog_event_handler:SetScript("OnEvent", handleEvent)
@@ -508,7 +540,7 @@ local options = {
 			type = "toggle",
 			name = "Accept legacy protocol messages",
 			desc = "When enabled, death messages from older addon versions (v0–v2 protocol) are accepted. When disabled, only current (v3) protocol messages are processed.",
-			width = 1.3,
+			width = 1.5,
 			order = 20,
 			get = function()
 				if deathlog_settings["legacy_messages"] == nil then
@@ -540,7 +572,7 @@ local options = {
 			type = "toggle",
 			name = "Auto-configure Blizzard death tracking",
 			desc = "When enabled, Deathlog automatically configures the Blizzard hardcore death CVars, joins the HardcoreDeaths channel (hidden), and periodically verifies they remain active. This lets us convert Blizzard's built-in death notifications into full Deathlog entries. If you don't want lower-quality data from these notifications, you can leave this on and disable 'Allow addonless death logging' instead.",
-			width = 1.3,
+			width = 1.5,
 			order = 35,
 			get = function()
 				if deathlog_settings["auto_blizzard_deaths"] == nil then
@@ -599,6 +631,8 @@ local options = {
 			set = function()
 				deathlog_settings["show_minimap"] = not deathlog_settings["show_minimap"]
 
+				if not deathlog_minimap_button_stub then return end
+
 				if deathlog_settings["show_minimap"] then
 					deathlog_minimap_button_stub:Show(addonName)
 				else
@@ -620,6 +654,22 @@ local options = {
 			end,
 			set = function()
 				deathlog_settings["colored_tooltips"] = not deathlog_settings["colored_tooltips"]
+			end,
+		},
+		auto_refresh_search = {
+			type = "toggle",
+			name = "Auto-refresh search results",
+			desc = "When enabled, the Log tab automatically refreshes every 10 seconds so new deaths appear without reopening the UI. Only fires when on page 1 with no active filters.",
+			width = 1.3,
+			order = 55,
+			get = function()
+				if deathlog_settings["auto_refresh_search"] == nil then
+					deathlog_settings["auto_refresh_search"] = false
+				end
+				return deathlog_settings["auto_refresh_search"]
+			end,
+			set = function()
+				deathlog_settings["auto_refresh_search"] = not deathlog_settings["auto_refresh_search"]
 			end,
 		},
 		prediction_radius = {
@@ -645,7 +695,7 @@ local options = {
 }
 
 LibStub("AceConfig-3.0"):RegisterOptionsTable(addonName, options)
-optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addonName, "Deathlog", nil)
+LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addonName, "Deathlog", nil)
 
 sync_options = {
 	name = "Database Sync",

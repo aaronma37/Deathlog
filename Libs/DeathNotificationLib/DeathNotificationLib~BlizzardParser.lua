@@ -119,7 +119,7 @@ end
 
 -- Semantic args: 1=link, 2=name, 3=source, 4=area, 5=level
 addMatcher("HARDCORE_CAUSEOFDEATH_CREATURE", function(a)
-	return a[2], _dnl.D.NPC_TO_ID[a[3]], a[4], tonumber(a[5]), nil
+	return a[2], _dnl.resolveId(_dnl.D.NPC_TO_ID[a[3]]), a[4], tonumber(a[5]), nil
 end)
 
 -- Semantic args: 1=link, 2=name, 3=source, 4=area, 5=level

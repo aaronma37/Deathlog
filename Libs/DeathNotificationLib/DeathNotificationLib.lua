@@ -21,25 +21,25 @@ along with the DeathNotificationLib. If not, see <http://www.gnu.org/licenses/>.
 -- This file is NO LONGER loaded by the TOC and exists only for reference.
 -- All code has been dissolved into the ~tilde module files:
 --
---   ~Init.lua           Bootstrap, debug flag, injected-dep slots
---   ~Localization.lua    Locale strings and translations
+--   ~Init.lua            Bootstrap, debug flag, injected-dep slots
+--   ~Tables.lua          Data tables, both locale-aware and static
 --   ~Protocol.lua        PlayerData type, protocol constants, environment_damage, encode/decode
 --   ~PvP.lua             PvP source tracking, duel-to-death detection
 --   ~BlizzardParser.lua  Universal death-broadcast parser (HARDCORE_CAUSEOFDEATH_* globals)
 --   ~UnitState.lua       Per-unit state tracking, realm classification, constants
+--   ~GuildFilter.lua     Guild membership filtering with GreenWall multi-guild support
 --   ~Query.lua           Query functions, single-flight /who system
 --   ~PredictSource.lua   Heatmap-based death source prediction
 --   ~Cache.lua           Hook system, createEntry, LRU dedup cache, public hook API
 --   ~Broadcast.lua       Outbound broadcast, resolveDeathSource
---   ~Sync.lua            Continuous background database sync between peers
 --   ~VersionCheck.lua    Addon version broadcasting on party/raid/guild/instance channels
+--   ~Sync.lua            Continuous background database sync between peers
 --   ~Events.lua          Event handlers, AttachAddon API
 --   ~Backwards.lua       Backwards compatibility shims for old API functions
 --   ~Transport.lua       Send queues
 --   ~DeathAlert.lua      Built-in death alert popup (BossBanner UI, sounds, AceConfig panel)
 --   ~HardcoreTBC.lua     Bridge for HardcoreTBC addon death events
 --   ~UltraHardcore.lua   Bridge for UltraHardcore addon death events
---   ~Testing.lua         CreateFakeEntry (public), debug test utilities
 --   ~Finalizer.lua       Cleanup
 --
 -- If you previously loaded this file via your own TOC or XML, replace the

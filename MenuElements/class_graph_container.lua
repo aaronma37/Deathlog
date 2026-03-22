@@ -21,17 +21,23 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 local deathlog_class_colors = DeathNotificationLib.CLASS_COLORS
 local graph_lines = {}
+---@type MenuElementContainer
 local graph_container = CreateFrame("frame")
 
-local class_tbl = deathlog_class_tbl
+local class_tbl = Deathlog_class_tbl
 
 function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, setMapRegion, model)
 	if model == nil then
 		model = "Kaplan-Meier"
 	end
 
-	local class_log_normal_params = precomputed_log_normal_params["all"]
-	local kaplan_meier = precomputed_kaplan_meier
+	if not DeathlogDataCopy.PRECOMPUTED_KAPLAN_MEIER or not DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS then
+		graph_container:Hide()
+		return
+	end
+
+	local class_log_normal_params = DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS["all"]
+	local kaplan_meier = DeathlogDataCopy.PRECOMPUTED_KAPLAN_MEIER
 	graph_container:Show()
 	graph_container:SetParent(scroll_frame.frame)
 	graph_container.height = 140
@@ -39,6 +45,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 	graph_container.offsetx = 50
 	graph_container.zoomy = 8
 	graph_container.offsety = -30
+	graph_container:ClearAllPoints()
 	graph_container:SetPoint("TOPLEFT", 590, -70)
 	graph_container:SetWidth(400)
 	graph_container:SetHeight(140)
@@ -136,7 +143,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 				* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
 		end
 		for k, v in pairs(class_tbl) do
-			if class_log_normal_params and class_log_normal_params[v][1] then
+			if class_log_normal_params and class_log_normal_params[v] then
 				for i = 1, MAX_PLAYER_LEVEL do
 					y_values[v][i] = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 					if y_values[v][i] > max_y then
@@ -145,6 +152,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 				end
 			end
 		end
+		if max_y == 0 then max_y = 1 end
 		graph_container.zoomy = 1 / max_y
 
 		for i = 1, 5 do
@@ -180,14 +188,14 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 					if class_id == v then
 						alpha = 1
 					end
-					if class_log_normal_params[v][1] then
+					if class_log_normal_params[v] then
 						local y1 = logNormal(i - 1, class_log_normal_params[v][1], class_log_normal_params[v][2])
 						local y2 = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 						createLine(k .. i, {
-							graph_container.offsetx + (i - 2) / MAX_PLAYER_LEVEL * graph_container.width,
+							graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
 							y1 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 						}, {
-							graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
+							graph_container.offsetx + i / MAX_PLAYER_LEVEL * graph_container.width,
 							y2 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 						}, class_colors[k], nil, alpha)
 					else
@@ -223,7 +231,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 				* exp((-1 / 2) * ((log(x) - mean) / sigma) * ((log(x) - mean) / sigma))
 		end
 		for k, v in pairs(class_tbl) do
-			if class_log_normal_params and class_log_normal_params[v][1] then
+			if class_log_normal_params and class_log_normal_params[v] then
 				for i = 1, MAX_PLAYER_LEVEL do
 					y_values[v][i] = logNormal(i, class_log_normal_params[v][1], class_log_normal_params[v][2])
 					if y_values[v][i] > max_y then
@@ -261,15 +269,15 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 				local cdf = {}
 				for i = 2, MAX_PLAYER_LEVEL do
 					for k, v in pairs(class_tbl) do
-						if cdf[v] == nil then
-							cdf[v] =
-								Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
-						end
-						local alpha = 0.2
-						if class_id == v then
-							alpha = 1
-						end
-						if class_log_normal_params[v][1] then
+					if class_log_normal_params[v] then
+							if cdf[v] == nil then
+								cdf[v] =
+									Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
+							end
+							local alpha = 0.2
+							if class_id == v then
+								alpha = 1
+							end
 							createLine("cdf" .. k .. i, {
 								graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
 								(1 - cdf[v][i - 1]) * graph_container.height + _offsety,
@@ -293,6 +301,7 @@ function graph_container.updateMenuElement(scroll_frame, class_id, stats_tbl, se
 					if class_id == v then
 						alpha = 1
 					end
+					if kaplan_meier[v] == nil then break end
 					-- Get values with fallback for TBC levels beyond precomputed data
 					local km_prev = kaplan_meier[v][i - 1]
 					local km_curr = kaplan_meier[v][i]

@@ -16,7 +16,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
+---@diagnostic disable: invisible
 --
+-- API compatibility: Classic Era uses GetAddOnMetadata, TBC Anniversary uses C_AddOns.GetAddOnMetadata
+local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+
 local id_to_npc = DeathNotificationLib.ID_TO_NPC
 local instance_to_id = DeathNotificationLib.INSTANCE_TO_ID
 local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
@@ -36,17 +40,21 @@ local total_pages = 1
 
 local main_font = Deathlog_L.main_font
 
-local deathlog_tabcontainer = nil
-local deathlog_cta_banner = nil
+local deathlog_tabcontainer ---@type AceGUIDeathlogTabGroup
+local deathlog_cta_banner ---@type any
 
-local class_tbl = deathlog_class_tbl
-local race_tbl = deathlog_race_tbl
+local class_tbl = Deathlog_class_tbl
+local race_tbl = Deathlog_race_tbl
 
 -- Cached sorted results for pagination (avoids re-filtering/re-sorting on page changes)
 local cached_sorted_results = nil
 local cached_filter_version = 0  -- Incremented when filters change
 
-local deathlog_menu = nil
+local _auto_refresh_ticker = nil
+local _get_filters_active = nil  -- Set by drawLogTab; returns true if any filter is active
+local _get_active_filter = nil   -- Set by drawLogTab; returns the current filter function
+
+local deathlog_menu ---@type AceGUIDeathlogMenu
 
 local WorldMapButton = WorldMapFrame:GetCanvas()
 local death_tomb_frame = CreateFrame("frame", nil, WorldMapButton)
@@ -241,7 +249,7 @@ local subtitle_data = {
 		"Death Source",
 		140,
 		function(_entry, _server_name)
-			return deathlogGetCachedSource(_entry)
+			return DeathlogGetCachedSource(_entry)
 		end,
 	},
 	{
@@ -266,7 +274,6 @@ local font_container = CreateFrame("Frame")
 font_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 font_container:SetSize(100, 100)
 font_container:Show()
-local row_entry = {}
 local font_strings = {} -- idx/columns
 local header_strings = {} -- columns
 local row_backgrounds = {} --idx
@@ -391,7 +398,7 @@ end
 
 local function setDeathlogMenuLogData(data)
 	-- Sort and cache the filtered results
-	local ordered = deathlogOrderByFast(data)
+	local ordered = DeathlogOrderByFast(data)
 	cached_sorted_results = ordered
 	cached_filter_version = cached_filter_version + 1
 	
@@ -443,8 +450,9 @@ local function setDeathlogMenuLogData(data)
 		end
 	end
 
+	local total_str = (DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS and DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS["all"] and DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS["all"]["all"] and DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS["all"]["all"]["all"] and DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS["all"]["all"]["all"]["all"] and DeathlogDataCopy.PRECOMPUTED_GENERAL_STATS["all"]["all"]["all"]["all"]["num_entries"]) or "?"
+
 	if #ordered == 1 then
-		local total_str = (precomputed_general_stats and precomputed_general_stats["all"] and precomputed_general_stats["all"]["all"] and precomputed_general_stats["all"]["all"]["all"] and precomputed_general_stats["all"]["all"]["all"]["all"] and precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]) or "?"
 		deathlog_menu:SetStatusText(
 			#ordered
 				.. " search result/"
@@ -452,7 +460,6 @@ local function setDeathlogMenuLogData(data)
 				.. " preprocessed"
 		)
 	else
-		local total_str = (precomputed_general_stats and precomputed_general_stats["all"] and precomputed_general_stats["all"]["all"] and precomputed_general_stats["all"]["all"]["all"] and precomputed_general_stats["all"]["all"]["all"]["all"] and precomputed_general_stats["all"]["all"]["all"]["all"]["num_entries"]) or "?"
 		deathlog_menu:SetStatusText(
 			#ordered
 				.. " search results/"
@@ -468,13 +475,13 @@ local _log_normal_params = {}
 local initialized = false
 
 local function drawLogTab(container)
-	local scroll_container = AceGUI:Create("SimpleGroup")
+	local scroll_container = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_container:SetFullWidth(true)
 	scroll_container:SetFullHeight(true)
 	scroll_container:SetLayout("Fill")
 	deathlog_tabcontainer:AddChild(scroll_container)
 
-	local scroll_frame = AceGUI:Create("ScrollFrame")
+	local scroll_frame = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_frame:SetLayout("Flow")
 	scroll_container:AddChild(scroll_frame)
 
@@ -483,10 +490,15 @@ local function drawLogTab(container)
 	local class_filter = nil
 	local race_filter = nil
 	local zone_filter = nil
+	local guild_filter = nil
 	local min_level_filter = nil
 	local max_level_filter = nil
 	local death_source_filter = nil
 	local last_words_filter = nil
+	local death_filter_mode = deathlog_settings["search_log_filter_mode"] or "all"
+	if not DeathNotificationLib.GetGuildFilterModeOptions(true)[death_filter_mode] then
+		death_filter_mode = "all"
+	end
 	local filter = function(server_name, _entry)
 		if server_filter ~= nil then
 			if server_filter(server_name, _entry) == false then
@@ -538,10 +550,25 @@ local function drawLogTab(container)
 				return false
 			end
 		end
+		if death_filter_mode ~= "all" then
+			if not DeathNotificationLib.PassesGuildFilterMode(_entry, death_filter_mode) then
+				return false
+			end
+		end
 		return true
 	end
 
-	local class_search_box = AceGUI:Create("Icon")
+	-- Expose a function that checks if any filter is currently active (used by auto-refresh)
+	_get_filters_active = function()
+		return server_filter ~= nil or name_filter ~= nil or class_filter ~= nil
+			or race_filter ~= nil or zone_filter ~= nil or guild_filter ~= nil
+			or min_level_filter ~= nil or max_level_filter ~= nil
+			or death_source_filter ~= nil or last_words_filter ~= nil
+			or death_filter_mode ~= "all"
+	end
+	_get_active_filter = function() return filter end
+
+	local class_search_box = AceGUI:Create("Icon") ---@type AceGUIIcon
 	class_search_box:SetWidth(50)
 	class_search_box:SetHeight(50)
 	class_search_box:SetDisabled(true)
@@ -554,8 +581,6 @@ local function drawLogTab(container)
 	end
 
 	local function serverDD(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-
 		local function setFilter()
 			local key = font_container.server_dd.val
 			if key ~= "" then
@@ -567,50 +592,38 @@ local function drawLogTab(container)
 					end
 				end
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			else
 				server_filter = nil
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			end
 		end
 
-		info.text, info.checked, info.func =
-			"All", font_container.server_dd.val == "", function()
-				font_container.server_dd.val = ""
-				UIDropDownMenu_SetText(font_container.server_dd, "All")
-				setFilter()
-			end
-		UIDropDownMenu_AddButton(info)
-
-		-- Track which servers we've added to avoid duplicates
+		local entries = { { name = "All", value = "" } }
 		local added_servers = {}
-		
-		-- Always add current realm first
 		local current_realm = GetRealmName()
 		if current_realm and current_realm ~= "" then
-			info.text, info.checked, info.func =
-				current_realm, font_container.server_dd.val == current_realm, function()
-					font_container.server_dd.val = current_realm
-					UIDropDownMenu_SetText(font_container.server_dd, font_container.server_dd.val)
-					setFilter()
-				end
-			UIDropDownMenu_AddButton(info)
+			table.insert(entries, { name = current_realm, value = current_realm })
 			added_servers[current_realm] = true
 		end
-
-		-- Add other servers from death data
 		for server_name, _ in pairs(_deathlog_data) do
 			if not added_servers[server_name] then
-				info.text, info.checked, info.func =
-					server_name, font_container.server_dd.val == server_name, function()
-						font_container.server_dd.val = server_name
-						UIDropDownMenu_SetText(font_container.server_dd, font_container.server_dd.val)
-						setFilter()
-					end
-				UIDropDownMenu_AddButton(info)
+				table.insert(entries, { name = server_name, value = server_name })
 				added_servers[server_name] = true
 			end
+		end
+
+		for _, entry in ipairs(entries) do
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = entry.name
+			info.checked = font_container.server_dd.val == entry.value
+			info.func = function()
+				font_container.server_dd.val = entry.value
+				UIDropDownMenu_SetText(font_container.server_dd, entry.name)
+				setFilter()
+			end
+			UIDropDownMenu_AddButton(info)
 		end
 	end
 
@@ -637,8 +650,6 @@ local function drawLogTab(container)
 	end
 
 	local function raceDD(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-
 		local function setFilter()
 			local key = font_container.race_dd.val
 			if key ~= "" then
@@ -650,29 +661,28 @@ local function drawLogTab(container)
 					end
 				end
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			else
 				race_filter = nil
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			end
 		end
 
-		info.text, info.checked, info.func =
-			"All", font_container.race_dd.val == "", function()
-				font_container.race_dd.val = ""
-				UIDropDownMenu_SetText(font_container.race_dd, "All")
+		local entries = { { name = "All", value = "" } }
+		for race_name, _ in pairs(race_tbl) do
+			table.insert(entries, { name = race_name, value = race_name })
+		end
+
+		for _, entry in ipairs(entries) do
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = entry.name
+			info.checked = font_container.race_dd.val == entry.value
+			info.func = function()
+				font_container.race_dd.val = entry.value
+				UIDropDownMenu_SetText(font_container.race_dd, entry.name)
 				setFilter()
 			end
-		UIDropDownMenu_AddButton(info)
-
-		for race_name, _ in pairs(race_tbl) do
-			info.text, info.checked, info.func =
-				race_name, font_container.race_dd.val == race_name, function()
-					font_container.race_dd.val = race_name
-					UIDropDownMenu_SetText(font_container.race_dd, font_container.race_dd.val)
-					setFilter()
-				end
 			UIDropDownMenu_AddButton(info)
 		end
 	end
@@ -700,8 +710,6 @@ local function drawLogTab(container)
 	end
 
 	local function classDD(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-
 		local function setFilter()
 			local key = font_container.class_dd.val
 			if key ~= "" then
@@ -713,29 +721,28 @@ local function drawLogTab(container)
 					end
 				end
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			else
 				class_filter = nil
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			end
 		end
 
-		info.text, info.checked, info.func =
-			"All", font_container.class_dd.val == "", function()
-				font_container.class_dd.val = ""
-				UIDropDownMenu_SetText(font_container.class_dd, "All")
+		local entries = { { name = "All", value = "" } }
+		for class_name, _ in pairs(class_tbl) do
+			table.insert(entries, { name = class_name, value = class_name })
+		end
+
+		for _, entry in ipairs(entries) do
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = entry.name
+			info.checked = font_container.class_dd.val == entry.value
+			info.func = function()
+				font_container.class_dd.val = entry.value
+				UIDropDownMenu_SetText(font_container.class_dd, entry.name)
 				setFilter()
 			end
-		UIDropDownMenu_AddButton(info)
-
-		for class_name, _ in pairs(class_tbl) do
-			info.text, info.checked, info.func =
-				class_name, font_container.class_dd.val == class_name, function()
-					font_container.class_dd.val = class_name
-					UIDropDownMenu_SetText(font_container.class_dd, font_container.class_dd.val)
-					setFilter()
-				end
 			UIDropDownMenu_AddButton(info)
 		end
 	end
@@ -787,8 +794,6 @@ local function drawLogTab(container)
 	end
 
 	local function zoneDD(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-
 		local function setFilter()
 			local key = font_container.zone_dd.val
 			if key ~= "" then
@@ -808,11 +813,11 @@ local function drawLogTab(container)
 					return false
 				end
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			else
 				zone_filter = nil
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			end
 		end
 
@@ -827,12 +832,14 @@ local function drawLogTab(container)
 
 		if level == 1 or level == nil then
 			-- "All" option at top level
-			info.text, info.checked, info.func =
-				"All", font_container.zone_dd.val == "", function()
-					font_container.zone_dd.val = ""
-					UIDropDownMenu_SetText(font_container.zone_dd, "All")
-					setFilter()
-				end
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = "All"
+			info.checked = font_container.zone_dd.val == ""
+			info.func = function()
+				font_container.zone_dd.val = ""
+				UIDropDownMenu_SetText(font_container.zone_dd, "All")
+				setFilter()
+			end
 			UIDropDownMenu_AddButton(info, level)
 
 			if skip_zone_expansion_layer then
@@ -848,7 +855,7 @@ local function drawLogTab(container)
 					table.sort(sorted_categories, function(a, b) return a.name < b.name end)
 
 					for _, category in ipairs(sorted_categories) do
-						info = UIDropDownMenu_CreateInfo()
+						local info = UIDropDownMenu_CreateInfo()
 						info.text = category.name
 						info.hasArrow = true
 						info.notCheckable = true
@@ -865,7 +872,7 @@ local function drawLogTab(container)
 						end
 						table.sort(sorted_zones, function(a, b) return a.name < b.name end)
 						for _, zone in ipairs(sorted_zones) do
-							info = UIDropDownMenu_CreateInfo()
+							local info = UIDropDownMenu_CreateInfo()
 							info.text = zone.name
 							info.checked = font_container.zone_dd.val == zone.name
 							info.func = function()
@@ -886,7 +893,7 @@ local function drawLogTab(container)
 				end
 				table.sort(sorted_expansion_ids)
 				for _, expansion_id in ipairs(sorted_expansion_ids) do
-					info = UIDropDownMenu_CreateInfo()
+					local info = UIDropDownMenu_CreateInfo()
 					info.text = _G["EXPANSION_NAME" .. expansion_id]
 					info.hasArrow = true
 					info.notCheckable = true
@@ -917,7 +924,7 @@ local function drawLogTab(container)
 						end
 						table.sort(sorted_zones, function(a, b) return a.name < b.name end)
 						for _, zone in ipairs(sorted_zones) do
-							info = UIDropDownMenu_CreateInfo()
+							local info = UIDropDownMenu_CreateInfo()
 							info.text = zone.name
 							info.checked = font_container.zone_dd.val == zone.name
 							info.func = function()
@@ -944,7 +951,7 @@ local function drawLogTab(container)
 					table.sort(sorted_categories, function(a, b) return a.name < b.name end)
 					
 					for _, category in ipairs(sorted_categories) do
-						info = UIDropDownMenu_CreateInfo()
+						local info = UIDropDownMenu_CreateInfo()
 						info.text = category.name
 						info.hasArrow = true
 						info.notCheckable = true
@@ -963,7 +970,7 @@ local function drawLogTab(container)
 						end
 						table.sort(sorted_zones, function(a, b) return a.name < b.name end)
 						for _, zone in ipairs(sorted_zones) do
-							info = UIDropDownMenu_CreateInfo()
+							local info = UIDropDownMenu_CreateInfo()
 							info.text = zone.name
 							info.checked = font_container.zone_dd.val == zone.name
 							info.func = function()
@@ -998,7 +1005,7 @@ local function drawLogTab(container)
 					end
 					table.sort(sorted_zones, function(a, b) return a.name < b.name end)
 					for _, zone in ipairs(sorted_zones) do
-						info = UIDropDownMenu_CreateInfo()
+						local info = UIDropDownMenu_CreateInfo()
 						info.text = zone.name
 						info.checked = font_container.zone_dd.val == zone.name
 						info.func = function()
@@ -1061,8 +1068,6 @@ local function drawLogTab(container)
 	end
 
 	local function instanceDD(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-
 		local function setFilter()
 			local key = font_container.instance_dd.val
 			if key ~= "" then
@@ -1082,11 +1087,11 @@ local function drawLogTab(container)
 					return false
 				end
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			else
 				zone_filter = nil
 				clearDeathlogMenuLogData()
-				setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 			end
 		end
 
@@ -1101,12 +1106,14 @@ local function drawLogTab(container)
 
 		if level == 1 or level == nil then
 			-- "All" option at top level
-			info.text, info.checked, info.func =
-				"All", font_container.instance_dd.val == "", function()
-					font_container.instance_dd.val = ""
-					UIDropDownMenu_SetText(font_container.instance_dd, "All")
-					setFilter()
-				end
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = "All"
+			info.checked = font_container.instance_dd.val == ""
+			info.func = function()
+				font_container.instance_dd.val = ""
+				UIDropDownMenu_SetText(font_container.instance_dd, "All")
+				setFilter()
+			end
 			UIDropDownMenu_AddButton(info, level)
 
 			if skip_expansion_layer then
@@ -1116,7 +1123,7 @@ local function drawLogTab(container)
 					for _, category_name in ipairs(category_order) do
 						local filtered_instances = getInstanceCategoryForExpansion(category_name, single_expansion_id)
 						if #filtered_instances > 0 then
-							info = UIDropDownMenu_CreateInfo()
+							local info = UIDropDownMenu_CreateInfo()
 							info.text = category_name
 							info.hasArrow = true
 							info.notCheckable = true
@@ -1134,7 +1141,7 @@ local function drawLogTab(container)
 						end
 						table.sort(sorted_instances, function(a, b) return a.name < b.name end)
 						for _, instance in ipairs(sorted_instances) do
-							info = UIDropDownMenu_CreateInfo()
+							local info = UIDropDownMenu_CreateInfo()
 							info.text = instance.name
 							info.checked = font_container.instance_dd.val == instance.name
 							info.func = function()
@@ -1155,7 +1162,7 @@ local function drawLogTab(container)
 				end
 				table.sort(sorted_expansion_ids)
 				for _, expansion_id in ipairs(sorted_expansion_ids) do
-					info = UIDropDownMenu_CreateInfo()
+					local info = UIDropDownMenu_CreateInfo()
 					info.text = _G["EXPANSION_NAME" .. expansion_id]
 					info.hasArrow = true
 					info.notCheckable = true
@@ -1186,7 +1193,7 @@ local function drawLogTab(container)
 						end
 						table.sort(sorted_instances, function(a, b) return a.name < b.name end)
 						for _, instance in ipairs(sorted_instances) do
-							info = UIDropDownMenu_CreateInfo()
+							local info = UIDropDownMenu_CreateInfo()
 							info.text = instance.name
 							info.checked = font_container.instance_dd.val == instance.name
 							info.func = function()
@@ -1207,7 +1214,7 @@ local function drawLogTab(container)
 					for _, category_name in ipairs(category_order) do
 						local filtered_instances = getInstanceCategoryForExpansion(category_name, expansion_id)
 						if #filtered_instances > 0 then
-							info = UIDropDownMenu_CreateInfo()
+							local info = UIDropDownMenu_CreateInfo()
 							info.text = category_name
 							info.hasArrow = true
 							info.notCheckable = true
@@ -1227,7 +1234,7 @@ local function drawLogTab(container)
 						end
 						table.sort(sorted_instances, function(a, b) return a.name < b.name end)
 						for _, instance in ipairs(sorted_instances) do
-							info = UIDropDownMenu_CreateInfo()
+							local info = UIDropDownMenu_CreateInfo()
 							info.text = instance.name
 							info.checked = font_container.instance_dd.val == instance.name
 							info.func = function()
@@ -1262,7 +1269,7 @@ local function drawLogTab(container)
 					end
 					table.sort(sorted_instances, function(a, b) return a.name < b.name end)
 					for _, instance in ipairs(sorted_instances) do
-						info = UIDropDownMenu_CreateInfo()
+						local info = UIDropDownMenu_CreateInfo()
 						info.text = instance.name
 						info.checked = font_container.instance_dd.val == instance.name
 						info.func = function()
@@ -1320,11 +1327,11 @@ local function drawLogTab(container)
 				return false
 			end
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		else
 			min_level_filter = nil
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		end
 	end)
 
@@ -1360,11 +1367,11 @@ local function drawLogTab(container)
 				return false
 			end
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		else
 			max_level_filter = nil
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		end
 	end)
 
@@ -1401,11 +1408,11 @@ local function drawLogTab(container)
 				end
 			end
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		else
 			name_filter = nil
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		end
 	end)
 
@@ -1442,11 +1449,11 @@ local function drawLogTab(container)
 				end
 			end
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		else
 			guild_filter = nil
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		end
 	end)
 
@@ -1476,21 +1483,19 @@ local function drawLogTab(container)
 		local text = font_container.death_source_box:GetText()
 		if #text > 0 then
 			death_source_filter = function(_, _entry)
-				if
-					id_to_npc[_entry["source_id"]] ~= nil
-					and string.find(string.lower(id_to_npc[_entry["source_id"]]), string.lower(text))
-				then
+				local source = DeathlogGetCachedSource(_entry)
+				if source ~= "" and string.find(string.lower(source), string.lower(text)) then
 					return true
 				else
 					return false
 				end
 			end
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		else
 			death_source_filter = nil
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		end
 	end)
 
@@ -1500,6 +1505,49 @@ local function drawLogTab(container)
 	font_container.death_source_box.text:SetText("Death Source")
 	font_container.death_source_box.text:Show()
 
+	--- Death filter dropdown
+	if font_container.death_filter_dd == nil then
+		font_container.death_filter_dd = CreateFrame("Frame", nil, font_container, "UIDropDownMenuTemplate")
+	end
+
+	local filter_mode_labels = DeathNotificationLib.GetGuildFilterModeOptions(true)
+	local filter_mode_keys = {}
+	for k in pairs(filter_mode_labels) do
+		table.insert(filter_mode_keys, k)
+	end
+	table.sort(filter_mode_keys)
+	local function deathFilterDD(frame, level, menuList)
+		for _, value in ipairs(filter_mode_keys) do
+			local label = filter_mode_labels[value]
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = label
+			info.checked = death_filter_mode == value
+			info.func = function()
+				death_filter_mode = value
+				deathlog_settings["search_log_filter_mode"] = value
+				UIDropDownMenu_SetText(font_container.death_filter_dd, label)
+				clearDeathlogMenuLogData()
+				setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
+			end
+			UIDropDownMenu_AddButton(info)
+		end
+	end
+
+	font_container.death_filter_dd:SetPoint("TOPLEFT", font_container.death_source_box, "TOPRIGHT", -15, 0)
+	UIDropDownMenu_SetText(font_container.death_filter_dd, filter_mode_labels[death_filter_mode] or "All Deaths")
+	UIDropDownMenu_SetWidth(font_container.death_filter_dd, 100)
+	UIDropDownMenu_Initialize(font_container.death_filter_dd, deathFilterDD)
+	UIDropDownMenu_JustifyText(font_container.death_filter_dd, "LEFT")
+
+	if font_container.death_filter_dd.text == nil then
+		font_container.death_filter_dd.text = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	end
+	font_container.death_filter_dd.text:SetPoint("LEFT", font_container.death_filter_dd, "LEFT", 20, 20)
+	font_container.death_filter_dd.text:SetFont(Deathlog_L.menu_font, 12, "")
+	font_container.death_filter_dd.text:SetTextColor(255 / 255, 215 / 255, 0)
+	font_container.death_filter_dd.text:SetText("Death Filter")
+	font_container.death_filter_dd.text:Show()
+
 	if font_container.last_words_check_box == nil then
 		font_container.last_words_check_box =
 			CreateFrame("CheckButton", "deathlog_last_words_check_box", font_container, "ChatConfigCheckButtonTemplate")
@@ -1508,7 +1556,7 @@ local function drawLogTab(container)
 		font_container.last_words_check_box.text = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	end
 
-	font_container.last_words_check_box:SetPoint("TOPLEFT", font_container.death_source_box, "TOPLEFT", 98, -5)
+	font_container.last_words_check_box:SetPoint("TOPLEFT", font_container.death_filter_dd, "BOTTOMLEFT", 16, 5)
 	font_container.last_words_check_box:SetChecked(false)
 	font_container.last_words_check_box:SetScript("OnClick", function()
 		if font_container.last_words_check_box:GetChecked() == true then
@@ -1520,11 +1568,11 @@ local function drawLogTab(container)
 			end
 
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		else
 			last_words_filter = nil
 			clearDeathlogMenuLogData()
-			setDeathlogMenuLogData(deathlogFilter(_deathlog_data, filter))
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
 		end
 	end)
 
@@ -1534,10 +1582,9 @@ local function drawLogTab(container)
 	font_container.last_words_check_box.text:SetText("Last Words Only")
 	font_container.last_words_check_box.text:Show()
 
-	local header_label = AceGUI:Create("InteractiveLabel")
+	local header_label = AceGUI:Create("InteractiveLabel") ---@type AceGUIInteractiveLabel
 	header_label:SetFullWidth(true)
 	header_label:SetHeight(60)
-	header_label.font_strings = {}
 
 	header_strings[subtitle_data[1][1]]:SetPoint("LEFT", header_label.frame, "LEFT", 0, 0)
 	header_strings[subtitle_data[1][1]]:Show()
@@ -1551,17 +1598,19 @@ local function drawLogTab(container)
 	header_label:SetText(" ")
 	scroll_frame:AddChild(header_label)
 
-	local deathlog_group = AceGUI:Create("ScrollFrame")
+	local deathlog_group = AceGUI:Create("ScrollFrame") ---@type AceGUIScrollFrame
 	deathlog_group:SetFullWidth(true)
 	deathlog_group:SetHeight(440)
 	scroll_frame:AddChild(deathlog_group)
 	font_container:SetParent(deathlog_group.frame)
-	-- font_container:SetPoint("TOP", deathlog_group.frame, "TOP", 0, -100)
+	font_container:ClearAllPoints()
+	font_container:SetPoint("TOPLEFT", deathlog_group.frame, "TOPLEFT", 0, 0)
 	font_container:SetHeight(400)
 	font_container:Show()
 	for i = 1, max_rows do
 		local idx = 101 - i
-		local _entry = AceGUI:Create("InteractiveLabel")
+		local _entry = AceGUI:Create("InteractiveLabel") ---@type AceGUIInteractiveLabel
+---@diagnostic disable-next-line: param-type-mismatch
 		_entry:SetHighlight("Interface\\Glues\\CharacterSelect\\Glues-CharacterSelect-Highlight")
 
 		font_strings[i][subtitle_data[1][1]]:SetPoint("LEFT", _entry.frame, "LEFT", 0, 0)
@@ -1578,19 +1627,6 @@ local function drawLogTab(container)
 		_entry:SetFont(main_font, 16, "")
 		_entry:SetColor(1, 1, 1)
 		_entry:SetText(" ")
-
-		function _entry:deselect()
-			for _, v in pairs(_entry.font_strings) do
-				v:SetTextColor(1, 1, 1)
-			end
-		end
-
-		function _entry:select()
-			selected = idx
-			for _, v in pairs(_entry.font_strings) do
-				v:SetTextColor(1, 1, 0)
-			end
-		end
 
 		_entry:SetCallback("OnLeave", function(widget)
 			GameTooltip:Hide()
@@ -1664,7 +1700,7 @@ local function drawLogTab(container)
 			if font_strings[i] and font_strings[i]["Last Words"] then
 				_last_words = font_strings[i]["Last Words"]:GetText() or ""
 			end
-			deathlog_setTooltip(_name, _level, _guild, _race, _class, _source, _zone, _date, _playtime, _last_words)
+			Deathlog_setTooltip(_name, _level, _guild, _race, _class, _source, _zone, _date, _playtime, _last_words)
 			GameTooltip:Show()
 		end)
 
@@ -1672,7 +1708,6 @@ local function drawLogTab(container)
 		deathlog_group.scrollbar:Hide()
 		deathlog_group:AddChild(_entry)
 	end
-	scroll_frame.scrollbar:Hide()
 
 	if font_container.page_str == nil then
 		font_container.page_str = font_container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -1685,6 +1720,9 @@ local function drawLogTab(container)
 		font_container.page_str:Show()
 	end
 
+	font_container.page_str:ClearAllPoints()
+	font_container.page_str:SetPoint("BOTTOM", scroll_container.frame, "BOTTOM", 0, 0)
+
 	if font_container.prev_button == nil then
 		font_container.prev_button = CreateFrame("Button", nil, font_container)
 		font_container.prev_button:SetPoint("CENTER", font_container.page_str, "CENTER", -50, 0)
@@ -1694,6 +1732,9 @@ local function drawLogTab(container)
 		font_container.prev_button:SetHighlightTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Up.PNG")
 		font_container.prev_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-PrevPage-Down.PNG")
 	end
+
+	font_container.prev_button:ClearAllPoints()
+	font_container.prev_button:SetPoint("CENTER", font_container.page_str, "CENTER", -50, 0)
 
 	font_container.prev_button:SetScript("OnClick", function()
 		if page_number > 1 then
@@ -1714,6 +1755,9 @@ local function drawLogTab(container)
 		font_container.next_button:SetPushedTexture("Interface/Buttons/UI-SpellbookIcon-NextPage-Down.PNG")
 	end
 
+	font_container.next_button:ClearAllPoints()
+	font_container.next_button:SetPoint("CENTER", font_container.page_str, "CENTER", 50, 0)
+
 	font_container.next_button:SetScript("OnClick", function()
 		if page_number < total_pages then
 			page_number = page_number + 1
@@ -1723,31 +1767,63 @@ local function drawLogTab(container)
 		end
 	end)
 
+	if font_container.refresh_button == nil then
+		font_container.refresh_button = CreateFrame("Button", nil, font_container)
+		font_container.refresh_button:SetWidth(25)
+		font_container.refresh_button:SetHeight(25)
+		font_container.refresh_button:SetNormalTexture("Interface/Buttons/UI-SquareButton-Up")
+		font_container.refresh_button:SetPushedTexture("Interface/Buttons/UI-SquareButton-Down")
+		font_container.refresh_button:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square")
+		local icon = font_container.refresh_button:CreateTexture(nil, "ARTWORK")
+		icon:SetTexture("Interface/Buttons/UI-RefreshButton")
+		icon:SetSize(16, 16)
+		icon:SetPoint("CENTER", font_container.refresh_button, "CENTER", -1, 0)
+	end
+
+	font_container.refresh_button:ClearAllPoints()
+	font_container.refresh_button:SetPoint("RIGHT", font_container.next_button, "RIGHT", 464, 0)
+	font_container.refresh_button:SetScript("OnClick", function()
+		clearDeathlogMenuLogData(true)
+		setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, filter))
+	end)
+	font_container.refresh_button:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:AddLine("Refresh", 1, 1, 1)
+		GameTooltip:AddLine("Reload the death list with the latest data.", 0.8, 0.8, 0.8, true)
+		GameTooltip:Show()
+	end)
+	font_container.refresh_button:SetScript("OnLeave", function()
+		GameTooltip:Hide()
+	end)
+
 	deathlog_group.frame:HookScript("OnHide", function()
 		font_container:Hide()
+	end)
+	deathlog_group.frame:HookScript("OnShow", function()
+		font_container:Show()
 	end)
 end
 
 local function drawWatchListTab(container)
 	local current_creature_id = nil
 	local update_functions = {}
-	local scroll_container = AceGUI:Create("SimpleGroup")
+	local scroll_container = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_container:SetFullWidth(true)
 	scroll_container:SetFullHeight(true)
 	scroll_container:SetLayout("Fill")
 	deathlog_tabcontainer:AddChild(scroll_container)
 
-	local scroll_frame = AceGUI:Create("SimpleGroup")
+	local scroll_frame = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_frame:SetLayout("Flow")
 	scroll_container:AddChild(scroll_frame)
 
-	local title_label = AceGUI:Create("Heading")
+	local title_label = AceGUI:Create("Heading") ---@type AceGUIHeading
 	title_label:SetFullWidth(true)
 	title_label:SetText("Watch List")
 	title_label.label:SetFont(Deathlog_L.menu_font, 24, "")
 	scroll_frame:AddChild(title_label)
 
-	local description_label = AceGUI:Create("Label")
+	local description_label = AceGUI:Create("Label") ---@type AceGUILabel
 	description_label:SetFullWidth(true)
 	description_label:SetText(
 		"Add players of interest to a watch list.  If a player on this list dies while you are logged off, the deathlog system will try to notify you when you log in.  Add a description and icon to remember the player by."
@@ -1779,17 +1855,17 @@ end
 local function drawCreatureStatisticsTab(container)
 	local current_creature_id = nil
 	local update_functions = {}
-	local scroll_container = AceGUI:Create("SimpleGroup")
+	local scroll_container = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_container:SetFullWidth(true)
 	scroll_container:SetFullHeight(true)
 	scroll_container:SetLayout("Fill")
 	deathlog_tabcontainer:AddChild(scroll_container)
 
-	local scroll_frame = AceGUI:Create("SimpleGroup")
+	local scroll_frame = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_frame:SetLayout("Flow")
 	scroll_container:AddChild(scroll_frame)
 
-	local title_label = AceGUI:Create("Heading")
+	local title_label = AceGUI:Create("Heading") ---@type AceGUIHeading
 	title_label:SetFullWidth(true)
 	title_label:SetText("Death Statistics - Azeroth")
 	title_label.label:SetFont(Deathlog_L.menu_font, 24, "")
@@ -1798,7 +1874,7 @@ local function drawCreatureStatisticsTab(container)
 		title_label:SetText("Death Statistics - " .. zone)
 	end
 
-	local description_label = AceGUI:Create("Label")
+	local description_label = AceGUI:Create("Label") ---@type AceGUILabel
 	description_label:SetFullWidth(true)
 	description_label:SetText("Death Statistics - Azeroth")
 	description_label.label:SetFont(Deathlog_L.menu_font, 14, "")
@@ -1833,7 +1909,7 @@ local function drawCreatureStatisticsTab(container)
 		current_creature_id = creature_id
 		if name then
 			modifyTitle(name)
-			modifyDescription(current_creature_id, name)
+			modifyDescription(current_creature_id)
 		end
 		local stats_tbl = {
 			["stats"] = _stats,
@@ -1855,17 +1931,17 @@ end
 
 local function drawStatisticsTab(container)
 	local update_functions = {}
-	local scroll_container = AceGUI:Create("SimpleGroup")
+	local scroll_container = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_container:SetFullWidth(true)
 	scroll_container:SetFullHeight(true)
 	scroll_container:SetLayout("Fill")
 	deathlog_tabcontainer:AddChild(scroll_container)
 
-	local scroll_frame = AceGUI:Create("SimpleGroup")
+	local scroll_frame = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_frame:SetLayout("Flow")
 	scroll_container:AddChild(scroll_frame)
 
-	local title_label = AceGUI:Create("Heading")
+	local title_label = AceGUI:Create("Heading") ---@type AceGUIHeading
 	title_label:SetFullWidth(true)
 	title_label:SetText("Death Statistics - Azeroth")
 	title_label.label:SetFont(Deathlog_L.menu_font, 24, "")
@@ -1874,7 +1950,7 @@ local function drawStatisticsTab(container)
 		title_label:SetText("Death Statistics - " .. zone)
 	end
 
-	local description_label = AceGUI:Create("Label")
+	local description_label = AceGUI:Create("Label") ---@type AceGUILabel
 	description_label:SetFullWidth(true)
 	description_label:SetText("Death Statistics - Azeroth")
 	description_label.label:SetFont(Deathlog_L.menu_font, 14, "")
@@ -1882,7 +1958,7 @@ local function drawStatisticsTab(container)
 	description_label.label:SetJustifyH("CENTER")
 	scroll_frame:AddChild(description_label)
 	local function modifyDescription(map_id, zone)
-		local mid = deathlog_normalize_map_id_for_stats(map_id)
+		local mid = Deathlog_normalize_map_id_for_stats(map_id)
 		local deaths_in_zone = 0
 		if _stats["all"][mid] then
 			deaths_in_zone = _stats["all"][mid]["all"]["all"]["num_entries"]
@@ -1926,7 +2002,7 @@ local function drawStatisticsTab(container)
 		}
 
 		-- Check if data exists for this zone
-		local mid = deathlog_normalize_map_id_for_stats(map_id)
+		local mid = Deathlog_normalize_map_id_for_stats(map_id)
 		local has_data = _stats and _stats["all"] and _stats["all"][mid]
 
 		if has_data then
@@ -1945,7 +2021,7 @@ local function drawStatisticsTab(container)
 		end
 	end
 
-	setMapRegion(deathlog_ROOT_MAP_ID, deathlog_ROOT_MAP_NAME)
+	setMapRegion(Deathlog_ROOT_MAP_ID, Deathlog_ROOT_MAP_NAME)
 
 	scroll_frame.frame:HookScript("OnHide", function()
 		for _, v in ipairs(stats_menu_elements) do
@@ -1959,18 +2035,18 @@ end
 
 local function drawClassStatisticsTab(container)
 	local update_functions = {}
-	local scroll_container = AceGUI:Create("SimpleGroup")
+	local scroll_container = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	local current_instance_id = 36
 	scroll_container:SetFullWidth(true)
 	scroll_container:SetFullHeight(true)
 	scroll_container:SetLayout("Fill")
 	deathlog_tabcontainer:AddChild(scroll_container)
 
-	local scroll_frame = AceGUI:Create("SimpleGroup")
+	local scroll_frame = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_frame:SetLayout("Flow")
 	scroll_container:AddChild(scroll_frame)
 
-	local title_label = AceGUI:Create("Heading")
+	local title_label = AceGUI:Create("Heading") ---@type AceGUIHeading
 	title_label:SetFullWidth(true)
 	title_label:SetText("Death Statistics - Azeroth")
 	title_label.label:SetFont(Deathlog_L.menu_font, 24, "")
@@ -2011,18 +2087,18 @@ end
 
 local function drawInstanceStatisticsTab(container)
 	local update_functions = {}
-	local scroll_container = AceGUI:Create("SimpleGroup")
-	local current_instance_id = deathlog_ALL_INSTANCES_ID
+	local scroll_container = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
+	local current_instance_id = Deathlog_ALL_INSTANCES_ID
 	scroll_container:SetFullWidth(true)
 	scroll_container:SetFullHeight(true)
 	scroll_container:SetLayout("Fill")
 	deathlog_tabcontainer:AddChild(scroll_container)
 
-	local scroll_frame = AceGUI:Create("SimpleGroup")
+	local scroll_frame = AceGUI:Create("SimpleGroup") ---@type AceGUISimpleGroup
 	scroll_frame:SetLayout("Flow")
 	scroll_container:AddChild(scroll_frame)
 
-	local title_label = AceGUI:Create("Heading")
+	local title_label = AceGUI:Create("Heading") ---@type AceGUIHeading
 	title_label:SetFullWidth(true)
 	title_label:SetText("Death Statistics - Azeroth")
 	title_label.label:SetFont(Deathlog_L.menu_font, 24, "")
@@ -2031,7 +2107,7 @@ local function drawInstanceStatisticsTab(container)
 		title_label:SetText("Death Statistics - " .. zone)
 	end
 
-	local description_label = AceGUI:Create("Label")
+	local description_label = AceGUI:Create("Label") ---@type AceGUILabel
 	description_label:SetFullWidth(true)
 	description_label:SetText("")
 	description_label.label:SetFont(Deathlog_L.menu_font, 14, "")
@@ -2039,7 +2115,7 @@ local function drawInstanceStatisticsTab(container)
 	description_label.label:SetJustifyH("CENTER")
 	scroll_frame:AddChild(description_label)
 	local function modifyDescription(map_id, zone)
-		local mid = deathlog_normalize_map_id_for_stats(map_id)
+		local mid = Deathlog_normalize_map_id_for_stats(map_id)
 		local deaths_in_zone = 0
 		if _stats["all"][mid] then
 			deaths_in_zone = _stats["all"][mid]["all"]["all"]["num_entries"]
@@ -2103,7 +2179,7 @@ local function drawInstanceStatisticsTab(container)
 		end
 	end
 
-	setMapRegion(deathlog_ALL_INSTANCES_ID, "Instances")
+	setMapRegion(Deathlog_ALL_INSTANCES_ID, "Instances")
 
 	scroll_frame.frame:HookScript("OnHide", function()
 		for _, v in ipairs(stats_menu_elements) do
@@ -2114,12 +2190,13 @@ local function drawInstanceStatisticsTab(container)
 end
 
 local function createDeathlogMenu()
-	local ace_deathlog_menu = AceGUI:Create("DeathlogMenu")
+	local menu_type ="DeathlogMenu" ---@type AceGUIWidgetType|AceGUIContainerType 
+	local ace_deathlog_menu = AceGUI:Create(menu_type) ---@type AceGUIDeathlogMenu
 	_G["AceDeathlogMenu"] = ace_deathlog_menu.frame -- Close on <ESC>
 	tinsert(UISpecialFrames, "AceDeathlogMenu")
 
 	ace_deathlog_menu:SetTitle("Deathlog")
-	ace_deathlog_menu:SetVersion(C_AddOns.GetAddOnMetadata("Deathlog", "Version"))
+	ace_deathlog_menu:SetVersion(GetAddOnMetadata("Deathlog", "Version"))
 	ace_deathlog_menu:SetStatusText("")
 	ace_deathlog_menu:SetLayout("Flow")
 	ace_deathlog_menu:SetHeight(_menu_height)
@@ -2133,6 +2210,7 @@ local function createDeathlogMenu()
 		ace_deathlog_menu.exit_button:SetNormalTexture("Interface/Buttons/UI-SquareButton-Disabled.PNG")
 		ace_deathlog_menu.exit_button:SetHighlightTexture("Interface/Buttons/UI-SquareButton-Up.PNG")
 		ace_deathlog_menu.exit_button:SetPushedTexture("Interface/Buttons/UI-SquareButton-Down.PNG")
+		ace_deathlog_menu.exit_button:SetFrameLevel(ace_deathlog_menu.frame:GetFrameLevel() + 10)
 	end
 
 	ace_deathlog_menu.exit_button:SetScript("OnClick", function()
@@ -2149,9 +2227,36 @@ local function createDeathlogMenu()
 		ace_deathlog_menu.exit_button_x:SetVertexColor(1, 1, 1, 0.8)
 	end
 
-	deathlog_createInfoButton(ace_deathlog_menu)
+	Deathlog_createInfoButton(ace_deathlog_menu)
 
-	deathlog_tabcontainer = AceGUI:Create("DeathlogTabGroup") -- "InlineGroup" is also good
+	if ace_deathlog_menu.contact_button == nil then
+		local contact_text = ace_deathlog_menu.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		contact_text:SetFont(Deathlog_L.menu_font, 14)
+		contact_text:SetTextColor(0.5, 0.5, 0.5, 0.8)
+		contact_text:SetPoint("BOTTOMLEFT", ace_deathlog_menu.frame, "BOTTOMLEFT", 18, 10)
+		contact_text:SetText("Questions/Feedback? discord.com/invite/NphuAv75vy")
+
+		local contact_btn = CreateFrame("Button", nil, ace_deathlog_menu.frame)
+		contact_btn:SetAllPoints(contact_text)
+		contact_btn:SetFrameLevel(ace_deathlog_menu.frame:GetFrameLevel() + 10)
+		contact_btn:SetScript("OnEnter", function(self)
+			contact_text:SetTextColor(1, 0.8, 0, 1)
+			GameTooltip:SetOwner(self, "ANCHOR_TOP")
+			GameTooltip:AddLine("Click to copy", 0.7, 0.7, 0.7)
+			GameTooltip:Show()
+		end)
+		contact_btn:SetScript("OnLeave", function()
+			contact_text:SetTextColor(0.5, 0.5, 0.5, 0.8)
+			GameTooltip:Hide()
+		end)
+		contact_btn:SetScript("OnClick", function()
+			Deathlog_ShowCopyPopup("discord.com/invite/NphuAv75vy")
+		end)
+		ace_deathlog_menu.contact_button = contact_btn
+	end
+
+	local tab_group_type ="DeathlogTabGroup" ---@type AceGUIWidgetType|AceGUIContainerType 
+	deathlog_tabcontainer = AceGUI:Create(tab_group_type) ---@type AceGUIDeathlogTabGroup
 	local tab_table = Deathlog_L.tab_table
 	deathlog_tabcontainer:SetTabs(tab_table)
 	deathlog_tabcontainer:SetFullWidth(true)
@@ -2182,21 +2287,73 @@ local function createDeathlogMenu()
 	deathlog_cta_banner = Deathlog_CTABannerContainer()
 	deathlog_cta_banner:SetParent(ace_deathlog_menu.frame)
 
+	-- Persist window position and scale across reloads via SavedVariables
+	deathlog_settings.menu_status = deathlog_settings.menu_status or {}
+	ace_deathlog_menu:SetStatusTable(deathlog_settings.menu_status)
+
 	return ace_deathlog_menu
 end
 
-deathlog_menu = createDeathlogMenu()
+function DeathlogShowMenu(deathlog_data, stats, log_normal_params)
+	if not deathlog_menu then
+		deathlog_menu = createDeathlogMenu()
+	end
 
-function deathlogShowMenu(deathlog_data, stats, log_normal_params)
 	deathlog_menu:Show()
 	deathlog_cta_banner.updateMenuElement(deathlog_menu.frame)
 	deathlog_tabcontainer:SelectTab("LogTab")
 	_deathlog_data = deathlog_data
 	_stats = stats
 	_log_normal_params = log_normal_params
-	setDeathlogMenuLogData(_deathlog_data)
+	local active_filter = _get_active_filter and _get_active_filter()
+	if active_filter and (_get_filters_active and _get_filters_active()) then
+		setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, active_filter))
+	else
+		setDeathlogMenuLogData(_deathlog_data)
+	end
+
+	if _auto_refresh_ticker then _auto_refresh_ticker:Cancel() end
+	_auto_refresh_ticker = C_Timer.NewTicker(10, function()
+		if not deathlog_settings["auto_refresh_search"] then return end
+		if not deathlog_menu or not deathlog_menu.frame:IsShown() then return end
+		if page_number ~= 1 then return end
+		clearDeathlogMenuLogData(true)
+		local active_filter = _get_active_filter and _get_active_filter()
+		if active_filter and (_get_filters_active and _get_filters_active()) then
+			setDeathlogMenuLogData(DeathlogFilter(_deathlog_data, active_filter))
+		else
+			setDeathlogMenuLogData(_deathlog_data)
+		end
+	end)
 end
 
-function deathlogHideMenu()
-	deathlog_menu:Hide()
+function DeathlogHideMenu()
+	if _auto_refresh_ticker then
+		_auto_refresh_ticker:Cancel()
+		_auto_refresh_ticker = nil
+	end
+	if deathlog_menu then
+		deathlog_menu:Hide()
+	end
+end
+
+function DeathlogToggleMenu(deathlog_data, stats, log_normal_params)
+	if deathlog_menu and deathlog_menu.frame:IsShown() then
+		DeathlogHideMenu()
+	else
+		DeathlogShowMenu(deathlog_data, stats, log_normal_params)
+	end
+end
+
+function DeathlogResetMenuPosition()
+	if deathlog_settings and deathlog_settings.menu_status then
+		deathlog_settings.menu_status.left = nil
+		deathlog_settings.menu_status.top = nil
+		deathlog_settings.menu_status.scale = nil
+		deathlog_settings.menu_status.width = nil
+		deathlog_settings.menu_status.height = nil
+	end
+	if deathlog_menu then
+		deathlog_menu:ApplyStatus()
+	end
 end

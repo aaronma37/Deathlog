@@ -64,11 +64,12 @@ The library is split into focused modules, all loaded via `DeathNotificationLib.
 | Module | Purpose |
 |---|---|
 | `~Init.lua` | Bootstrap `_dnl` namespace, debug flag, injected-dep slots |
-| `~Localization.lua` | Locale strings and translations |
+| `~Tables.lua` | Data tables, both locale-aware and static |
 | `~Protocol.lua` | PlayerData type, protocol constants, environment damage, encode/decode, fletcher16 |
 | `~PvP.lua` | PvP source tracking, duel-to-death detection |
 | `~BlizzardParser.lua` | Universal death-broadcast parser built from Blizzard's `HARDCORE_CAUSEOFDEATH_*` globals |
 | `~UnitState.lua` | Per-unit state tracking, realm classification, constants |
+| `~GuildFilter.lua` | Guild membership filtering with GreenWall multi-guild support |
 | `~Query.lua` | Query functions, single-flight /who system |
 | `~PredictSource.lua` | Heatmap-based death source prediction |
 | `~Cache.lua` | Hook system, `createEntry`, LRU dedup cache, public hook API |
@@ -81,7 +82,6 @@ The library is split into focused modules, all loaded via `DeathNotificationLib.
 | `~DeathAlert.lua` | Built-in death alert popup (BossBanner UI, sounds, AceConfig options panel) |
 | `~HardcoreTBC.lua` | Bridge for HardcoreTBC addon death events |
 | `~UltraHardcore.lua` | Bridge for UltraHardcore addon death events |
-| `~Testing.lua` | `CreateFakeEntry` (public), debug test utilities |
 | `~Finalizer.lua` | Cleanup |
 
 Data tables (Areas, Instances, NPCs, Zones) are loaded automatically by the XML before the modules.

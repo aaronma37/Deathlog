@@ -96,10 +96,18 @@ end
 --- Re-check CVars, HardcoreDeaths channel membership, and keep our
 --- addon channels hidden on every zone change so nothing drifts.
 local function updateChannels()
-	if _dnl.anyAddonAllows("auto_blizzard_deaths") then
-		JoinChannelByName("HardcoreDeaths")
+	if _dnl.anyAddonEnables("auto_blizzard_deaths") then
+		if GetChannelName("HardcoreDeaths") == 0 then
+			C_Timer.After(2.5, function()
+				if GetChannelName("HardcoreDeaths") == 0 then
+					JoinChannelByName("HardcoreDeaths", nil, nil, false)
+				end
+			end)
+		end
+---@diagnostic disable: param-type-mismatch
 		SetCVar("hardcoreDeathAlertType", 2)
 		SetCVar("hardcoreDeathChatType", 1)
+---diagnostic enable: param-type-mismatch
 	end
 
 	_dnl.hideChannelFromChatFrames(_dnl.death_alerts_channel or _dnl.DEATH_ALERTS_CHANNEL_BASE)
@@ -143,7 +151,7 @@ local function onChatMsgChannel(arg)
 		else
 --#region Backwards compatible API
 
-			if _dnl.anyAddonAllows("legacy_messages") then
+			if _dnl.anyAddonEnables("legacy_messages") then
 				_dnl.handleV2DeathBroadcast(player_name_short, msg)
 			end
 
@@ -221,7 +229,7 @@ local function onChatMsgChannel(arg)
 
 --#region Backwards compatible API
 
-	if _dnl.backwards_dispatch[command] and _dnl.anyAddonAllows("legacy_messages") then
+	if _dnl.backwards_dispatch[command] and _dnl.anyAddonEnables("legacy_messages") then
 		local player_name_short, _ = string.split("-", arg[2])
 		if _dnl.throttleCheck(player_name_short) then return end
 
@@ -267,6 +275,8 @@ local function onPlayerDead(arg)
 
 	local death_source, extra_data = _dnl.resolveDeathSource(userState.last_attack_source_name, userState.last_attack_source_guid)
 	local instance_id, map, position = _dnl.guessLocationForUnit("player")
+	local pos_str = position and string.format("%.4f,%.4f", position.x, position.y) or nil
+
 	local _, _, race_id = UnitRace("player")
 	local _, _, class_id = UnitClass("player")
 	local guildName = GetGuildInfo("player")
@@ -280,7 +290,7 @@ local function onPlayerDead(arg)
 		UnitLevel("player"),
 		instance_id,
 		map,
-		position,
+		pos_str,
 		GetServerTime(),
 		getPlaytime(),
 		userState.recent_msg,
@@ -323,22 +333,37 @@ local function onChatMsg(arg)
 	end
 end
 
+local _pew_fired = false
 local _pew_initialized = false
----@param arg table
-local function onPlayerEnteringWorld(arg)
-	if _pew_initialized then
-		updateChannels()
-		return
-	end
+
+--- Run first-time initialization only once both conditions are met:
+---   1. PLAYER_ENTERING_WORLD has fired
+---   2. At least one addon has called AttachAddon
+local function initializeOnFirstReady()
+	if _pew_initialized then return end
+	if not _pew_fired then return end
+	if not next(_dnl.addons) then return end
+
 	_pew_initialized = true
+	_dnl.refreshGuildMembers()
 	requestTimePlayed()
-	C_Timer.After(5.0, function()
+	C_Timer.After(0.5, function()
 		_dnl.deathlogJoinChannel()
 		_dnl.joinSyncChannel()
 	end)
 	C_Timer.NewTicker(60, requestTimePlayed)
 	updateChannels()
 	_dnl.versionCheckOnSocialJoin()
+end
+
+---@param arg table
+local function onPlayerEnteringWorld(arg)
+	if _pew_initialized then
+		updateChannels()
+		return
+	end
+	_pew_fired = true
+	initializeOnFirstReady()
 end
 
 ---@param arg table
@@ -514,9 +539,7 @@ local function onChatMsgMonsterEmote(arg)
 	end
 
 	local instance_id, map, position = _dnl.guessLocationForUnit(found_unit)
-	if position then
-		position = string.format("%.4f,%.4f", position.x, position.y)
-	end
+	local pos_str = position and string.format("%.4f,%.4f", position.x, position.y) or nil
 
 	local reported_time = GetServerTime()
 	local function doReportedDeathBroadcast(_level, _guild, _race_id, _class_id)
@@ -529,7 +552,7 @@ local function onChatMsgMonsterEmote(arg)
 			_level,
 			instance_id,
 			map,
-			position,
+			pos_str,
 			reported_time,
 			nil,
 			nil
@@ -551,7 +574,7 @@ local function onChatMsgMonsterEmote(arg)
 			else
 				local queued = false
 				for _, hook in ipairs(_dnl.hook_queue_player_functions) do
-					if hook(player_name, player_guid, race_id, class_id, guild, map, position, instance_id) then
+					if hook(player_name, player_guid, race_id, class_id, guild, map, pos_str, instance_id) then
 						queued = true
 					end
 				end
@@ -650,12 +673,14 @@ end
 ---@field db_map DNL_DatabaseMap|nil           READ-ONLY by DNL: { [name] = checksum } for sync/query
 ---@field dev_data DNL_DevData|nil             Optional debug data
 ---@field addon_version string|nil             Semantic version string (e.g. "0.4.0") for upgrade notifications
+---@field watchlistIconProvider fun(playerName: string): string|nil Optional callback returning a watchlist icon string for a player name
 ---@param options DNL_AttachAddonOptions
 function _dnl.attachAddon(options)
 	assert(type(options) == "table", "[DNL] AttachAddon: options must be a table")
 	assert(type(options.name) == "string" and options.name ~= "", "[DNL] AttachAddon: name is required")
 	assert(type(options.tag) == "string" and #options.tag == 3, "[DNL] AttachAddon: tag must be exactly 3 characters")
 	assert(type(options.isUnitTracked) == "function", "[DNL] AttachAddon: isUnitTracked function is required")
+	assert(options.watchlistIconProvider == nil or type(options.watchlistIconProvider) == "function", "[DNL] AttachAddon: watchlistIconProvider must be a function when provided")
 	assert(not _dnl.addons[options.name], "[DNL] AttachAddon: addon '" .. options.name .. "' already registered")
 	assert(not _dnl.tag_to_addon[options.tag], "[DNL] AttachAddon: tag '" .. options.tag .. "' already in use by '" .. (_dnl.tag_to_addon[options.tag] or "") .. "'")
 
@@ -674,10 +699,13 @@ function _dnl.attachAddon(options)
 		db_map            = options.db_map,
 		dev_data          = options.dev_data,
 		addon_version     = options.addon_version,
+		watchlistIconProvider = options.watchlistIconProvider,
 	}
 
 	_dnl.addons[options.name] = addon
 	_dnl.tag_to_addon[options.tag] = options.name
+
+	initializeOnFirstReady()
 
 	if _dnl.DEBUG then
 		print(string.format("[DNL] Addon registered: %s (tag=%s, db=%s, settings=%s)",

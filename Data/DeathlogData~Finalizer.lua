@@ -1,0 +1,1 @@
+if DeathlogData.Internal then DeathlogData.Internal = nil end

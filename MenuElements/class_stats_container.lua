@@ -19,13 +19,14 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --
 local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 local deathlog_class_colors = DeathNotificationLib.CLASS_COLORS
+---@type MenuElementContainer
 local class_stat_comparison_container = CreateFrame("Frame")
 class_stat_comparison_container:SetSize(100, 100)
 class_stat_comparison_container:Show()
 
 local class_font = Deathlog_L.class_font
 
-local class_tbl = deathlog_class_tbl
+local class_tbl = Deathlog_class_tbl
 
 local steps = MAX_PLAYER_LEVEL / 10
 local average_class_subtitles = {
@@ -106,11 +107,16 @@ function class_stat_comparison_container.updateMenuElement(
 		view = "Survival"
 	end
 
-	local kaplan_meier = precomputed_kaplan_meier
-	local class_log_normal_params = precomputed_log_normal_params["all"]
+	if not DeathlogDataCopy.PRECOMPUTED_KAPLAN_MEIER or not DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS then
+		class_stat_comparison_container:Hide()
+		return
+	end
+
+	local kaplan_meier = DeathlogDataCopy.PRECOMPUTED_KAPLAN_MEIER
+	local class_log_normal_params = DeathlogDataCopy.PRECOMPUTED_LOG_NORMAL_PARAMS["all"]
 	class_stat_comparison_container:Show()
 	local entry_data = {}
-	local map_id = deathlog_normalize_map_id_for_stats(deathlog_ROOT_MAP_ID)
+	local map_id = Deathlog_normalize_map_id_for_stats(Deathlog_ROOT_MAP_ID)
 	local _stats = stats_tbl["stats"]
 	local _log_normal_params = stats_tbl["log_normal_params"]
 	if class_stat_comparison_container.configure_for == "map" and _stats["all"][map_id] == nil then
@@ -118,6 +124,7 @@ function class_stat_comparison_container.updateMenuElement(
 	end
 
 	class_stat_comparison_container:SetParent(scroll_frame.frame)
+	class_stat_comparison_container:ClearAllPoints()
 	class_stat_comparison_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -100)
 	class_stat_comparison_container:SetWidth(600)
 	class_stat_comparison_container:SetHeight(200)
@@ -209,18 +216,22 @@ function class_stat_comparison_container.updateMenuElement(
 					for i = 1, MAX_PLAYER_LEVEL do
 						cdf[i] = 0
 					end
-					for k, v in pairs(deathlog_class_tbl) do
-						local l_cdf =
-							Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
-						for i = 1, MAX_PLAYER_LEVEL do
-							cdf[i] = cdf[i] + l_cdf[i] / 9
+					for k, v in pairs(Deathlog_class_tbl) do
+						if class_log_normal_params[v] then
+							local l_cdf =
+								Deathlog_CalculateCDF2(class_log_normal_params[v][1], class_log_normal_params[v][2])
+							for i = 1, MAX_PLAYER_LEVEL do
+								cdf[i] = cdf[i] + l_cdf[i] / 9
+								end
 						end
 					end
 				else
-					cdf = Deathlog_CalculateCDF2(
-						class_log_normal_params[class_id][1],
-						class_log_normal_params[class_id][2]
-					)
+					if class_log_normal_params[class_id] then
+						cdf = Deathlog_CalculateCDF2(
+							class_log_normal_params[class_id][1],
+							class_log_normal_params[class_id][2]
+						)
+					end
 				end
 				cdf_values = function(x)
 					return 1 - (cdf[x] or 0)
@@ -230,12 +241,14 @@ function class_stat_comparison_container.updateMenuElement(
 					for i = 1, MAX_PLAYER_LEVEL do
 						cdf[i] = 0
 					end
-					for k, v in pairs(deathlog_class_tbl) do
+					for k, v in pairs(Deathlog_class_tbl) do
 						local l_cdf = kaplan_meier[v]
-						for i = 1, MAX_PLAYER_LEVEL do
-							-- Fallback to level 60 value for TBC levels beyond precomputed data
-							local val = l_cdf[i] or l_cdf[60] or 0
-							cdf[i] = cdf[i] + val / 9
+						if l_cdf then
+							for i = 1, MAX_PLAYER_LEVEL do
+								-- Fallback to level 60 value for TBC levels beyond precomputed data
+								local val = l_cdf[i] or l_cdf[60] or 0
+								cdf[i] = cdf[i] + val / 9
+								end
 						end
 					end
 				else
@@ -258,6 +271,12 @@ function class_stat_comparison_container.updateMenuElement(
 					local num = cdf_values(x)
 					local den = cdf_values(x - 10) or 1.0
 					return num / den * 100
+				end
+			end
+
+			if viewFunction == nil then
+				viewFunction = function()
+					return 0
 				end
 			end
 

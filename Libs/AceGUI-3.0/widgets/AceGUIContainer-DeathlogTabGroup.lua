@@ -2,7 +2,7 @@
 TabGroup Container
 Container that uses tabs on top to switch between groups.
 -------------------------------------------------------------------------------]]
-local Type, Version = "DeathlogTabGroup", 38
+local Type, Version = "DeathlogTabGroup", 39
 local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
 if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then return end
 
@@ -484,7 +484,7 @@ Constructor
 local PaneBackdrop  = {
 	bgFile = "Interface\\AdventureMap\\AdventureMapParchmentTile.PNG",
 	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true, tileSize = 512, edgeSize = 16,
+	tile = false, edgeSize = 16,
 	insets = { left = 3, right = 3, top = 5, bottom = 3 }
 }
 
@@ -506,8 +506,8 @@ local function Constructor()
 	border:SetPoint("TOPLEFT", 1, -27)
 	border:SetPoint("BOTTOMRIGHT", -1, 3)
 	border:SetBackdrop(PaneBackdrop)
-	border:SetBackdropColor(0.3, 0.3, 0.3, 1.0)
-	border:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.5)
+	border:SetBackdropColor(0.3, 0.3, 0.3, 0.5)
+	border:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.6)
 
 	local content = CreateFrame("Frame", nil, border)
 	content:SetPoint("TOPLEFT", 10, -7)

@@ -1,0 +1,16 @@
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
+
+  <!-- Bootstrap -->
+  <Script file="DeathNotificationLibData~Init.lua"/>
+
+  <!-- Data: Heatmaps -->
+  <Script file="Heatmaps\heatmap_vanilla.lua"/>
+  <Script file="Heatmaps\heatmap_tbc.lua"/>
+
+  <!-- Module files (load order matters) -->
+  <Script file="DeathNotificationLibData~Tables.lua"/>
+
+  <!-- Cleanup -->
+  <Script file="DeathNotificationLibData~Finalizer.lua"/>
+
+</Ui>

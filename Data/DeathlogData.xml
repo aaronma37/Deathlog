@@ -1,0 +1,20 @@
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
+
+  <!-- Bootstrap -->
+  <Script file="DeathlogData~Init.lua"/>
+
+  <!-- Data: Precomputed stats -->
+  <Script file="Stats/stat_vanilla.lua"/>
+  <Script file="Stats/stat_tbc.lua"/>
+
+  <!-- Data: Precomputed purges -->
+  <Script file="Purges/purge_vanilla.lua"/>
+  <Script file="Purges/purge_tbc.lua"/>
+
+  <!-- Module files (load order matters) -->
+  <Script file="DeathlogData~Tables.lua"/>
+
+  <!-- Cleanup -->
+  <Script file="DeathlogData~Finalizer.lua"/>
+
+</Ui>

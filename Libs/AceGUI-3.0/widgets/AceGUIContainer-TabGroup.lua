@@ -2,7 +2,7 @@
 TabGroup Container
 Container that uses tabs on top to switch between groups.
 -------------------------------------------------------------------------------]]
-local Type, Version = "TabGroup", 38
+local Type, Version = "TabGroup", 39
 local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
 if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then return end
 
@@ -506,7 +506,7 @@ local function Constructor()
 	border:SetPoint("TOPLEFT", 1, -27)
 	border:SetPoint("BOTTOMRIGHT", -1, 3)
 	border:SetBackdrop(PaneBackdrop)
-	border:SetBackdropColor(0.1, 0.1, 0.1, 0.5)
+	border:SetBackdropColor(0.1, 0.1, 0.1, 0.6)
 	border:SetBackdropBorderColor(0.4, 0.4, 0.4)
 
 	local content = CreateFrame("Frame", nil, border)

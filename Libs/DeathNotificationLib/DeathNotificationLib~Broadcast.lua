@@ -94,7 +94,7 @@ function _dnl.resolveDeathSource(death_source_name, death_source_guid, try_all_l
 
 	if death_source_name then
 		if _dnl.D.NPC_TO_ID[death_source_name] then
-			death_source = _dnl.D.NPC_TO_ID[death_source_name]
+			death_source = _dnl.resolveId(_dnl.D.NPC_TO_ID[death_source_name])
 		elseif _dnl.ENVIRONMENT_DAMAGE_TO_ID[death_source_name] then
 			death_source = _dnl.ENVIRONMENT_DAMAGE_TO_ID[death_source_name]
 		else
@@ -132,7 +132,7 @@ function _dnl.resolveDeathSource(death_source_name, death_source_guid, try_all_l
 	if death_source == -1 and death_source_name and try_all_locales then
 		for _, localeData in pairs(_dnl.L) do
 			if localeData.NPC_TO_ID and localeData.NPC_TO_ID[death_source_name] then
-				death_source = localeData.NPC_TO_ID[death_source_name]
+				death_source = _dnl.resolveId(localeData.NPC_TO_ID[death_source_name])
 				break
 			end
 		end
@@ -233,7 +233,7 @@ function _dnl.broadcastDeath(player_data)
 	death_ping_lru_cache_tbl[checksum]["player_data"] = player_data
 	death_ping_lru_cache_tbl[checksum]["timestamp"] = GetServerTime()
 	death_ping_lru_cache_tbl[checksum]["quality"] = _dnl.QUALITY and _dnl.QUALITY.SELF or nil
-	death_ping_lru_cache_tbl[checksum]["source"] = SOURCE.SELF_DEATH
+	death_ping_lru_cache_tbl[checksum]["source"] = _dnl.SOURCE.SELF_DEATH
 
 	_dnl.updateLRUByName(name_lower, checksum, nil, player_data["level"])
 
@@ -314,6 +314,7 @@ function _dnl.reportPartyRaidDeath(unit)
 	local death_source, extra_data = _dnl.resolveDeathSource(unitState.last_attack_source_name, unitState.last_attack_source_guid)
 
 	local instance_id, map, position = _dnl.guessLocationForUnit(unit)
+	local pos_str = position and string.format("%.4f,%.4f", position.x, position.y) or nil
 
 	local last_words = unitState.recent_msg
 
@@ -326,7 +327,7 @@ function _dnl.reportPartyRaidDeath(unit)
 		level,
 		instance_id,
 		map,
-		position,
+		pos_str,
 		GetServerTime(),
 		nil,
 		last_words,

@@ -442,24 +442,25 @@ local function buildDayIndex(db, window_days)
 end
 
 ---------------------------------------------------------------------------
--- Addon version upgrade hints
+-- Addon version upgrade hints (delegates to shared _dnl.notifyNewerVersion)
 ---------------------------------------------------------------------------
 
---- Per-tag tracking for addon version upgrade notifications.
---- Mirrors the protocol-version hint logic in ~Cache.lua, but operates
---- per-addon (keyed by tag) and uses the semantic version string from
---- the watermark rather than the protocol_version integer.
+--- Per-tag tracking: accumulate unique senders before triggering a
+--- notification.  The sync channel is public, so we require a quorum
+--- of ADDON_VERSION_HINT_THRESHOLD unique peers advertising a newer
+--- version before notifying — unlike the trusted VersionCheck whisper
+--- path which notifies immediately.
 ---
---- Structure:  { [tag] = { senders = { [sender] = true }, warned = { [ver] = true } } }
----@type table<string, { senders: table<string, boolean>, warned: table<string, boolean> }>
+--- Structure:  { [tag] = { senders = { [sender] = true } } }
+---@type table<string, { senders: table<string, boolean> }>
 local addon_version_hint_state = {}
 
---- Number of unique senders advertising a newer addon version before
---- we print a chat notification.
+--- Number of unique senders required before the sync channel triggers
+--- a version-upgrade notification.
 local ADDON_VERSION_HINT_THRESHOLD = 3
 
----Check whether a remote peer's addon version is newer than ours and,
----after enough unique senders confirm, print a one-time chat hint.
+---Accumulate evidence from sync-watermark peers and, once enough unique
+---senders confirm a newer version, delegate to _dnl.notifyNewerVersion.
 ---@param tag string           3-char addon tag
 ---@param sender string        Sender's character name
 ---@param remote_ver string|nil  Remote addon version string (may be nil/"")
@@ -473,38 +474,17 @@ function _dnl._checkAddonVersionHint(tag, sender, remote_ver)
 	if not cmp or cmp <= 0 then return end  -- not newer or invalid
 
 	if not addon_version_hint_state[tag] then
-		addon_version_hint_state[tag] = { senders = {}, warned = {} }
+		addon_version_hint_state[tag] = { senders = {} }
 	end
 	local hint_state = addon_version_hint_state[tag]
-
-	if hint_state.warned[remote_ver] then return end
 
 	hint_state.senders[sender] = true
 	local count = 0
 	for _ in pairs(hint_state.senders) do count = count + 1 end
 
 	if count >= ADDON_VERSION_HINT_THRESHOLD then
-		hint_state.warned[remote_ver] = true
 		wipe(hint_state.senders)
-
-		-- Store the newest detected version on the addon entry so consumers
-		-- (e.g. info_button) can query it via GetNewerAddonVersion().
-		if not local_addon.newest_detected_version
-			or _dnl.compareVersions(remote_ver, local_addon.newest_detected_version) == 1 then
-			local_addon.newest_detected_version = remote_ver
-		end
-
-		print(string.format(
-			"|cffFFFF00[%s]|r A newer version (v%s) is available — you are running v%s. Please update!",
-			local_addon.name, remote_ver, local_addon.addon_version))
-
-		-- Fire HookOnNewerVersion callbacks so consumers (e.g. info_button)
-		-- can react immediately without polling.
-		if _dnl.hook_newer_version_functions then
-			for _, fn in ipairs(_dnl.hook_newer_version_functions) do
-				fn(local_addon.name, remote_ver, local_addon.addon_version)
-			end
-		end
+		_dnl.notifyNewerVersion(tag, remote_ver)
 	end
 end
 
@@ -1142,7 +1122,7 @@ function _dnl.joinSyncChannel()
 	LeaveChannelByName(channel_name)
 
 	C_Timer.After(3.0, function()
-		JoinChannelByName(channel_name, SYNC_CHANNEL_PW)
+		JoinChannelByName(channel_name, SYNC_CHANNEL_PW, nil, false)
 	end)
 
 	_dnl.hideChannelFromChatFrames(channel_name)
@@ -1162,7 +1142,7 @@ function _dnl.joinSyncChannel()
 		end
 		remaining = remaining - 1
 		channel_name = channel_name .. "b"
-		JoinChannelByName(channel_name, SYNC_CHANNEL_PW)
+		JoinChannelByName(channel_name, SYNC_CHANNEL_PW, nil, false)
 	end)
 end
 

@@ -31,12 +31,10 @@ local main_font = Deathlog_L.main_font
 
 local deathlog_tabcontainer = nil
 
-local class_tbl = deathlog_class_tbl
-local race_tbl = deathlog_race_tbl
+local class_tbl = Deathlog_class_tbl
+local race_tbl = Deathlog_race_tbl
 
 local deathlog_watch_list = nil
-
-deathlog_watchlist_entries = deathlog_watchlist_entries or {}
 
 local function EntryData(name, note)
 	return { ["Name"] = name, ["Note"] = note or "" }
@@ -108,6 +106,7 @@ local subtitle_data = {
 	},
 }
 
+---@type MenuElementContainer
 local watch_list_frame = CreateFrame("Frame")
 watch_list_frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 watch_list_frame:SetSize(100, 100)
@@ -207,27 +206,59 @@ local comm_query_lock_out = nil
 local last_time = nil
 local scroll_frame_ref = nil
 local ticker_handler = nil
+local cooldown_ticker = nil
+
+local function stopCooldownTicker()
+	if cooldown_ticker then
+		cooldown_ticker:Cancel()
+		cooldown_ticker = nil
+	end
+end
+
+local function updateCooldownText()
+	local time_til = 1
+	if last_time then
+		time_til = math.max(0, math.ceil(60 - (GetServerTime() - last_time)))
+	end
+	status_string:SetText("Can't refresh yet; wait " .. time_til .. " seconds and visit this tab again.")
+end
+
+local function ensureCooldownTicker()
+	if cooldown_ticker then
+		return
+	end
+	cooldown_ticker = C_Timer.NewTicker(1, function(self)
+		if not comm_query_lock_out or ticker_handler or not watch_list_frame:IsShown() then
+			self:Cancel()
+			cooldown_ticker = nil
+			return
+		end
+		updateCooldownText()
+	end)
+end
+
 local function checkAll()
+	if comm_query_lock_out then
+		if ticker_handler then
+			status_string:SetText("Querying for deaths...")
+			stopCooldownTicker()
+		else
+			updateCooldownText()
+			ensureCooldownTicker()
+		end
+		return
+	end
+
 	if ticker_handler then
 		ticker_handler:Cancel()
 		ticker_handler = nil
 	end
-	if comm_query_lock_out then
-		local time_til = ""
-		if last_time then
-			time_til = math.ceil(60 - (GetServerTime() - last_time))
-		end
+	stopCooldownTicker()
 
-		if ticker_handler then
-			status_string:SetText("Querying for deaths...")
-		else
-			status_string:SetText("Can't refresh yet; wait " .. time_til .. " seconds and visit this tab again.")
-		end
-		return
-	end
-	comm_query_lock_out = C_Timer.NewTimer(60, function()
-		comm_query_lock_out:Cancel()
+	comm_query_lock_out = C_Timer.NewTimer(60, function(cb)
+		cb:Cancel()
 		comm_query_lock_out = nil
+		stopCooldownTicker()
 	end)
 
 	status_string:SetText("Querying for deaths...")
@@ -238,10 +269,14 @@ local function checkAll()
 	-- existing COMM_QUERY_ACK whisper handler.
 	local channel_names = {}
 	for _name, _ in pairs(deathlog_watchlist_entries) do
+		if deathlog_watchlist_entries[_name] then
+			deathlog_watchlist_entries[_name]["last_checked"] = last_time
+		end
 		if isDead(_name) == nil then
 			table.insert(channel_names, _name)
 		end
 	end
+	refreshFontData()
 	if #channel_names > 0 then
 		DeathNotificationLib.QueryChannel(channel_names, "DLG")
 	end
@@ -251,12 +286,17 @@ local function checkAll()
 	local idx = 1
 	ticker_handler = C_Timer.NewTicker(5, function(self)
 		if watch_list_frame:IsShown() then
-			watch_list_frame.updateMenuElement(scroll_frame_ref)
+			refreshFontData()
 		end
 		if font_strings[idx] == nil or font_strings[idx].name == nil or font_strings[idx].name == "" then
 			self:Cancel()
 			ticker_handler = nil
-			status_string:SetText("Done querying!")
+			if comm_query_lock_out then
+				updateCooldownText()
+				ensureCooldownTicker()
+			else
+				status_string:SetText("Done querying!")
+			end
 			return
 		end
 		local _name = font_strings[idx].name
@@ -275,6 +315,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 	scroll_frame_ref = scroll_frame
 	watch_list_frame:SetParent(scroll_frame.frame)
 	watch_list_frame:Show()
+	watch_list_frame:ClearAllPoints()
 	watch_list_frame:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -80)
 	watch_list_frame:SetWidth(1040)
 	watch_list_frame:SetHeight(880)
@@ -306,7 +347,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 				return
 			end
 			deathlog_watchlist_entries[name]["Note"] = watch_list_frame.name_box:GetText()
-			watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
+			watch_list_frame.updateMenuElement(scroll_frame)
 		else
 			local old_name = font_strings[selected_entry] and font_strings[selected_entry].name
 			if old_name then
@@ -317,7 +358,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 				["Name"] = _name,
 				["Icon"] = "|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_7:16:16:0:0:64:64:|t",
 			}
-			watch_list_frame.updateMenuElement(scroll_frame, _, stats_tbl, updateFun, filterFunction, metric, class_id)
+			watch_list_frame.updateMenuElement(scroll_frame)
 		end
 	end)
 
@@ -328,51 +369,40 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 
 	status_string:SetPoint("TOPLEFT", watch_list_frame, "TOPLEFT", 0, -400)
 	dropdownFunctions = function(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-		info.text, info.checked, info.func =
-			"|T133784:16|t", metric == "|T133784:16|t", function()
-				local name = font_strings[selected_entry].name
-				if name == nil then
-					return
-				end
-				if deathlog_watchlist_entries[name] == nil then
-					return
-				end
-				deathlog_watchlist_entries[name]["Icon"] = "|T133784:16|t"
-				watch_list_frame.updateMenuElement(scroll_frame)
+		local current_icon = ""
+		local sel_name = font_strings[selected_entry] and font_strings[selected_entry].name
+		if sel_name and deathlog_watchlist_entries[sel_name] then
+			current_icon = deathlog_watchlist_entries[sel_name]["Icon"] or ""
+		end
+		UIDropDownMenu_SetText(watch_list_frame.icon_dd, current_icon)
+
+		local function setIcon(icon_str)
+			local name = font_strings[selected_entry].name
+			if name == nil then
+				return
 			end
-		UIDropDownMenu_AddButton(info)
-		info.text, info.checked, info.func =
+			if deathlog_watchlist_entries[name] == nil then
+				return
+			end
+			deathlog_watchlist_entries[name]["Icon"] = icon_str
+			UIDropDownMenu_SetText(watch_list_frame.icon_dd, icon_str)
+			watch_list_frame.updateMenuElement(scroll_frame)
+		end
+
+		local icons = {
+			"|T133784:16|t",
 			"|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_7:16:16:0:0:64:64:|t",
-			metric == "|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_7:16:16:0:0:64:64:|t",
-			function()
-				local name = font_strings[selected_entry].name
-				if name == nil then
-					return
-				end
-				if deathlog_watchlist_entries[name] == nil then
-					return
-				end
-				deathlog_watchlist_entries[name]["Icon"] =
-					"|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_7:16:16:0:0:64:64:|t"
-				watch_list_frame.updateMenuElement(scroll_frame)
-			end
-		UIDropDownMenu_AddButton(info)
-		info.text, info.checked, info.func =
 			"|TInterface\\COMMON\\friendship-heart:16:16:0:0:64:64:|t",
-			metric == "|TInterface\\COMMON\\friendship-heart:16:16:0:0:64:64:|t",
-			function()
-				local name = font_strings[selected_entry].name
-				if name == nil then
-					return
-				end
-				if deathlog_watchlist_entries[name] == nil then
-					return
-				end
-				deathlog_watchlist_entries[name]["Icon"] = "|TInterface\\COMMON\\friendship-heart:16:16:0:0:64:64:|t"
-				watch_list_frame.updateMenuElement(scroll_frame)
+		}
+		for _, icon_str in ipairs(icons) do
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = icon_str
+			info.checked = current_icon == icon_str
+			info.func = function()
+				setIcon(icon_str)
 			end
-		UIDropDownMenu_AddButton(info)
+			UIDropDownMenu_AddButton(info)
+		end
 	end
 	UIDropDownMenu_Initialize(watch_list_frame.icon_dd, dropdownFunctions)
 	watch_list_frame.icon_dd:Hide()
@@ -413,7 +443,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 				return
 			end
 			GameTooltip_SetDefaultAnchor(GameTooltip, WorldFrame)
-			deathlog_setTooltipFromEntry(deathlog_data[GetRealmName()][hash])
+			Deathlog_setTooltipFromEntry(deathlog_data[GetRealmName()][hash])
 			GameTooltip:Show()
 		end)
 
@@ -430,9 +460,17 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 					return
 				end
 
-				local x, y = GetCursorPosition()
+				local ui_scale = UIParent:GetEffectiveScale()
+				local x = GetCursorPosition() / ui_scale
 				local pos_x = x - _entry:GetLeft()
-				if pos_x < 100 then
+				local note_left = font_strings[i]["Note"]:GetLeft() - _entry:GetLeft()
+				local icon_left = font_strings[i]["Icon"]:GetLeft() - _entry:GetLeft()
+				local remove_left = font_strings[i]["Remove"]:GetLeft() - _entry:GetLeft()
+				local remove_width = font_strings[i]["Remove"]:GetStringWidth() or 0
+				if remove_width <= 0 then
+					remove_width = 16
+				end
+				if pos_x < note_left then
 					edit_box_type = 0
 					local function setEditBox(other)
 						watch_list_frame.name_box:ClearAllPoints()
@@ -453,7 +491,7 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 					watch_list_frame.name_box:SetFocus()
 
 					watch_list_frame.name_box:Show()
-				elseif pos_x < 600 then
+				elseif pos_x >= note_left and pos_x < (note_left + subtitle_data[2][2]) then
 					edit_box_type = 1
 					local function setEditBox(other)
 						watch_list_frame.name_box:ClearAllPoints()
@@ -474,7 +512,13 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 					watch_list_frame.name_box:SetFocus()
 
 					watch_list_frame.name_box:Show()
-				elseif pos_x < 760 and pos_x > 720 then
+				elseif pos_x >= icon_left and pos_x < remove_left then
+					local selected_name = font_strings[i].name
+					local selected_icon = ""
+					if selected_name and deathlog_watchlist_entries[selected_name] then
+						selected_icon = deathlog_watchlist_entries[selected_name]["Icon"] or ""
+					end
+					UIDropDownMenu_SetText(watch_list_frame.icon_dd, selected_icon)
 					watch_list_frame.icon_dd:SetParent(_entry)
 					watch_list_frame.icon_dd:ClearAllPoints()
 					watch_list_frame.icon_dd:SetPoint(
@@ -486,17 +530,11 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 					)
 					watch_list_frame.icon_dd:Show()
 					UIDropDownMenu_SetWidth(watch_list_frame.icon_dd, 50)
-				elseif pos_x > 820 and pos_x < 850 then
+				elseif pos_x >= remove_left and pos_x < (remove_left + remove_width) then
 					if deathlog_watchlist_entries and deathlog_watchlist_entries[font_strings[i].name] then
 						deathlog_watchlist_entries[font_strings[i].name] = nil
 						watch_list_frame.updateMenuElement(
-							scroll_frame,
-							_,
-							stats_tbl,
-							updateFun,
-							filterFunction,
-							metric,
-							class_id
+							scroll_frame
 						)
 					end
 				end
@@ -515,6 +553,11 @@ function watch_list_frame.updateMenuElement(scroll_frame)
 
 	refreshFontData()
 	scroll_frame.frame:HookScript("OnHide", function()
+		if ticker_handler then
+			ticker_handler:Cancel()
+			ticker_handler = nil
+		end
+		stopCooldownTicker()
 		watch_list_frame:Hide()
 	end)
 end

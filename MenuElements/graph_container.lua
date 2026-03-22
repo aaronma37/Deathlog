@@ -21,9 +21,10 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 local deathlog_class_colors = DeathNotificationLib.CLASS_COLORS
 local graph_lines = {}
+---@type MenuElementContainer
 local graph_container = CreateFrame("frame")
 
-local class_tbl = deathlog_class_tbl
+local class_tbl = Deathlog_class_tbl
 
 function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
 	local _log_normal_params = stats_tbl["log_normal_params"]
@@ -219,10 +220,10 @@ function graph_container.updateMenuElement(scroll_frame, current_map_id, stats_t
 						sqrt(_log_normal_params[current_map_id][v][2])
 					)
 					createLine(k .. i, {
-						graph_container.offsetx + (i - 2) / MAX_PLAYER_LEVEL * graph_container.width,
+						graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
 						y1 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 					}, {
-						graph_container.offsetx + (i - 1) / MAX_PLAYER_LEVEL * graph_container.width,
+						graph_container.offsetx + i / MAX_PLAYER_LEVEL * graph_container.width,
 						y2 * graph_container.height * graph_container.zoomy + graph_container.offsety,
 					}, class_colors[k])
 

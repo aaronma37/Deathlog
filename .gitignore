@@ -1,4 +1,10 @@
 scrape_deathlog.py
 !collected_data/
 .vscode/
+.luarc.json
+Deathlog.code-workspace
 playground
+Testing/
+Data/Purges/
+Data/Stats/
+Libs/DeathNotificationLib/Data/Heatmaps/

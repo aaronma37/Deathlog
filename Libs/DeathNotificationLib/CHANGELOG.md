@@ -1,5 +1,88 @@
 # Changelog
 
+## V13 — 2026-03-16
+
+### New Features
+- **Death Filter API** — `getGuildFilterModeOptions(exclude_none)` now accepts an optional `exclude_none` parameter to omit the "None (Disabled)" option, useful for search-log dropdowns where disabling filters is handled differently
+- **GreenWall detection split** — `isGreenWallAvailable()` now only checks whether the GreenWall addon is loaded; new `isGreenWallConfigured()` checks whether the GreenWall config has been fully parsed. The confederation option now appears in filter dropdowns as soon as GreenWall is installed, even before its async config finishes loading
+- **Guild cache on init** — `refreshGuildMembers()` is now exposed on `_dnl` and called from `initializeOnFirstReady()`, so guild/confederation data is available immediately instead of waiting for the first 10-second ticker
+
+### Bug Fixes
+- Deferred library initialization (channel joins, timers, CVars) until both `PLAYER_ENTERING_WORLD` has fired and at least one addon has called `AttachAddon`, preventing the library from running setup with an empty addon registry
+- Fixed `passesGuildFilterMode` guild_only branch returning `nil` instead of `false` when no match
+
+### Changes
+- Replaced `anyAddonAllows()` (opt-out semantics) with `anyAddonEnables()` (opt-in semantics) across all call sites; removed `anyAddonAllows()` and its tests
+
+## V12 — 2026-03-12
+
+### Bug Fixes
+- Fixed Deathlog settings panel rendering blank (affected Classic Era and TBC) — DNL no longer calls `RegisterOptionsTable` for the parent category if it already has a registration; the DeathAlert child panel is attempted under the existing parent first, and a stub parent is only created if the parent has no Bliz Options entry yet
+- LSM30 (LibSharedMedia-3.0) is now lazily re-looked-up inside `applyDeathAlertSettings`, matching the existing AceConfig/AceConfigDialog pattern; sounds and fonts tables are hydrated from LSM30 on first successful lookup so custom media registered by other addons appears in the dropdowns
+
+## V11 — 2026-03-11
+
+### Changes
+- Added DeathNotificationLibData as an optional dependency for precomputed heatmap
+
+## V10 — 2026-03-08
+
+### Bug Fixes
+- Fixed Death Alert settings panel not appearing in Interface Options — the parent Blizzard category is now guaranteed to exist before registering the child panel (`pcall`-guarded stub creation)
+- `death_alert_options_parent` will fall back to "DeathNotificationLib" if the configured parent is missing
+
+## V9 — 2026-03-06
+
+### Bug Fixes
+- Fixed HardcoreDeaths channel displacing General/Trade/LocalDefense to higher slot numbers — the channel is now joined with a delay and only if not already a member, so system channels keep their default positions
+- Death alert messages now fall back to locale defaults when the user hasn't customized them, preventing nil errors
+- Death alert frame initialization guards prevent errors when the frame hasn't been created yet
+- Fixed protocol escape/unescape to properly handle nil and return correct types
+- Fixed `safeSendChannel` to use `C_ChatInfo.SendChatMessage` instead of the deprecated `SendChatMessage` global
+
+### Improvements
+- NPC ID lookup now handles multi-ID entries via `resolveId()` (for NPCs with multiple IDs across expansions)
+- Watchlist icon is now provided by host addon via `watchlistIconProvider` callback in `AttachAddon`, instead of accessing host globals directly
+- `AttachAddon` accepts a new `watchlistIconProvider` callback field
+- Death alert options parent category is now configurable via the `death_alert_options_parent` setting
+- Faster channel join on login (0.5s delay, down from 5.0s)
+
+## V8 — 2026-02-27
+
+### New Module: Guild Filter (`~GuildFilter.lua`)
+- New module providing unified guild filtering with GreenWall multi-guild confederation support
+- Handles all guild membership checking internally — no dependency on host addon code
+- Periodically refreshes guild roster cache (every 10 seconds) for accurate filtering
+- GreenWall detection via `gw.config.valid` — automatically enables confederation filtering when available
+
+### New Public API
+- `DeathNotificationLib.PassesGuildFilterMode(entry, filter_mode)` — check if a PlayerData entry passes the specified filter mode ("all", "guild_only", "guild_confederation", or "none")
+- `DeathNotificationLib.GetGuildFilterModeOptions()` — returns dropdown options table; includes "Guild + Confederation" only when GreenWall is detected
+- `DeathNotificationLib.GetGreenWallStatus()` — returns human-readable status string showing GreenWall detection state and confederation peer count
+
+### Death Alert Changes
+- Removed `guild_only` toggle — replaced with unified `filter_mode` dropdown (same options as minilog)
+- Death alert now uses `_dnl.passesGuildFilterMode()` for filtering instead of custom inline logic
+- Removed redundant guild member cache from `~DeathAlert.lua` (now centralized in `~GuildFilter.lua`)
+- Options panel simplified: single "Death Filter" dropdown with GreenWall status indicator
+
+### Internal
+- `~GuildFilter.lua` loads before `~DeathAlert.lua` in XML load order
+- Internal functions: `_dnl.passesGuildFilterMode()`, `_dnl.getGuildFilterModeOptions()`, `_dnl.getGreenWallStatus()`
+
+## V7 — 2026-02-26
+
+### Unified Version Notification
+- Extracted a shared `_dnl.notifyNewerVersion(tag, remote_ver)` function in `~VersionCheck.lua` that owns all version-upgrade logic: updating `newest_detected_version`, printing the chat warning (once per addon per session), and firing `HookOnNewerVersion` callbacks
+- `~VersionCheck.lua` handlers (`handleVersionAnnounce`, `handleNewerNotify`) now delegate to `notifyNewerVersion` instead of duplicating the print/hook logic inline
+- `~Sync.lua` `_checkAddonVersionHint` now delegates to `notifyNewerVersion` after its 3-peer quorum is met, removing its own duplicate `warned` table, `newest_detected_version` update, `print`, and hook-firing code
+- Both modules share the same `warned_versions` table (keyed by tag), so a notification from **any** source (social-channel V$/N$ or sync-watermark quorum) permanently suppresses further warnings for that addon until `/reload`
+- Swapped load order in `DeathNotificationLib.xml`: `~VersionCheck.lua` now loads before `~Sync.lua` so the shared function is available when Sync initialises
+
+### Bug Fix: Multiple Version Warnings Per Session
+- Previously, each distinct newer version string produced a separate chat warning (e.g. v2.0 then v3.0 would print twice); now only **one** warning per addon per session is shown
+- `newest_detected_version` continues to be silently updated if an even newer version is seen later
+
 ## V6 — 2026-02-25
 
 ### Bug Fix: Played-Time Suppression Across Multiple Chat Tabs

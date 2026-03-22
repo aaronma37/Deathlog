@@ -1,3 +1,4 @@
+---@diagnostic disable: invisible
 local id_to_instance = DeathNotificationLib.ID_TO_INSTANCE
 local deathlog_class_colors = DeathNotificationLib.CLASS_ID_TO_COLOR
 
@@ -5,6 +6,7 @@ local MAX_PLAYER_LEVEL = DeathNotificationLib.MAX_PLAYER_LEVEL
 local ace_refresh_timer_handle = nil
 local entry_cache = {}
 local font_handle = nil
+local class_bg_tex = nil
 
 local main_font = Deathlog_L.main_font
 
@@ -63,13 +65,28 @@ fonts["GothamNarrowUltra"] = font_base_path .. "GothamNarrowUltra.ttf"
 local themes = {
 	["None"] = "None",
 	["Parchment"] = "Parchment",
-	["Warlock"] = "Warlock",
+	["DeathKnightFrost"] = "Death Knight (Frost)",
+	["DemonHunter"] = "Demon Hunter",
 	["Druid"] = "Druid",
-	["Paladin"] = "Paladin",
-	["Warrior"] = "Warrior",
 	["Hunter"] = "Hunter",
+	["MageArcane"] = "Mage (Arcane)",
+	["Monk"] = "Monk",
+	["Paladin"] = "Paladin",
 	["Priest"] = "Priest",
+	["PriestShadow"] = "Priest (Shadow)",
+	["Rogue"] = "Rogue",
+	["Shaman"] = "Shaman",
+	["Shadow"] = "Shadow",
+	["Warlock"] = "Warlock",
+	["Warrior"] = "Warrior",
 }
+
+local artifact_themes = {}
+for k in pairs(themes) do
+	if k ~= "None" and k ~= "Parchment" then
+		artifact_themes[k] = true
+	end
+end
 
 local AceGUI = LibStub("AceGUI-3.0")
 local death_log_icon_frame = CreateFrame("frame")
@@ -133,13 +150,14 @@ death_tomb_frame_tex_glow:SetDrawLayer("OVERLAY", 3)
 death_tomb_frame_tex_glow:SetHeight(55)
 death_tomb_frame_tex_glow:SetWidth(55)
 death_tomb_frame_tex_glow:Hide()
-local death_log_frame = AceGUI:Create("Deathlog_MiniLog")
+local minilog_type ="Deathlog_MiniLog" ---@type AceGUIWidgetType|AceGUIContainerType 
+local death_log_frame = AceGUI:Create(minilog_type) ---@type DeathlogMiniLog
 death_log_frame.frame:SetMovable(false)
 death_log_frame.frame:EnableMouse(false)
 death_log_frame:SetTitle("Deathlog")
-death_log_frame.titletext:SetFont(Deathlog_L.mini_log_font, 19, "THICK")
+death_log_frame.titletext:SetFont(Deathlog_L.mini_log_font, 19, "THICKOUTLINE")
 
-deathlog_createInfoButton(death_log_frame, true, 28, -2)
+Deathlog_createInfoButton(death_log_frame, true, 28, -2)
 
 local subtitle_metadata = {
 	["ColoredName"] = {
@@ -184,10 +202,7 @@ local subtitle_metadata = {
 		"Source",
 		120,
 		function(_entry)
-			if _entry.player_data["source_id"] == nil then
-				return ""
-			end
-			return deathlogGetCachedSource(_entry.player_data)
+			return DeathlogGetCachedSource(_entry.player_data)
 		end,
 	},
 	["Class"] = {
@@ -327,13 +342,16 @@ local subtitle_data = {}
 
 local function setSubtitleData()
 	subtitle_data = {}
+	if deathlog_settings[widget_name] == nil or deathlog_settings[widget_name]["columns"] == nil then
+		return
+	end
 	for _, k in ipairs(deathlog_settings[widget_name]["columns"]) do
 		subtitle_data[#subtitle_data + 1] = subtitle_metadata[k]
 	end
 	death_log_frame:SetSubTitle(subtitle_data)
 
-	local _x_offset = deathlog_settings[widget_name]["entry_x_offset"]
-	local _y_offset = deathlog_settings[widget_name]["entry_y_offset"]
+	local _x_offset = deathlog_settings[widget_name]["entry_x_offset"] or 0
+	local _y_offset = deathlog_settings[widget_name]["entry_y_offset"] or 0
 	death_log_frame.content:SetPoint("TOPLEFT", 3 + _x_offset, -33 + _y_offset)
 	death_log_frame.content:SetPoint("BOTTOMRIGHT", 15, 6)
 	death_log_frame:SetSubTitleOffset(_x_offset, _y_offset, subtitle_data)
@@ -343,7 +361,7 @@ death_log_frame:SetLayout("Fill")
 death_log_frame.frame:SetSize(255, 125)
 death_log_frame:Show()
 
-local scroll_frame = AceGUI:Create("ScrollFrame")
+local scroll_frame = AceGUI:Create("ScrollFrame") ---@type AceGUIScrollFrame
 scroll_frame:SetLayout("List")
 death_log_frame:AddChild(scroll_frame)
 
@@ -524,7 +542,7 @@ local function setupRowEntries()
 				end
 			elseif click_type == "RightButton" then
 				death_tomb_frame.map_id = _entry["player_data"]["map_id"]
-				death_tomb_frame.coordinates = _entry["player_data"]["map_pos"] and strsplit(",", _entry["player_data"]["map_pos"], 2) or nil
+				death_tomb_frame.coordinates = Deathlog_parseMapPos(_entry["player_data"]["map_pos"])
 				death_tomb_frame.clicked_name = _entry["player_data"]["name"]
 				
 				if not _G["WPDemoContextMenu"] then
@@ -540,7 +558,7 @@ local function setupRowEntries()
 				return
 			end
 			GameTooltip_SetDefaultAnchor(GameTooltip, WorldFrame)
-			deathlog_setTooltipFromEntry(_entry.player_data)
+			Deathlog_setTooltipFromEntry(_entry.player_data)
 			GameTooltip:Show()
 		end)
 
@@ -561,20 +579,31 @@ local function shiftEntry(_entry_from, _entry_to)
 	setEntry(_entry_from.player_data, _entry_to)
 end
 
-function deathlog_widget_minilog_createEntry(player_data)
+function Deathlog_widget_minilog_createEntry(player_data)
 	if entry_cache[player_data["name"]] then
 		return
 	end
 	entry_cache[player_data["name"]] = 1
+	local ws = deathlog_settings[widget_name]
 	if
-		player_data["level"]
+		ws
+		and player_data["level"]
 		and (
-			tonumber(player_data["level"]) < deathlog_settings[widget_name]["min_lvl"]
-			or tonumber(player_data["level"]) > deathlog_settings[widget_name]["max_lvl"]
+			tonumber(player_data["level"]) < (ws["min_lvl"] or 1)
+			or tonumber(player_data["level"]) > (ws["max_lvl"] or 60)
 		)
 	then
 		return
 	end
+
+	-- Guild filter check (using DeathNotificationLib)
+	if ws then
+		local filter_mode = ws["filter_mode"] or "all"
+		if not DeathNotificationLib.PassesGuildFilterMode(player_data, filter_mode) then
+			return
+		end
+	end
+
 	for i = 1, 19 do
 		if row_entry[i + 1].player_data ~= nil then
 			shiftEntry(row_entry[i + 1], row_entry[i])
@@ -588,7 +617,7 @@ function deathlog_widget_minilog_createEntry(player_data)
 end
 death_log_icon_frame:RegisterForDrag("LeftButton")
 death_log_icon_frame:SetScript("OnDragStart", function(self, button)
-	if deathlog_settings[widget_name]["lock"] ~= nil and deathlog_settings[widget_name]["lock"] == true then
+	if deathlog_settings[widget_name] and deathlog_settings[widget_name]["lock"] then
 		return
 	end
 	death_log_frame.frame:ClearAllPoints()
@@ -596,10 +625,11 @@ death_log_icon_frame:SetScript("OnDragStart", function(self, button)
 	death_log_frame.frame:SetPoint("TOPLEFT", death_log_icon_frame, "TOPLEFT", 10, -10)
 end)
 death_log_icon_frame:SetScript("OnDragStop", function(self)
-	if deathlog_settings[widget_name]["lock"] ~= nil and deathlog_settings[widget_name]["lock"] == true then
+	if deathlog_settings[widget_name] and deathlog_settings[widget_name]["lock"] then
 		return
 	end
 	self:StopMovingOrSizing()
+	if deathlog_settings[widget_name] == nil then deathlog_settings[widget_name] = {} end
 	local x, y = self:GetCenter()
 	local px = (GetScreenWidth() * UIParent:GetEffectiveScale()) / 2
 	local py = (GetScreenHeight() * UIParent:GetEffectiveScale()) / 2
@@ -609,6 +639,7 @@ death_log_icon_frame:SetScript("OnDragStop", function(self)
 end)
 
 hooksecurefunc(death_log_frame.frame, "StopMovingOrSizing", function()
+	if deathlog_settings[widget_name] == nil then deathlog_settings[widget_name] = {} end
 	deathlog_settings[widget_name]["size_x"] = death_log_frame.frame:GetWidth()
 	deathlog_settings[widget_name]["size_y"] = death_log_frame.frame:GetHeight()
 end)
@@ -703,6 +734,7 @@ local defaults = {
 	["tooltip_playtime"] = true,
 	["tooltip_lastwords"] = true,
 	["lock"] = false,
+	["filter_mode"] = "all",  -- "all", "guild_only", "guild_confederation", "none"
 }
 
 local function applyDefaults(_defaults, force)
@@ -716,40 +748,42 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
-local options = nil
+local options = {}
 local optionsframe = nil
 local function applyFont()
 	local success = true
-	local title_font_path = fonts[deathlog_settings[widget_name]["font"]] or default_font
+	local ws = deathlog_settings[widget_name]
+	if ws == nil then return end
+	local title_font_path = fonts[ws["font"]] or default_font
 	death_log_frame.titletext:SetFont(
 		title_font_path,
-		deathlog_settings[widget_name]["title_font_size"],
-		"THICK"
+		ws["title_font_size"] or 19,
+		"THICKOUTLINE"
 	)
 
 	if title_font_path ~= death_log_frame.titletext:GetFont() then
 		success = false
 	end
 	death_log_frame.titletext:SetTextColor(
-		deathlog_settings[widget_name]["title_color_r"],
-		deathlog_settings[widget_name]["title_color_g"],
-		deathlog_settings[widget_name]["title_color_b"],
-		deathlog_settings[widget_name]["title_color_a"]
+		ws["title_color_r"] or 1,
+		ws["title_color_g"] or 1,
+		ws["title_color_b"] or 1,
+		ws["title_color_a"] or 1
 	)
 	death_log_frame.titletext:SetPoint(
 		"LEFT",
 		death_log_frame.frame,
 		"TOPLEFT",
-		deathlog_settings[widget_name]["title_x_offset"] + 32,
-		deathlog_settings[widget_name]["title_y_offset"] - 10
+		(ws["title_x_offset"] or 0) + 32,
+		(ws["title_y_offset"] or 0) - 10
 	)
 
-	local entry_font_path = fonts[deathlog_settings[widget_name]["entry_font"]] or default_font
+	local entry_font_path = fonts[ws["entry_font"]] or default_font
 	for i = 1, 20 do
 		for idx, v in ipairs(subtitle_data) do
 			row_entry[i].font_strings[v[1]]:SetFont(
 				entry_font_path,
-				deathlog_settings[widget_name]["entry_font_size"],
+				ws["entry_font_size"] or 14,
 				""
 			)
 
@@ -837,6 +871,7 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 	end
 
 	if deathlog_settings[widget_name]["theme"] == "Parchment" then
+		if class_bg_tex then class_bg_tex:Hide() end
 		local PaneBackdrop = {
 			bgFile = "Interface\\ACHIEVEMENTFRAME\\UI-Achievement-Parchment-Horizontal",
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
@@ -849,20 +884,29 @@ function Deathlog_minilog_applySettings(rebuild_ace)
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
 		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
 		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, deathlog_settings[widget_name]["border_alpha"])
-	elseif deathlog_class_tbl[deathlog_settings[widget_name]["theme"]] then
+	elseif artifact_themes[deathlog_settings[widget_name]["theme"]] then
+		-- Use border-only backdrop; the BG is a manually cropped atlas texture
 		local PaneBackdrop = {
-			bgFile = "Interface\\Artifacts\\ArtifactUI" .. deathlog_settings[widget_name]["theme"],
+			bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
 			tile = true,
-			tileSize = 170,
+			tileSize = 16,
 			edgeSize = 24,
 			insets = { left = 3, right = 3, top = 3, bottom = 3 },
 		}
-
 		death_log_frame.frame:SetBackdrop(PaneBackdrop)
-		death_log_frame.frame:SetBackdropColor(0.4, 0.4, 0.4, 1)
+		death_log_frame.frame:SetBackdropColor(0, 0, 0, 0)
 		death_log_frame.frame:SetBackdropBorderColor(0.5, 0.5, 0.5, deathlog_settings[widget_name]["border_alpha"])
+		if class_bg_tex == nil then
+			class_bg_tex = death_log_frame.frame:CreateTexture(nil, "BACKGROUND", nil, 0)
+			class_bg_tex:SetAllPoints(death_log_frame.frame)
+			-- UV crops to the Artifacts-<Class>-BG region (same coords for all class sheets)
+			class_bg_tex:SetTexCoord(0.000976562, 0.875977, 0.000976562, 0.601562)
+		end
+		class_bg_tex:SetTexture("Interface\\Artifacts\\ArtifactUI" .. deathlog_settings[widget_name]["theme"])
+		class_bg_tex:Show()
 	else
+		if class_bg_tex then class_bg_tex:Hide() end
 		local PaneBackdrop = {
 			bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
 			edgeFile = "Interface\\Glues\\COMMON\\TextPanel-Border",
@@ -1077,7 +1121,6 @@ options = {
 				deathlog_settings[widget_name]["title_font_size"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		borderalpha = {
 			type = "range",
@@ -1093,7 +1136,6 @@ options = {
 				deathlog_settings[widget_name]["border_alpha"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		entryfontsize = {
 			type = "range",
@@ -1109,7 +1151,6 @@ options = {
 				deathlog_settings[widget_name]["entry_font_size"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		titlexoffset = {
 			type = "range",
@@ -1125,7 +1166,6 @@ options = {
 				deathlog_settings[widget_name]["title_x_offset"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		titleyoffset = {
 			type = "range",
@@ -1141,7 +1181,6 @@ options = {
 				deathlog_settings[widget_name]["title_y_offset"] = value
 				Deathlog_minilog_applySettings()
 			end,
-			disabled = hidenametextoptions,
 		},
 		entryxoffset = {
 			type = "range",
@@ -1159,12 +1198,11 @@ options = {
 				if ace_refresh_timer_handle then
 					ace_refresh_timer_handle:Cancel()
 				end
-				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function()
+				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function(cb)
 					Deathlog_minilog_applySettings(true)
-					ace_refresh_timer_handle:Cancel()
+					cb:Cancel()
 				end)
 			end,
-			disabled = hidenametextoptions,
 		},
 		entryyoffset = {
 			type = "range",
@@ -1181,12 +1219,11 @@ options = {
 				if ace_refresh_timer_handle then
 					ace_refresh_timer_handle:Cancel()
 				end
-				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function()
+				ace_refresh_timer_handle = C_Timer.NewTimer(0.05, function(cb)
 					Deathlog_minilog_applySettings(true)
-					ace_refresh_timer_handle:Cancel()
+					cb:Cancel()
 				end)
 			end,
-			disabled = hidenametextoptions,
 		},
 		reset_size_and_pos = {
 			type = "execute",
@@ -1317,7 +1354,7 @@ options = {
 			name = "Add fake entry",
 			desc = "Add fake entry",
 			func = function()
-				deathlog_widget_minilog_createEntry(DeathNotificationLib.CreateFakeEntry())
+				Deathlog_widget_minilog_createEntry(DeathNotificationLib.CreateFakeEntry())
 			end,
 		},
 
@@ -1462,6 +1499,7 @@ options = {
 					min = 1,
 					max = MAX_PLAYER_LEVEL,
 					step = 1,
+					order = 2,
 					get = function()
 						return deathlog_settings[widget_name]["max_lvl"]
 					end,
@@ -1469,6 +1507,32 @@ options = {
 						deathlog_settings[widget_name]["max_lvl"] = value
 						Deathlog_minilog_applySettings()
 					end,
+				},
+				filter_mode = {
+					type = "select",
+					name = "Death Filter",
+					desc = "Filter which deaths to display. 'Guild Only' shows only deaths from your guild. 'Guild + Confederation' also includes GreenWall confederation guilds.",
+					order = 3,
+					values = function()
+						return DeathNotificationLib.GetGuildFilterModeOptions()
+					end,
+					get = function()
+						local v = deathlog_settings[widget_name]["filter_mode"] or "all"
+						if not DeathNotificationLib.GetGuildFilterModeOptions()[v] then v = "all" end
+						return v
+					end,
+					set = function(self, value)
+						deathlog_settings[widget_name]["filter_mode"] = value
+						Deathlog_minilog_applySettings()
+					end,
+				},
+				greenwall_status = {
+					type = "description",
+					name = function()
+						return "|cFF888888" .. DeathNotificationLib.GetGreenWallStatus() .. "|r"
+					end,
+					order = 3.1,
+					width = "full",
 				},
 			},
 		},

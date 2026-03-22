@@ -1,0 +1,10 @@
+## Interface: 20505, 11508
+## Title: Deathlog Data
+## Notes: Precomputed statistics data for Deathlog.
+## IconTexture: Interface\AddOns\DeathlogData\Media\logo.png
+## Author: Deathwing
+## X-License: GNU GPL3
+## X-Category: Library
+## Version: 1774134000
+
+DeathlogData.xml

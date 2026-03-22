@@ -1,3 +1,4 @@
+---@diagnostic disable: inject-field, undefined-field
 --
 -- ChatThrottleLib by Mikk
 --
@@ -49,7 +50,7 @@ if not _G.ChatThrottleLib then
 end
 
 ChatThrottleLib = _G.ChatThrottleLib  -- in case some addon does "local ChatThrottleLib" above us and we're copypasted (AceComm-2, sigh)
-local ChatThrottleLib = _G.ChatThrottleLib
+local ChatThrottleLib = _G.ChatThrottleLib ---@type ChatThrottleLib
 
 ChatThrottleLib.version = CTL_VERSION
 

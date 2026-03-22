@@ -20,6 +20,7 @@ along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 local id_to_npc = DeathNotificationLib.ID_TO_NPC
 local deathlog_environment_damage = DeathNotificationLib.ENVIRONMENT_DAMAGE
 
+---@type MenuElementContainer
 local deadliest_creatures_container = CreateFrame("Frame")
 deadliest_creatures_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 local function createDeadliestCreaturesEntry()
@@ -133,8 +134,8 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 	for i = 1, 10 do
 		deadliest_creatures_textures[i]:Hide()
 	end
-	local map_id = deathlog_normalize_map_id_for_stats(current_map_id)
-	local most_deadly_units_raw = deathlogGetOrdered(_stats, { "all", map_id, "all", nil })
+	local map_id = Deathlog_normalize_map_id_for_stats(current_map_id)
+	local most_deadly_units_raw = DeathlogGetOrdered(_stats, { "all", map_id, "all", nil })
 	-- Filter out entries that have no known creature name (PvP-encoded source_ids, source_id=-1, etc.)
 	local most_deadly_units = {}
 	if most_deadly_units_raw then
@@ -151,6 +152,7 @@ function deadliest_creatures_container.updateMenuElement(scroll_frame, current_m
 		end
 
 		deadliest_creatures_container:SetParent(scroll_frame.frame)
+		deadliest_creatures_container:ClearAllPoints()
 		deadliest_creatures_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 600, -25)
 		deadliest_creatures_container:Show()
 		deadliest_creatures_container:SetWidth(scroll_frame.frame:GetWidth() * 0.2)

@@ -5,7 +5,7 @@ Deathlog-specific UI info button for death-logging eligibility status.
 
 Creates a small button that attaches to a container frame and displays
 a tooltip explaining the player's current hardcore state. Relies on
-deathlog_getHardcoreCharacterState() from hardcore_state.lua.
+Deathlog_getHardcoreCharacterState() from hardcore_state.lua.
 --]]
 
 local HC_STATE = DeathNotificationLib.HC_STATE
@@ -26,7 +26,7 @@ local function appendUpdateAvailableTooltip()
 	return true
 end
 
-function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
+function Deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 	if container.info_button == nil then
 		container.info_button = CreateFrame("Button", nil, container.frame)
 
@@ -60,7 +60,7 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 				return
 			end
 
-			local state = deathlog_getHardcoreCharacterState("player")
+			local state = Deathlog_getHardcoreCharacterState("player")
 			local has_update = DeathNotificationLib.GetNewerAddonVersion("Deathlog") ~= nil
 
 			-- Allow re-evaluation when update status changes
@@ -76,7 +76,7 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 					-- Normally hidden when Hardcore — but show for update notification
 					info_button.deathlog_hc_state_func = function(self)
 						GameTooltip:ClearLines()
-						GameTooltip:AddLine("Deathlog", 1, 0.8, 0, 1)
+						GameTooltip:AddLine("Deathlog", 1, 0.8, 0, true)
 						appendUpdateAvailableTooltip()
 					end
 					info_button:Show()
@@ -84,10 +84,10 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 					info_button:Hide()
 				end
 			elseif state == HC_STATE.NOT_HARDCORE_ANYMORE then
-				local isExternal = deathlog_getExternalHardcoreAddon()
+				local isExternal = Deathlog_getExternalHardcoreAddon()
 				info_button.deathlog_hc_state_func = function(self)
 					GameTooltip:ClearLines()
-					GameTooltip:AddLine("Death Logging Status", 1, 0.8, 0, 1)
+					GameTooltip:AddLine("Death Logging Status", 1, 0.8, 0, true)
 					GameTooltip:AddLine(" ")
 					GameTooltip:AddLine("Status: |cffFF4444NOT HARDCORE ANYMORE|r")
 					GameTooltip:AddLine(" ")
@@ -108,7 +108,7 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 				local location = UnitFactionGroup("player") == "Alliance" and "Ironforge" or "Undercity"
 				info_button.deathlog_hc_state_func = function(self)
 					GameTooltip:ClearLines()
-					GameTooltip:AddLine("Death Logging Status", 1, 0.8, 0, 1)
+					GameTooltip:AddLine("Death Logging Status", 1, 0.8, 0, true)
 					GameTooltip:AddLine(" ")
 					GameTooltip:AddLine("Status: |cffFFFF00SOUL OF IRON REQUIRED|r")
 					GameTooltip:AddLine(" ")
@@ -124,7 +124,7 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 			else
 				info_button.deathlog_hc_state_func = function(self)
 					GameTooltip:ClearLines()
-					GameTooltip:AddLine("Death Logging Status", 1, 0.8, 0, 1)
+					GameTooltip:AddLine("Death Logging Status", 1, 0.8, 0, true)
 					GameTooltip:AddLine(" ")
 					GameTooltip:AddLine("Status: |cffFF4444NOT SUPPORTED|r")
 					GameTooltip:AddLine(" ")
@@ -165,6 +165,8 @@ function deathlog_createInfoButton(container, with_events, offset_x, offset_y)
 		DeathNotificationLib.HookOnNewerVersion(function()
 			if info_button then updateStateInfoButton() end
 		end)
+
+		updateStateInfoButton()
 	end
 
 	return container.info_button

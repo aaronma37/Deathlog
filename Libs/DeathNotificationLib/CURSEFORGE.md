@@ -116,7 +116,6 @@ DNL ships with locale-aware lookup tables exposed on the `DeathNotificationLib` 
 | `ZONE_TO_INSTANCE` | Zone → instance mapping |
 | `ID_TO_DISPLAY_ID` | NPC ID → display model ID |
 | `ID_TO_QUOTE` | NPC ID → flavor quote |
-| `HEATMAP_INTENSITY` / `HEATMAP_CREATURE_SUBSET` | Death heatmap data |
 
 ## Public API Reference
 

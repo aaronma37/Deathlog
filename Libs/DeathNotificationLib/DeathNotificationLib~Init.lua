@@ -2,7 +2,7 @@
 DeathNotificationLib~Init.lua
 --]]
 
-local VERSION = 6
+local VERSION = 13
 
 if DeathNotificationLib and (DeathNotificationLib.VERSION or 0) >= VERSION then return end
 
@@ -64,6 +64,16 @@ function _dnl.parseVersion(ver)
 	return tonumber(major), tonumber(minor), tonumber(patch)
 end
 
+--- Resolve an ID value which may be a number or an array of numbers.
+--- Returns the first ID, or nil if the value is nil.
+---@param val number|table|nil
+---@return number|nil
+function _dnl.resolveId(val)
+	if type(val) == "number" then return val end
+	if type(val) == "table" then return val[1] end
+	return nil
+end
+
 --- Compare two semantic version strings.
 --- Returns  1 if a > b,  -1 if a < b,  0 if equal,  nil if either is invalid.
 ---@param a string|nil
@@ -88,7 +98,7 @@ end
 ---@param channelName string  Channel name to hide
 function _dnl.hideChannelFromChatFrames(channelName)
 	if not channelName then return end
-	if not _dnl.anyAddonAllows("auto_hide_chat_channels") then return end
+	if not _dnl.anyAddonEnables("auto_hide_chat_channels") then return end
 	for i = 1, 10 do
 		if _G["ChatFrame" .. i] then
 			ChatFrame_RemoveChannel(_G["ChatFrame" .. i], channelName)
@@ -196,6 +206,8 @@ input_frame:SetPropagateKeyboardInput(true)
 ---@field db_map DNL_DatabaseMap|nil READ-ONLY by DNL: { [name] = checksum } for sync/query
 ---@field dev_data DNL_DevData|nil   Optional debug data
 ---@field addon_version string|nil   Semantic version string (e.g. "0.4.0") for upgrade notifications
+---@field newest_detected_version string|nil  Newer version seen from peers
+---@field watchlistIconProvider fun(playerName: string): string|nil Optional callback returning a watchlist icon string for a player name
 
 --- Registry of all attached addons, keyed by addon name.
 ---@type table<string, DNL_RegisteredAddon>
@@ -258,6 +270,7 @@ _dnl.tag_to_addon = {}
 ---@field accent_color_a number|nil Accent alpha channel 0-1 (default 1)
 ---@field current_zone_filter boolean|nil Only show deaths in current zone (default false)
 ---@field alert_sound string|nil Sound key: "default_hardcore"|"random"|any LSM key (default "default_hardcore")
+---@field death_alert_options_parent string|nil Blizzard settings parent category name for the DeathAlert options panel (default "Deathlog")
 
 --- Persistent death entry stored by checksum.
 ---@alias DNL_DBEntry PlayerData
@@ -276,25 +289,6 @@ _dnl.tag_to_addon = {}
 ---------------------------------------------------------------------------
 -- Settings helpers (per-addon)
 ---------------------------------------------------------------------------
-
---- For settings with default-true (opt-out) semantics:
---- Returns true if ANY registered addon hasn't explicitly set key to false.
---- If no addon has settings, returns true (the default).
---- Examples: peer_reporting, auto_blizzard_deaths, legacy_messages.
----@param key string
----@return boolean
-function _dnl.anyAddonAllows(key)
-	local found_any = false
-	for _, addon in pairs(_dnl.addons) do
-		if addon.settings then
-			found_any = true
-			if addon.settings[key] ~= false then
-				return true
-			end
-		end
-	end
-	return not found_any -- no addon has settings → default true
-end
 
 --- For settings with default-false (opt-in) semantics:
 --- Returns true if ANY registered addon has explicitly set key to a truthy value.

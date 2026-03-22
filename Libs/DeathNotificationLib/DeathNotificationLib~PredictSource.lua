@@ -24,8 +24,9 @@ local abs   = math.abs
 --- Check whether precomputed heatmap data is available.
 ---@return boolean
 local function hasHeatmapData()
-	return type(_dnl.D.HEATMAP_INTENSITY) == "table"
-		and type(_dnl.D.HEATMAP_CREATURE_SUBSET) == "table"
+	return DeathNotificationLibData
+		and type(DeathNotificationLibData.HEATMAP_INTENSITY) == "table"
+		and type(DeathNotificationLibData.HEATMAP_CREATURE_SUBSET) == "table"
 end
 
 --- Check a single (map_id, x, y) coordinate against the heatmap.
@@ -33,12 +34,12 @@ end
 local function checkCoordinate(map_id, x, y)
 	if x <= 0 or x >= 100 or y <= 0 or y >= 100 then return nil end
 
-	local intensity_map = _dnl.D.HEATMAP_INTENSITY[map_id]
+	local intensity_map = DeathNotificationLibData.HEATMAP_INTENSITY[map_id]
 	if not intensity_map or not intensity_map[x] or not intensity_map[x][y] then
 		return nil
 	end
 
-	local creature_map = _dnl.D.HEATMAP_CREATURE_SUBSET[map_id]
+	local creature_map = DeathNotificationLibData.HEATMAP_CREATURE_SUBSET[map_id]
 	if not creature_map then return nil end
 
 	for npc_id, grid in pairs(creature_map) do

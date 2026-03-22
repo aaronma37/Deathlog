@@ -1,4 +1,4 @@
-deathlog_strings_de = {
+DEATHLOG_STRINGS_DE = {
 	-- fonts
 	main_font = "Fonts\\FRIZQT__.TTF",
 	class_font = "Fonts\\blei00d.TTF",
@@ -7,7 +7,8 @@ deathlog_strings_de = {
 	deadliest_creature_container_font = "Fonts\\blei00d.TTF",
 	creature_model_quote_font = "Fonts\\MORPHEUS.TTF",
 	-- words
-	minimap_btn_left_click = "|cFF666666Linksklick:|r Protokoll anzeigen",
+	minimap_btn_left_click = "|cFF666666Linksklick:|r Protokoll umschalten",
+	minimap_btn_shift_click = "|cFF666666Shift-Klick:|r Position/Skalierung zurücksetzen",
 	minimap_btn_right_click = "|cFF666666Rechtsklick:|r ",
 	class_word = "Klasse",
 	killed_by_word = "Getötet von",

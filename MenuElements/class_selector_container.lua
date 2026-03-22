@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+---@type MenuElementContainer
 local class_selector_container = CreateFrame("Frame")
 class_selector_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 class_selector_container:SetSize(1000, 1000)
@@ -39,7 +40,7 @@ local function createClassIconButton(path_postfix, title_text, class_id)
 	frame.instance_texture:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 	frame.instance_texture:SetTexture("Interface\\ICONS\\ClassIcon_" .. path_postfix)
 	frame.instance_texture:SetParent(frame)
-	frame.instance_texture:SetDesaturated(1)
+	frame.instance_texture:SetDesaturated(true)
 	frame.instance_texture:Hide()
 
 	return frame
@@ -48,7 +49,7 @@ end
 class_selector_container.class_buttons = {}
 
 local i = 1
-for k, v in pairs(deathlog_class_tbl) do
+for k, v in pairs(Deathlog_class_tbl) do
 	class_selector_container.class_buttons[i] = createClassIconButton(k, k, v)
 	class_selector_container.class_buttons[i]:Show()
 	i = i + 1
@@ -74,6 +75,7 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 	end
 
 	class_selector_container:SetParent(scroll_frame.frame)
+	class_selector_container:ClearAllPoints()
 	class_selector_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 45, -30)
 	class_selector_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
 	class_selector_container:SetWidth(scroll_frame.frame:GetWidth() * 0.6)
@@ -177,19 +179,16 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 	local current_class_name = GetClassInfo(class_id)
 
 	local function dropdownFunctions(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-		info.text, info.checked, info.func =
-			"Kaplan-Meier", model == "Kaplan-Meier", function()
-				updateFun(class_id, current_class_name, "Kaplan-Meier", view)
+		local models = { "Kaplan-Meier", "LogNormal" }
+		for _, m in ipairs(models) do
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = m
+			info.checked = model == m
+			info.func = function()
+				updateFun(class_id, current_class_name, m, view)
 			end
-
-		UIDropDownMenu_AddButton(info)
-		info.text, info.checked, info.func =
-			"LogNormal", model == "LogNormal", function()
-				updateFun(class_id, current_class_name, "LogNormal", view)
-			end
-
-		UIDropDownMenu_AddButton(info)
+			UIDropDownMenu_AddButton(info)
+		end
 	end
 	class_selector_container.metric_dd:SetPoint("TOPLEFT", class_selector_container, "TOPLEFT", 500, -10)
 	UIDropDownMenu_SetText(class_selector_container.metric_dd, model)
@@ -214,19 +213,19 @@ function class_selector_container.updateMenuElement(scroll_frame, class_id, stat
 	end
 
 	local function dropdownFunctions(frame, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-		info.text, info.checked, info.func =
-			"Survival (P(T>t))", view == "Survival", function()
-				updateFun(class_id, current_class_name, model, "Survival")
+		local views = {
+			{ key = "Survival", label = "Survival (P(T>t))" },
+			{ key = "Hazard", label = "Hazard (P(T>t | T=lvl))" },
+		}
+		for _, v in ipairs(views) do
+			local info = UIDropDownMenu_CreateInfo()
+			info.text = v.label
+			info.checked = view == v.key
+			info.func = function()
+				updateFun(class_id, current_class_name, model, v.key)
 			end
-
-		UIDropDownMenu_AddButton(info)
-		info.text, info.checked, info.func =
-			"Hazard (P(T>t | T=lvl))", view == "Hazard", function()
-				updateFun(class_id, current_class_name, model, "Hazard")
-			end
-
-		UIDropDownMenu_AddButton(info)
+			UIDropDownMenu_AddButton(info)
+		end
 	end
 
 	class_selector_container.view_dd:SetPoint("TOPLEFT", class_selector_container, "TOPLEFT", 650, -10)

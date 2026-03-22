@@ -219,6 +219,7 @@ end
 ---@field checksum string|nil
 ---@field timestamp number|nil
 ---@field committed boolean|nil
+---@field level number|nil
 
 ---@type table<string, LRUCacheEntry>
 local death_ping_lru_cache_tbl = {}
@@ -317,17 +318,18 @@ local function tryCommitEntry(checksum)
 	if death_ping_lru_cache_tbl[checksum] == nil then
 		return
 	end
-	if death_ping_lru_cache_tbl[checksum]["player_data"] == nil then
+
+	local pdata = death_ping_lru_cache_tbl[checksum]["player_data"]
+	if pdata == nil then
 		return
 	end
-	if _dnl.isValidEntry(death_ping_lru_cache_tbl[checksum]["player_data"]) == false then
+	if _dnl.isValidEntry(pdata) == false then
 		return
 	end
 	if death_ping_lru_cache_tbl[checksum]["committed"] then
 		return
 	end
 
-	local pdata = death_ping_lru_cache_tbl[checksum]["player_data"]
 	local pdata_name = pdata["name"]
 	if pdata_name and _dnl.isNameAlreadyCommitted(pdata_name, pdata["level"]) then
 		death_ping_lru_cache_tbl[checksum]["committed"] = 1
@@ -428,7 +430,7 @@ function _dnl.handleDeathBroadcast(sender, data)
 	local quality = is_self_report and _dnl.QUALITY.SELF or _dnl.QUALITY.PEER
 	local entry_source = is_self_report and SOURCE.SELF_DEATH or SOURCE.PEER_BROADCAST
 
-	if not is_self_report and not _dnl.anyAddonAllows("peer_reporting") then
+	if not is_self_report and not _dnl.anyAddonEnables("peer_reporting") then
 		if _dnl.DEBUG then
 			print("Peer-reported death ignored (all addons disabled peer_reporting):", decoded_player_data["name"], "reported by:", sender)
 		end

@@ -6,7 +6,7 @@ A WoW Hardcore addon that provides a UI for exploring the deathlog and death sta
 
 **[SEE WIKI FOR OFFLINE STATS](https://github.com/aaronma37/Deathlog/wiki)**  The wiki will be updated as the database grows
 
-*Feel free to use the database for any purpose!* [Database](https://github.com/aaronma37/Deathlog/tree/master/db/db.json)
+*Feel free to use the database for any purpose!* [Vanilla database](https://github.com/aaronma37/Deathlog/tree/master/database/db_vanilla.json) | [TBC database](https://github.com/aaronma37/Deathlog/tree/master/database/db_tbc.json)
 
 ## Compatibility
 
@@ -16,6 +16,10 @@ A WoW Hardcore addon that provides a UI for exploring the deathlog and death sta
 This addon is completely safe to run alongside the `Hardcore` addon.  Alternatively, this addon can be run without the Hardcore addon running, however, it does not provide verification for the solo self-found challenge.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+## Contact & Feedback
+
+- Deathlog Discord: http://discord.com/invite/NphuAv75vy
 
 ## Features
 

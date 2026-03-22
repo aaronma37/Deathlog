@@ -1,5 +1,3 @@
-local precomputed_heatmap_intensity = DeathNotificationLib.HEATMAP_INTENSITY
-
 local AceGUI = LibStub("AceGUI-3.0")
 local widget_name = "Heatmap WorldMap Overlay"
 local WorldMapButton = WorldMapFrame:GetCanvas()
@@ -14,9 +12,24 @@ heatmap_wm_overlay_checkbox_frame:SetHeight(40)
 heatmap_wm_overlay_checkbox_frame:Show()
 
 local last_calculated_map_id = nil
-local granularity = 100
-local grid_x = 11
-local grid_y = 11
+
+local GRANULARITY_VALUES = {
+	["low"] = 25,
+	["medium"] = 50,
+	["high"] = 75,
+	["ultra"] = 100,
+}
+
+local function getGranularity()
+	if deathlog_settings and deathlog_settings[widget_name] and deathlog_settings[widget_name]["granularity"] then
+		return GRANULARITY_VALUES[deathlog_settings[widget_name]["granularity"]] or 100
+	end
+	return 100
+end
+
+function Deathlog_GetHeatmapGranularity()
+	return getGranularity()
+end
 
 if heatmap_wm_overlay_checkbox_frame.heatmap_checkbox == nil then
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox = CreateFrame(
@@ -46,68 +59,68 @@ if heatmap_wm_overlay_checkbox_frame.heatmap_checkbox == nil then
 end
 
 local function updateWMOHeatmap(map_id)
+	if heatmap_wm_overlay_frame.heatmap == nil then
+		return
+	end
 	if last_calculated_map_id == map_id then
 		return
 	end
 	last_calculated_map_id = map_id
 
-	for i = 1, granularity do
-		for j = 1, granularity do
-			heatmap_wm_overlay_frame.heatmap[i][j].intensity = 0.0
+	-- Hide all existing textures from previous zone
+	for i, row in pairs(heatmap_wm_overlay_frame.heatmap) do
+		for j, tex in pairs(row) do
+			tex:Hide()
 		end
 	end
-	local iv = {
-		[1] = {
-			[1] = 0.025,
-			[2] = 0.045,
-			[3] = 0.025,
-		},
-		[2] = {
-			[1] = 0.045,
-			[2] = 0.1,
-			[3] = 0.045,
-		},
-		[3] = {
-			[1] = 0.025,
-			[2] = 0.045,
-			[3] = 0.025,
-		},
-	}
-	local should_hide = deathlog_should_hide_heatmap and deathlog_should_hide_heatmap(map_id)
-	if not should_hide and map_id ~= nil and precomputed_heatmap_intensity[map_id] ~= nil then
-		for x, v2 in pairs(precomputed_heatmap_intensity[map_id]) do
-			for y, intensity in pairs(v2) do
-				-- Skip out-of-bounds coordinates (heatmap array is 1-100)
-				if x >= 1 and x <= granularity and y >= 1 and y <= granularity then
-					heatmap_wm_overlay_frame.heatmap[x][y].intensity = intensity
+
+	local precomputed_heatmap_intensity = DeathNotificationLibDataCopy.HEATMAP_INTENSITY
+	local should_hide = Deathlog_should_hide_heatmap and Deathlog_should_hide_heatmap(map_id)
+	if should_hide or map_id == nil or precomputed_heatmap_intensity == nil or precomputed_heatmap_intensity[map_id] == nil then
+		return
+	end
+
+	local gran = getGranularity()
+	local cell_size = math.ceil(11 * 100 / gran)
+
+	-- Bucket the precomputed data into the current granularity
+	local bucketed = {}
+	for x, v2 in pairs(precomputed_heatmap_intensity[map_id]) do
+		for y, intensity in pairs(v2) do
+			local bx = math.ceil(x * gran / 100)
+			local by = math.ceil(y * gran / 100)
+			if bx >= 1 and bx <= gran and by >= 1 and by <= gran then
+				if bucketed[bx] == nil then bucketed[bx] = {} end
+				if bucketed[bx][by] == nil or intensity > bucketed[bx][by] then
+					bucketed[bx][by] = intensity
 				end
 			end
 		end
 	end
+
 	local mWidth, mHeight = WorldMapFrame:GetCanvas():GetSize()
-	for i = 1, granularity do
-		for j = 1, granularity do
-			local alpha = heatmap_wm_overlay_frame.heatmap[i][j].intensity * 4
-			if should_hide then
-				alpha = 0
+	for x, row in pairs(bucketed) do
+		for y, intensity in pairs(row) do
+			local alpha = intensity * 4
+			if alpha > 0 then
+				if alpha > 0.6 then
+					alpha = 0.6
+				end
+				if heatmap_wm_overlay_frame.heatmap[x] == nil then
+					heatmap_wm_overlay_frame.heatmap[x] = {}
+				end
+				if heatmap_wm_overlay_frame.heatmap[x][y] == nil then
+					local tex = heatmap_wm_overlay_frame:CreateTexture(nil, "BACKGROUND")
+					tex:SetDrawLayer("OVERLAY", -7)
+					heatmap_wm_overlay_frame.heatmap[x][y] = tex
+				end
+				local tex = heatmap_wm_overlay_frame.heatmap[x][y]
+				tex:SetHeight(cell_size)
+				tex:SetWidth(cell_size)
+				tex:SetColorTexture(1.0, 1.1 - intensity * 4, 0.1, alpha)
+				tex:SetPoint("CENTER", WorldMapButton, "TOPLEFT", mWidth * x / gran, -mHeight * y / gran)
+				tex:Show()
 			end
-			if alpha > 0.6 then
-				alpha = 0.6
-			end
-			heatmap_wm_overlay_frame.heatmap[i][j]:SetColorTexture(
-				1.0,
-				1.1 - heatmap_wm_overlay_frame.heatmap[i][j].intensity * 4,
-				0.1,
-				alpha
-			)
-			heatmap_wm_overlay_frame.heatmap[i][j]:Show()
-			heatmap_wm_overlay_frame.heatmap[i][j]:SetPoint(
-				"CENTER",
-				WorldMapButton,
-				"TOPLEFT",
-				mWidth * i / granularity,
-				-mHeight * j / granularity
-			)
 		end
 	end
 end
@@ -115,6 +128,7 @@ end
 local defaults = {
 	["enable"] = true,
 	["show_checkbox_on_map"] = true,
+	["granularity"] = "ultra",
 }
 
 local function applyDefaults(_defaults, force)
@@ -128,7 +142,7 @@ local function applyDefaults(_defaults, force)
 	end
 end
 
-local options = nil
+local options = {}
 local optionsframe = nil
 function Deathlog_HWMWidget_applySettings()
 	applyDefaults(defaults)
@@ -150,30 +164,8 @@ function Deathlog_HWMWidget_applySettings()
 	heatmap_wm_overlay_frame:SetHeight(mHeight)
 	heatmap_wm_overlay_frame:SetWidth(mWidth)
 
-	local modified_width = heatmap_wm_overlay_frame:GetWidth() * 0.98
-	local modified_height = heatmap_wm_overlay_frame:GetHeight() * 0.87
-
 	if heatmap_wm_overlay_frame.heatmap == nil then
 		heatmap_wm_overlay_frame.heatmap = {}
-		for i = 1, granularity do
-			heatmap_wm_overlay_frame.heatmap[i] = {}
-			for j = 1, granularity do
-				heatmap_wm_overlay_frame.heatmap[i][j] = heatmap_wm_overlay_frame:CreateTexture(nil, "BACKGROUND")
-				heatmap_wm_overlay_frame.heatmap[i][j]:SetDrawLayer("OVERLAY", -7)
-				heatmap_wm_overlay_frame.heatmap[i][j]:SetHeight(grid_x)
-				heatmap_wm_overlay_frame.heatmap[i][j]:SetColorTexture(1.0, 0.1, 0.1, 0)
-				heatmap_wm_overlay_frame.heatmap[i][j]:SetWidth(grid_y)
-				heatmap_wm_overlay_frame.heatmap[i][j]:SetPoint(
-					"CENTER",
-					heatmap_wm_overlay_frame,
-					"TOPLEFT",
-					modified_width * i / granularity,
-					-modified_height * j / granularity
-				)
-				heatmap_wm_overlay_frame.heatmap[i][j]:Show()
-				heatmap_wm_overlay_frame.heatmap[i][j].intensity = 0.0
-			end
-		end
 	end
 
 	heatmap_wm_overlay_checkbox_frame.heatmap_checkbox:SetChecked(deathlog_settings[widget_name]["enable"])
@@ -233,6 +225,35 @@ options = {
 				deathlog_settings[widget_name]["show_checkbox_on_map"] =
 					not deathlog_settings[widget_name]["show_checkbox_on_map"]
 				Deathlog_HWMWidget_applySettings()
+			end,
+		},
+		heatmap_resolution = {
+			type = "select",
+			name = "Heatmap Resolution",
+			desc = "Controls the heatmap grid resolution. Lower values improve performance.",
+			values = {
+				["low"] = "Low (25x25)",
+				["medium"] = "Medium (50x50)",
+				["high"] = "High (75x75)",
+				["ultra"] = "Ultra (100x100)",
+			},
+			sorting = { "low", "medium", "high", "ultra" },
+			get = function()
+				return deathlog_settings[widget_name]["granularity"]
+			end,
+			set = function(_, value)
+				deathlog_settings[widget_name]["granularity"] = value
+				-- Wipe heatmap to force re-render at new resolution
+				if heatmap_wm_overlay_frame.heatmap then
+					for i, row in pairs(heatmap_wm_overlay_frame.heatmap) do
+						for j, tex in pairs(row) do
+							tex:Hide()
+						end
+					end
+					heatmap_wm_overlay_frame.heatmap = {}
+				end
+				last_calculated_map_id = nil
+				updateWMOHeatmap(WorldMapFrame:GetMapID())
 			end,
 		},
 	},

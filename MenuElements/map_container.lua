@@ -939,10 +939,8 @@ if GetExpansionLevel and GetExpansionLevel() >= 1 then
 end
 
 
-local precomputed_heatmap_intensity = DeathNotificationLib.HEATMAP_INTENSITY
-local precomputed_heatmap_creature_subset = DeathNotificationLib.HEATMAP_CREATURE_SUBSET
-
 local world_map_overlay = {}
+---@type MenuElementContainer
 local map_container = CreateFrame("Frame")
 map_container:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 map_container:SetSize(100, 100)
@@ -1104,8 +1102,41 @@ map_container.overlay_highlight = overlay_highlight
 
 local this_map_id = nil
 local occupied_by_creature = nil
+local function recolorHeatmapCells()
+	if map_container.heatmap == nil then
+		return
+	end
+	local checked = map_container.heatmap_checkbox and map_container.heatmap_checkbox:GetChecked()
+	for i, row in pairs(map_container.heatmap) do
+		for j, tex in pairs(row) do
+			local intensity = tex.intensity
+			if intensity and intensity > 0.01 then
+				local alpha = intensity * 4
+				if alpha > 0.6 then
+					alpha = 0.6
+				end
+				if intensity > 0.02 then
+					if occupied_by_creature == nil or (occupied_by_creature[i] and occupied_by_creature[i][j]) then
+						tex:SetColorTexture(1.0, 1.1 - intensity * 4, 0.1, alpha)
+					else
+						tex:SetColorTexture(1.0, 1.1 - intensity * 4, 0.1, alpha * 0.01)
+					end
+				else
+					tex:Hide()
+				end
+				if intensity > 0.02 and checked then
+					tex:Show()
+				else
+					tex:Hide()
+				end
+			end
+		end
+	end
+end
+
 function Deathlog_MapContainer_showSkullSet(source_id)
 	Deathlog_MapContainer_resetSkullSet()
+	local precomputed_heatmap_creature_subset = DeathNotificationLibDataCopy.HEATMAP_CREATURE_SUBSET
 	if precomputed_heatmap_creature_subset == nil then
 		return
 	end
@@ -1115,109 +1146,29 @@ function Deathlog_MapContainer_showSkullSet(source_id)
 	if precomputed_heatmap_creature_subset[this_map_id][source_id] == nil then
 		return
 	end
-	-- Guard against heatmap not being initialized yet
 	if map_container.heatmap == nil then
 		return
 	end
 
+	local gran = Deathlog_GetHeatmapGranularity and Deathlog_GetHeatmapGranularity() or 100
 	occupied_by_creature = {}
 	for x, v in pairs(precomputed_heatmap_creature_subset[this_map_id][source_id]) do
 		for y, _ in pairs(v) do
-			if occupied_by_creature[x] == nil then
-				occupied_by_creature[x] = { [y] = 1 }
+			local bx = math.ceil(x * gran / 100)
+			local by = math.ceil(y * gran / 100)
+			if occupied_by_creature[bx] == nil then
+				occupied_by_creature[bx] = {}
 			end
-			occupied_by_creature[x][y] = 1
+			occupied_by_creature[bx][by] = 1
 		end
 	end
 
-	for i = 1, 100 do
-		for j = 1, 100 do
-			if map_container.heatmap[i][j].intensity > 0.01 then
-				local alpha = map_container.heatmap[i][j].intensity * 4
-				if alpha > 0.6 then
-					alpha = 0.6
-				end
-				if map_container.heatmap[i][j].intensity > 0.02 then
-					if occupied_by_creature == nil or (occupied_by_creature[i] and occupied_by_creature[i][j]) then
-						map_container.heatmap[i][j]:SetColorTexture(
-							1.0,
-							1.1 - map_container.heatmap[i][j].intensity * 4,
-							0.1,
-							alpha
-						)
-					else
-						map_container.heatmap[i][j]:SetColorTexture(
-							1.0,
-							1.1 - map_container.heatmap[i][j].intensity * 4,
-							0.1,
-							alpha * 0.01
-						)
-					end
-				else
-					map_container.heatmap[i][j]:SetColorTexture(
-						1.0,
-						1.1 - map_container.heatmap[i][j].intensity * 4,
-						0.1,
-						0
-					)
-				end
-				if map_container.heatmap_checkbox:GetChecked() then
-					map_container.heatmap[i][j]:Show()
-				else
-					map_container.heatmap[i][j]:Hide()
-				end
-			end
-		end
-	end
+	recolorHeatmapCells()
 end
 
 function Deathlog_MapContainer_resetSkullSet()
 	occupied_by_creature = nil
-
-	-- Guard against heatmap not being initialized yet
-	if map_container.heatmap == nil then
-		return
-	end
-
-	for i = 1, 100 do
-		for j = 1, 100 do
-			if map_container.heatmap[i][j].intensity > 0.01 then
-				local alpha = map_container.heatmap[i][j].intensity * 4
-				if alpha > 0.6 then
-					alpha = 0.6
-				end
-				if map_container.heatmap[i][j].intensity > 0.02 then
-					if occupied_by_creature == nil or (occupied_by_creature[i] and occupied_by_creature[i][j]) then
-						map_container.heatmap[i][j]:SetColorTexture(
-							1.0,
-							1.1 - map_container.heatmap[i][j].intensity * 4,
-							0.1,
-							alpha
-						)
-					else
-						map_container.heatmap[i][j]:SetColorTexture(
-							1.0,
-							1.1 - map_container.heatmap[i][j].intensity * 4,
-							0.1,
-							alpha * 0.01
-						)
-					end
-				else
-					map_container.heatmap[i][j]:SetColorTexture(
-						1.0,
-						1.1 - map_container.heatmap[i][j].intensity * 4,
-						0.1,
-						0
-					)
-				end
-				if map_container.heatmap_checkbox:GetChecked() then
-					map_container.heatmap[i][j]:Show()
-				else
-					map_container.heatmap[i][j]:Hide()
-				end
-			end
-		end
-	end
+	recolorHeatmapCells()
 end
 
 function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
@@ -1225,11 +1176,13 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	this_map_id = current_map_id
 	if scroll_frame.frame then
 		map_container:SetParent(scroll_frame.frame)
+		map_container:ClearAllPoints()
 		map_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 0, -65)
 		map_container:SetHeight(scroll_frame.frame:GetWidth() * 0.6 * 3 / 4)
 		map_container:SetWidth(scroll_frame.frame:GetWidth() * 0.6)
 	else
 		map_container:SetParent(scroll_frame)
+		map_container:ClearAllPoints()
 		map_container:SetPoint("TOPLEFT", scroll_frame, "TOPLEFT", 0, -65)
 		map_container:SetHeight(scroll_frame:GetWidth() * 0.6 * 3 / 4)
 		map_container:SetWidth(scroll_frame:GetWidth() * 0.6)
@@ -1306,7 +1259,6 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	for _, v in ipairs(world_map_overlay) do
 		v:Hide()
 	end
-	other_texs = {}
 
 	local function getOverlayTextures(current_map_id)
 		local textures = {}
@@ -1400,9 +1352,6 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		end
 	end
 
-	local num_entries = 1
-	local modified_width = map_container:GetWidth() * 0.98
-	local modified_height = map_container:GetHeight() * 0.87
 	if map_container.tomb_tex == nil then
 		map_container.tomb_tex = {}
 	end
@@ -1421,115 +1370,70 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 	-- 	end
 	-- end
 
+	local gran = Deathlog_GetHeatmapGranularity and Deathlog_GetHeatmapGranularity() or 100
+	local cell_h = math.ceil(5 * 100 / gran)
+	local cell_w = math.ceil(7 * 100 / gran)
 	local modified_width = map_container:GetWidth() * 0.98
 	local modified_height = map_container:GetHeight() * 0.87
 	if map_container.heatmap == nil then
 		map_container.heatmap = {}
-		for i = 1, 100 do
-			map_container.heatmap[i] = {}
-			for j = 1, 100 do
-				map_container.heatmap[i][j] = map_container:CreateTexture(nil, "OVERLAY")
-				map_container.heatmap[i][j]:SetDrawLayer("OVERLAY", 6)
-				map_container.heatmap[i][j]:SetHeight(5)
-				map_container.heatmap[i][j]:SetColorTexture(1.0, 0.1, 0.1, 0)
-				map_container.heatmap[i][j]:SetWidth(7)
-				map_container.heatmap[i][j]:SetPoint(
-					"CENTER",
-					map_container,
-					"TOPLEFT",
-					modified_width * i / 100,
-					-modified_height * j / 100
-				)
-				map_container.heatmap[i][j]:Show()
-				map_container.heatmap[i][j].intensity = 0.0
-			end
+	end
+
+	-- Hide all existing textures from previous zone
+	for i, row in pairs(map_container.heatmap) do
+		for j, tex in pairs(row) do
+			tex.intensity = 0.0
+			tex:Hide()
 		end
 	end
 
-	for i = 1, 100 do
-		for j = 1, 100 do
-			map_container.heatmap[i][j]:SetPoint(
-				"CENTER",
-				map_container,
-				"TOPLEFT",
-				modified_width * i / 100,
-				-modified_height * j / 100
-			)
-			map_container.heatmap[i][j]:Hide()
-		end
-	end
-
-	for i = 1, 100 do
-		for j = 1, 100 do
-			map_container.heatmap[i][j].intensity = 0.0
-		end
-	end
-	local iv = {
-		[1] = {
-			[1] = 0.025,
-			[2] = 0.045,
-			[3] = 0.025,
-		},
-		[2] = {
-			[1] = 0.045,
-			[2] = 0.1,
-			[3] = 0.045,
-		},
-		[3] = {
-			[1] = 0.025,
-			[2] = 0.045,
-			[3] = 0.025,
-		},
-	}
-	local should_hide = deathlog_should_hide_heatmap and deathlog_should_hide_heatmap(current_map_id)
-	if not should_hide and precomputed_heatmap_intensity[current_map_id] ~= nil then
+	local should_hide = Deathlog_should_hide_heatmap and Deathlog_should_hide_heatmap(current_map_id)
+	local precomputed_heatmap_intensity = DeathNotificationLibDataCopy.HEATMAP_INTENSITY
+	if not should_hide and precomputed_heatmap_intensity and precomputed_heatmap_intensity[current_map_id] ~= nil then
+		local checked = map_container.heatmap_checkbox and map_container.heatmap_checkbox:GetChecked()
+		-- Bucket the data into the current granularity
+		local bucketed = {}
 		for x, v2 in pairs(precomputed_heatmap_intensity[current_map_id]) do
 			for y, intensity in pairs(v2) do
-				-- Skip out-of-bounds coordinates (heatmap array is 1-100)
-				if x >= 1 and x <= 100 and y >= 1 and y <= 100 then
-					map_container.heatmap[x][y].intensity = intensity
+				local bx = math.ceil(x * gran / 100)
+				local by = math.ceil(y * gran / 100)
+				if bx >= 1 and bx <= gran and by >= 1 and by <= gran then
+					if bucketed[bx] == nil then bucketed[bx] = {} end
+					if bucketed[bx][by] == nil or intensity > bucketed[bx][by] then
+						bucketed[bx][by] = intensity
+					end
 				end
 			end
 		end
-	end
 
-	local c = 0
-	for i = 1, 100 do
-		for j = 1, 100 do
-			if map_container.heatmap[i][j].intensity > 0.01 then
-				local alpha = map_container.heatmap[i][j].intensity * 4
-				if alpha > 0.6 then
-					alpha = 0.6
-				end
-				if map_container.heatmap[i][j].intensity > 0.02 then
-					if occupied_by_creature == nil or (occupied_by_creature[i] and occupied_by_creature[i][j]) then
-						map_container.heatmap[i][j]:SetColorTexture(
-							1.0,
-							1.1 - map_container.heatmap[i][j].intensity * 4,
-							0.1,
-							alpha
-						)
-					else
-						map_container.heatmap[i][j]:SetColorTexture(
-							1.0,
-							1.1 - map_container.heatmap[i][j].intensity * 4,
-							0.1,
-							alpha * 0.01
-						)
+		for x, row in pairs(bucketed) do
+			for y, intensity in pairs(row) do
+				local alpha = intensity * 4
+				if alpha > 0 and intensity > 0.02 then
+					if alpha > 0.6 then
+						alpha = 0.6
 					end
-					c = c + 1
-				else
-					map_container.heatmap[i][j]:SetColorTexture(
-						1.0,
-						1.1 - map_container.heatmap[i][j].intensity * 4,
-						0.1,
-						0
-					)
-				end
-				if map_container.heatmap_checkbox:GetChecked() then
-					map_container.heatmap[i][j]:Show()
-				else
-					map_container.heatmap[i][j]:Hide()
+					if map_container.heatmap[x] == nil then
+						map_container.heatmap[x] = {}
+					end
+					if map_container.heatmap[x][y] == nil then
+						local tex = map_container:CreateTexture(nil, "OVERLAY")
+						tex:SetDrawLayer("OVERLAY", 6)
+						map_container.heatmap[x][y] = tex
+					end
+					local tex = map_container.heatmap[x][y]
+					tex:SetHeight(cell_h)
+					tex:SetWidth(cell_w)
+					tex.intensity = intensity
+					if occupied_by_creature == nil or (occupied_by_creature[x] and occupied_by_creature[x][y]) then
+						tex:SetColorTexture(1.0, 1.1 - intensity * 4, 0.1, alpha)
+					else
+						tex:SetColorTexture(1.0, 1.1 - intensity * 4, 0.1, alpha * 0.01)
+					end
+					tex:SetPoint("CENTER", map_container, "TOPLEFT", modified_width * x / gran, -modified_height * y / gran)
+					if checked then
+						tex:Show()
+					end
 				end
 			end
 		end
@@ -1543,7 +1447,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		end
 		
 		local x, y = GetCursorPosition()
-		local s = UIParent:GetEffectiveScale()
+		local s = map_container:GetEffectiveScale()
 		local ratio = GetScreenWidth() / GetScreenHeight()
 		local modified_width = map_container:GetWidth() * 0.98
 		local modified_height = map_container:GetHeight() * 0.87
@@ -1560,7 +1464,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		local l_x = (x - map_container:GetLeft()) / modified_width
 		local l_y = -(y - map_container:GetTop()) / modified_height
 
-		info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
+		local info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 
 		if info ~= nil then
 			local fileDataID, atlasID, texturePercentageX, texturePercentageY, textureX, textureY, scrollChildX, scrollChildY =
@@ -1616,9 +1520,9 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		end
 
 		if button == "RightButton" then
-			info = C_Map.GetMapInfo(current_map_id)
+			local info = C_Map.GetMapInfo(current_map_id)
 			if info and info.parentMapID then
-				parent_info = C_Map.GetMapInfo(info.parentMapID)
+				local parent_info = C_Map.GetMapInfo(info.parentMapID)
 				if parent_info then
 					-- Clear heatmap only when navigating
 					if map_container.tomb_tex then
@@ -1641,7 +1545,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 		end
 		if button == "LeftButton" then
 			local x, y = GetCursorPosition()
-			local s = UIParent:GetEffectiveScale()
+			local s = map_container:GetEffectiveScale()
 			local ratio = GetScreenWidth() / GetScreenHeight()
 			local modified_width = map_container:GetWidth() * 0.98
 			local modified_height = map_container:GetHeight() * 0.87
@@ -1658,7 +1562,7 @@ function map_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl
 			local l_x = (x - map_container:GetLeft()) / modified_width
 			local l_y = -(y - map_container:GetTop()) / modified_height
 
-			info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
+			local info = C_Map.GetMapInfoAtPosition(current_map_id, l_x, l_y)
 			if info then
 				-- Clear heatmap only when navigating to a valid zone
 				if map_container.tomb_tex then

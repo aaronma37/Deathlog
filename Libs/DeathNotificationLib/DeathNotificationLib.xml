@@ -14,10 +14,6 @@
   <Script file="Areas\area_to_id_pt.lua"/>
   <Script file="Areas\area_to_id_ru.lua"/>
 
-  <!-- Data: Heatmaps -->
-  <Script file="Heatmaps\heatmap_vanilla.lua"/>
-  <Script file="Heatmaps\heatmap_tbc.lua"/>
-
   <!-- Data: Instances -->
   <Script file="Instances\instance_categories.lua"/>
   <Script file="Instances\instance_to_id_cn.lua"/>
@@ -85,24 +81,25 @@
   <Script file="Zones\zone_to_id_ru.lua"/>
 
   <!-- Module files (load order matters) -->
-  <Script file="DeathNotificationLib~Localization.lua"/>
+  <Script file="DeathNotificationLib~Tables.lua"/>
   <Script file="DeathNotificationLib~Protocol.lua"/>
   <Script file="DeathNotificationLib~PvP.lua"/>
   <Script file="DeathNotificationLib~BlizzardParser.lua"/>
   <Script file="DeathNotificationLib~UnitState.lua"/>
+  <Script file="DeathNotificationLib~GuildFilter.lua"/>
   <Script file="DeathNotificationLib~Query.lua"/>
   <Script file="DeathNotificationLib~PredictSource.lua"/>
   <Script file="DeathNotificationLib~Cache.lua"/>
   <Script file="DeathNotificationLib~Broadcast.lua"/>
-  <Script file="DeathNotificationLib~Sync.lua"/>
   <Script file="DeathNotificationLib~VersionCheck.lua"/>
+  <Script file="DeathNotificationLib~Sync.lua"/>
   <Script file="DeathNotificationLib~Events.lua"/>
   <Script file="DeathNotificationLib~Backwards.lua"/>
   <Script file="DeathNotificationLib~Transport.lua"/>
   <Script file="DeathNotificationLib~DeathAlert.lua"/>
   <Script file="DeathNotificationLib~HardcoreTBC.lua"/>
   <Script file="DeathNotificationLib~UltraHardcore.lua"/>
-  <Script file="DeathNotificationLib~Testing.lua"/>
+  <Script file="DeathNotificationLib~Testing.lua"/> <!-- DEATHLOG_REMOVE_LINE -->
 
   <!-- Cleanup -->
   <Script file="DeathNotificationLib~Finalizer.lua"/>

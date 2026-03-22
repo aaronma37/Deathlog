@@ -21,6 +21,7 @@ report_frame:SetScript("OnDragStart", function(self)
 end)
 report_frame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing()
+	if deathlog_settings[widget_name] == nil then deathlog_settings[widget_name] = {} end
 	local point, _, relPoint, x, y = self:GetPoint()
 	deathlog_settings[widget_name]["pos_x"] = x
 	deathlog_settings[widget_name]["pos_y"] = y

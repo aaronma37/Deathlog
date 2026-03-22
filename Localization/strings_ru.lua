@@ -1,4 +1,4 @@
-deathlog_strings_ru = {
+DEATHLOG_STRINGS_RU = {
 	-- fonts
 	main_font = "Fonts\\NIM_____.ttf",
 	class_font = "Fonts\\NIM_____.ttf",
@@ -7,8 +7,9 @@ deathlog_strings_ru = {
 	deadliest_creature_container_font = "Fonts\\FRIZQT___CYR.TTF",
 	creature_model_quote_font = "Fonts\\MORPHEUS_CYR.TTF",
 	-- words
-	minimap_btn_left_click = "|cFF666666ЛКМ:|r Посмотреть журнал",
- 	minimap_btn_right_click = "|cFF666666ПКМ:|r ",
+	minimap_btn_left_click = "|cFF666666ЛКМ:|r Переключить журнал",
+	minimap_btn_shift_click = "|cFF666666Shift-ЛКМ:|r Сбросить позицию/масштаб",
+	minimap_btn_right_click = "|cFF666666ПКМ:|r ",
 	class_word = "Класс",
 	killed_by_word = "Убит",
 	zone_instance_word = "Зона/Подземелье",

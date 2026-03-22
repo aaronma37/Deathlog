@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with the Deathlog AddOn. If not, see <http://www.gnu.org/licenses/>.
 --]]
 --
+---@type MenuElementContainer
 local average_class_container = CreateFrame("Frame")
 average_class_container:SetSize(100, 100)
 average_class_container:Show()
@@ -24,7 +25,7 @@ average_class_container.configure_for = "map"
 
 local class_font = Deathlog_L.class_font
 
-local class_tbl = deathlog_class_tbl
+local class_tbl = Deathlog_class_tbl
 
 local average_class_subtitles = {
 	{ "Class", 20, "LEFT", 60 },
@@ -79,7 +80,7 @@ end
 function average_class_container.updateMenuElement(scroll_frame, current_map_id, stats_tbl, setMapRegion)
 	average_class_container:Show()
 	local entry_data = {}
-	local map_id = deathlog_normalize_map_id_for_stats(current_map_id)
+	local map_id = Deathlog_normalize_map_id_for_stats(current_map_id)
 	local _stats = stats_tbl["stats"]
 	-- Container zones (continents, Outland) now have aggregated stats
 	if average_class_container.configure_for == "map" and _stats["all"][map_id] == nil then
@@ -87,6 +88,7 @@ function average_class_container.updateMenuElement(scroll_frame, current_map_id,
 	end
 
 	average_class_container:SetParent(scroll_frame.frame)
+	average_class_container:ClearAllPoints()
 	average_class_container:SetPoint("TOPLEFT", scroll_frame.frame, "TOPLEFT", 820, -65)
 	average_class_container:SetWidth(200)
 	average_class_container:SetHeight(200)
