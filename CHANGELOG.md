@@ -2,6 +2,13 @@
 
 All notable changes to Deathlog will be documented in this file.
 
+## [0.5.5] - 2026-03-22
+
+### Bug Fixes
+- Fixed HC state being incorrectly inherited when a new character is created with the same name as a previous one — `getHcState` now compares GUID in addition to name, and resets state in-place when either mismatches
+- Fixed crash in creature ranking when saved data contains creatures with an average level above the current expansion cap (e.g. TBC data loaded on a Classic Era client)
+- Filter out synced death entries with level exceeding the max player level
+
 ## [0.5.4] - 2026-03-16
 
 ### New Features

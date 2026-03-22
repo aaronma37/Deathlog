@@ -53,11 +53,16 @@ local function getHcState(unit)
 	end
 
 	local name = UnitName(unit)
-	if name and hc_states[unit]._name ~= name then
+	local guid = UnitGUID(unit)
+	if (name and hc_states[unit]._name ~= name) or (guid and hc_states[unit]._guid ~= guid) then
 		if unit ~= "player" then
-			hc_states[unit] = { _name = name }
+			hc_states[unit] = { _name = name, _guid = guid }
 		else
+			for k in pairs(hc_states[unit]) do
+				hc_states[unit][k] = nil
+			end
 			hc_states[unit]._name = name
+			hc_states[unit]._guid = guid
 		end
 	end
 

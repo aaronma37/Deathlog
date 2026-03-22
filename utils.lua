@@ -488,6 +488,10 @@ function Deathlog_shouldShowEntry(entry)
 	if entry == nil then
 		return false
 	end
+	-- Filter entries with level exceeding the max player level (e.g. GM test chars)
+	if entry["level"] and entry["level"] > MAX_PLAYER_LEVEL then
+		return false
+	end
 	-- Filter entries below instance minimum level
 	local iid = entry["instance_id"]
 	if iid and entry["level"] then
@@ -613,7 +617,9 @@ function DeathlogGetOrderedNormalized(stats, parameters, ln_mean, ln_std_dev)
 		if kills < 10 then
 			return 0
 		end
-		local pr = 1 - cdf[ceil(avg_lvl)]
+		local idx = ceil(avg_lvl)
+		if idx > #cdf then idx = #cdf end
+		local pr = 1 - cdf[idx]
 		return normalizeFunc(kills, pr)
 	end
 	local cdf = calculateCDF(ln_mean, ln_std_dev)

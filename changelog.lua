@@ -21,6 +21,13 @@ local CURRENT_VERSION = GetAddOnMetadata("Deathlog", "Version") or "0.0.0"
 local CHANGELOG_CONTENT = [[
 |cFFFFD700Deathlog Changelog|r
 
+|cFF00FF00[0.5.5] - 2026-03-22|r
+
+|cFFFFFFFFBug Fixes|r
+- Fixed HC state being inherited when a new character shares a name with a previous one — state now resets correctly on GUID mismatch
+- Fixed crash in creature ranking when saved data contains creatures with an average level above the expansion cap
+- Filter out synced death entries with level exceeding the max player level
+
 |cFF00FF00[0.5.4] - 2026-03-16|r
 
 |cFFFFFFFFNew Features|r

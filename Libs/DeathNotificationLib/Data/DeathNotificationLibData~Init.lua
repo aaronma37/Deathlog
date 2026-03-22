@@ -1,4 +1,4 @@
-local VERSION = 1773615600
+local VERSION = 1774134000
 
 if DeathNotificationLibData and (DeathNotificationLibData.VERSION or 0) >= VERSION then return end
 

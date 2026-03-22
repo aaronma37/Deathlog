@@ -5,6 +5,6 @@
 ## Author: Deathwing
 ## X-License: GNU GPL3
 ## X-Category: Library
-## Version: 1773615600
+## Version: 1774134000
 
 DeathlogData.xml
